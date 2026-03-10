@@ -1,0 +1,274 @@
+/* =========================================
+   SISTEMA POS PRO - CSS CONSOLIDADO (CON CAJA V2)
+   ========================================= */
+
+:root {
+  --primary: #005696;
+  --primary-hover: #00447a;
+  --success: #10b981;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --bg-app: #f3f4f6;
+  --bg-card: #ffffff;
+  --text-main: #111827;
+  --text-muted: #6b7280;
+  --border-light: #e5e7eb;
+}
+
+.posContainer {
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  min-height: 100vh;
+  background-color: var(--bg-app);
+  font-family: 'Inter', -apple-system, sans-serif;
+  box-sizing: border-box;
+}
+
+/* --- NAVEGACIÓN SUB-TABS --- */
+.tabNav {
+  display: flex;
+  gap: 8px;
+  background: #e2e8f0;
+  padding: 6px;
+  border-radius: 16px;
+  margin-bottom: 25px;
+}
+
+/* Reutilizamos btnPrimary y btnCancel para los tabs activos/inactivos */
+
+/* --- CENTRADO MAESTRO DEL MODAL --- */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center; 
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.modalCierre {
+  background: white;
+  width: 100%;
+  max-width: 480px;
+  border-radius: 32px;
+  padding: 35px;
+  position: relative;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+  animation: modalScale 0.2s ease-out;
+}
+
+@keyframes modalScale {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* --- SECCIÓN DE TOTAL --- */
+.modalTotalBox {
+  background: #f0f9ff;
+  border: 2px solid #bae6fd;
+  border-radius: 20px;
+  padding: 24px;
+  text-align: center;
+  margin-bottom: 25px;
+}
+
+.modalTotalText {
+  font-size: 12px;
+  font-weight: 800;
+  color: #0369a1;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.modalTotalValue {
+  font-size: 2.8rem;
+  font-weight: 950;
+  color: #0c4a6e;
+  margin-top: 8px;
+  letter-spacing: -1px;
+}
+
+/* --- BOTONES DE PAGO (GRID) --- */
+.paymentGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+/* --- INPUTS Y ESTADOS DE CAMBIO/FALTA --- */
+.formLabel {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.input {
+  width: 100%;
+  padding: 16px;
+  border-radius: 14px;
+  border: 2px solid #e2e8f0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  transition: all 0.2s;
+  box-sizing: border-box;
+  margin-bottom: 10px;
+}
+
+.inputSuccess {
+  border-color: var(--success) !important;
+  background-color: #f0fdf4 !important;
+  color: #065f46;
+}
+
+.inputError {
+  border-color: var(--danger) !important;
+  background-color: #fef2f2 !important;
+  color: #991b1b;
+}
+
+/* --- CAJA DE EFECTIVO --- */
+.cashBox {
+  padding: 20px;
+  border-radius: 18px;
+  border: 1px solid #e2e8f0;
+  margin-top: 10px;
+  background: #f8fafc;
+}
+
+.changeRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px dashed #cbd5e1;
+}
+
+.warningText {
+  animation: pulseRed 1.5s infinite;
+}
+
+@keyframes pulseRed {
+  0% { opacity: 1; }
+  50% { opacity: 0.6; }
+  100% { opacity: 1; }
+}
+
+/* --- BOTONES DE ACCIÓN --- */
+.btnOrder {
+  background: var(--success);
+  color: white;
+  border: none;
+  border-radius: 16px;
+  padding: 20px;
+  font-weight: 800;
+  font-size: 1.1rem;
+  cursor: pointer;
+  box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.2);
+  width: 100%;
+  transition: all 0.2s;
+}
+
+.btnOrder:hover { background: #059669; }
+
+.btnOrder:disabled {
+  background: #cbd5e1 !important;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.btnCloseModal {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: #f1f5f9;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-weight: bold;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- MONITOR DE SALÓN --- */
+.productGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 15px;
+}
+
+.mesaCard {
+  background: white;
+  border-radius: 24px;
+  padding: 20px;
+  text-align: center;
+  border: 1px solid var(--border-light);
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+  transition: transform 0.2s;
+  cursor: pointer;
+}
+
+.mesaCard:active { transform: scale(0.97); }
+
+.headerRow { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  margin-bottom: 25px; 
+}
+
+.sectionTitle {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.btnPrimary {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btnCancel { 
+  background: white; 
+  color: var(--text-muted);
+  border: 1px solid #e2e8f0; 
+  padding: 12px 24px; 
+  border-radius: 12px; 
+  cursor: pointer; 
+}
+
+.emptyStateBox {
+  padding: 60px;
+  text-align: center;
+  background: white;
+  border-radius: 24px;
+  color: var(--text-muted);
+  border: 1px dashed #cbd5e1;
+}
+
+/* --- TEXTOS AUXILIARES --- */
+.textMuted {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}

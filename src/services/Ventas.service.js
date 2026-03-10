@@ -3,29 +3,36 @@ import { supabase } from '../lib/supabaseClient';
 export const ventasService = {
   
   /**
-   * Obtener todas las cuentas que no han sido pagadas en la sucursal actual.
-   * Incluye el detalle de productos para mostrar un resumen al mesero.
+   * Obtiene cuentas activas. 
+   * Incluye la relación con el mesero (usuario_id) y los productos consumidos.
    */
   async getCuentasAbiertas(sucursalId) {
     const { data, error } = await supabase
       .from('ventas')
-      .select('*, ventas_detalle(*, productosmenu(nombre))')
+      .select(`
+        *,
+        mesero:usuario_id ( nombre ),
+        ventas_detalle (
+          *,
+          productosmenu (nombre)
+        )
+      `)
       .eq('sucursal_id', sucursalId)
-      .in('estado', ['pendiente', 'cocina', 'entregado'])
+      .in('estado', ['pendiente', 'cocina', 'entregado', 'por_cobrar'])
       .order('created_at', { ascending: false });
     return { data, error };
   },
 
   /**
-   * Procesa la venta (Nueva o Actualización).
-   * Maneja el snapshot de costos históricos y precios.
+   * Procesa comanda (Mesero). 
+   * Crea la venta si no existe o inserta nuevos productos si ya existe.
    */
   async procesarVenta(ventaData, carrito) {
     try {
       let ventaId = ventaData.id;
       let folio = ventaData.folio;
 
-      // 1. SI ES NUEVA MESA: Crear la cabecera (Ventas)
+      // 1. Crear cabecera si es mesa nueva
       if (!ventaId) {
         const prefix = ventaData.sucursal_id === 1 ? 'M' : 'S';
         folio = `${prefix}-${Date.now().toString().slice(-6)}`;
@@ -44,7 +51,7 @@ export const ventasService = {
         ventaId = v.id;
       }
 
-      // 2. INSERTAR DETALLE: Snapshot de cada producto
+      // 2. Insertar detalles del carrito
       const detalles = carrito.map(item => ({
         venta_id: ventaId,
         producto_id: item.id,
@@ -52,48 +59,56 @@ export const ventasService = {
         precio_unitario: parseFloat(item.precio_venta) || 0,
         costo_unitario_historico: parseFloat(item.costo_actual) || 0,
         subtotal: (parseFloat(item.precio_venta) || 0) * (parseInt(item.cantidad) || 1),
-        notas: item.notas || '',
-        extras_seleccionados: JSON.stringify(item.extras || [])
+        notas: item.notas || ''
       }));
 
       const { error: dErr } = await supabase.from('ventas_detalle').insert(detalles);
       if (dErr) throw dErr;
 
-      // 3. RECALCULAR TOTALES: Sumar todo lo acumulado en la mesa
-      const { data: todosLosDetalles, error: sumErr } = await supabase
+      // 3. Recalcular totales generales de la mesa
+      const { data: todosLosDetalles } = await supabase
         .from('ventas_detalle')
         .select('subtotal, costo_unitario_historico, cantidad')
         .eq('venta_id', ventaId);
 
-      if (sumErr) throw sumErr;
-
       const nuevoTotal = todosLosDetalles.reduce((acc, cur) => acc + (parseFloat(cur.subtotal) || 0), 0);
       const nuevoCosto = todosLosDetalles.reduce((acc, cur) => acc + ((parseFloat(cur.costo_unitario_historico) || 0) * (parseInt(cur.cantidad) || 1)), 0);
 
-      // 4. ACTUALIZAR CABECERA: Guardar los nuevos totales
-      const { error: updateErr } = await supabase
-        .from('ventas')
-        .update({ 
-          total: nuevoTotal, 
-          subtotal: nuevoTotal, 
-          costo_total_venta: nuevoCosto 
-        })
-        .eq('id', ventaId);
+      const { error: upErr } = await supabase.from('ventas').update({ 
+        total: nuevoTotal, 
+        subtotal: nuevoTotal, 
+        costo_total_venta: nuevoCosto,
+        estado: 'cocina' 
+      }).eq('id', ventaId);
 
-      if (updateErr) throw updateErr;
+      if(upErr) throw upErr;
 
       return { success: true, folio };
-
     } catch (error) {
-      console.error("Error crítico en ventasService:", error.message);
+      console.error("Error en procesarVenta:", error.message);
       return { success: false, error: error.message };
     }
   },
 
   /**
-   * Finaliza la transacción, registra el pago y libera la mesa.
+   * Marca la mesa en estado de cobro (Mesero pide cuenta).
    */
-  async cerrarCuenta(ventaId, datosPago) {
+  async marcarPorCobrar(ventaId) {
+    const { data, error } = await supabase
+      .from('ventas')
+      .update({ 
+        estado: 'por_cobrar',
+        hora_por_cobrar: new Date().toISOString() 
+      })
+      .eq('id', ventaId);
+    return { success: !error, data, error };
+  },
+
+  /**
+   * Cierra la cuenta (Cajero).
+   * Registra método de pago, propina y libera la mesa.
+   */
+  async cerrarCuenta(ventaId, datosPago, cajeroId) {
     try {
       const { data, error } = await supabase
         .from('ventas')
@@ -101,17 +116,69 @@ export const ventasService = {
           estado: 'pagado',
           metodo_pago: datosPago.metodo_pago,
           propina: parseFloat(datosPago.propina) || 0,
-          total: parseFloat(datosPago.totalFinal),
+          total: parseFloat(datosPago.totalFinal), // Total que incluye la propina
           pagado_con: parseFloat(datosPago.pagado_con) || 0,
-          cambio: parseFloat(datosPago.cambio) || 0
+          cambio: parseFloat(datosPago.cambio) || 0,
+          cajero_id: cajeroId,
+          hora_cierre: new Date().toISOString()
         })
-        .eq('id', ventaId);
-      
+        .eq('id', ventaId)
+        .select(); // Importante para confirmar el cambio
+
       if (error) throw error;
       return { success: true, data };
     } catch (error) {
       console.error("Error al cerrar cuenta:", error.message);
       return { success: false, error: error.message };
     }
+  },
+
+  /**
+   * Obtiene el historial de ventas pagadas hoy (Pestaña Historial Cajero).
+   */
+  async getHistorialCobradas(sucursalId) {
+    const hoy = new Date().toISOString().split('T')[0];
+    const { data, error } = await supabase
+      .from('ventas')
+      .select(`
+        id, folio, mesa, total, metodo_pago, propina, hora_cierre,
+        mesero:usuario_id ( nombre )
+      `)
+      .eq('sucursal_id', sucursalId)
+      .eq('estado', 'pagado')
+      .gte('hora_cierre', hoy)
+      .order('hora_cierre', { ascending: false });
+    
+    return { data, error };
+  },
+
+  /**
+   * Calcula el resumen de dinero del turno (Pestaña Corte Cajero).
+   */
+  async getResumenCaja(sucursalId) {
+    const hoy = new Date().toISOString().split('T')[0];
+    const { data, error } = await supabase
+      .from('ventas')
+      .select('total, metodo_pago, propina')
+      .eq('sucursal_id', sucursalId)
+      .eq('estado', 'pagado')
+      .gte('hora_cierre', hoy);
+
+    if (error) return { error };
+
+    const resumen = data.reduce((acc, v) => {
+      // Separamos la venta neta de la propina para el arqueo
+      const ventaNeta = (parseFloat(v.total) || 0) - (parseFloat(v.propina) || 0);
+      
+      if (v.metodo_pago === 'efectivo') {
+        acc.efectivo += ventaNeta;
+      } else {
+        acc.tarjeta += ventaNeta;
+      }
+      acc.totalPropinas += (parseFloat(v.propina) || 0);
+      return acc;
+    }, { efectivo: 0, tarjeta: 0, totalPropinas: 0 });
+
+    return { data: resumen, error: null };
   }
 };

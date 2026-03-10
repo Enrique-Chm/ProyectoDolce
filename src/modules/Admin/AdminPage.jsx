@@ -1,25 +1,26 @@
 import React, { useState, useEffect } from "react";
 import s from "./AdminPage.module.css";
 
-// Importación de Servicios
+// --- IMPORTACIÓN DE SERVICIOS (Rutas validadas según tu VS Code) ---
 import { authService } from "../../services/Auth.service";
 import { sucursalesService } from "../../services/Sucursales.service";
 
-// Importación de Pantalla de Acceso
+// --- IMPORTACIÓN DE PANTALLA DE ACCESO ---
 import { Login } from "./Login";
 
-// Importación de Componentes Operativos
+// --- IMPORTACIÓN DE COMPONENTES OPERATIVOS (Sub-carpeta ./components) ---
 import { ConfigTab } from "./components/ConfigTab"; 
 import { ProveedoresTab } from "./components/ProveedoresTab";
 import { InsumosTab } from "./components/InsumosTab";
 import { RecetasTab } from "./components/RecetasTab";
 import { ProductosTab } from "./components/ProductosTab";
 import { EmpleadosTab } from "./components/EmpleadosTab";
-import { MeseroTab } from "./components/MeseroTab"; // NUEVO
+import { MeseroTab } from "./components/MeseroTab"; 
+import { CajeroTab } from "./components/CajeroTab";
+import { ImpresorasTab } from "./components/ImpresorasTab";
 
 const AdminPage = () => {
   const [userSession, setUserSession] = useState(authService.getCurrentSession());
-  // Cambiamos el tab inicial a 'mesero' o el que prefieras por defecto
   const [activeTab, setActiveTab] = useState('mesero'); 
   
   // --- LÓGICA MULTI-SUCURSAL ---
@@ -39,24 +40,29 @@ const AdminPage = () => {
     setListaSucursales(data || []);
   };
 
-  // --- GESTIÓN DE PESTAÑAS Y PERMISOS ---
+  // --- CONFIGURACIÓN DE PESTAÑAS ---
   const getTabsConfig = () => [
-    { id: 'mesero', label: 'Mesero (Ventas)', permiso: 'ver_ventas' }, // NUEVO
+    { id: 'mesero', label: 'Mesero (Ventas)', permiso: 'ver_ventas' },
+    { id: 'cajero', label: 'Caja (Cobros)', permiso: 'ver_ventas' },
     { id: 'insumos', label: 'Insumos', permiso: 'ver_insumos' },
     { id: 'recetas', label: 'Recetas', permiso: 'ver_recetas' },
     { id: 'productos', label: 'Productos', permiso: 'ver_productos' },
     { id: 'proveedores', label: 'Proveedores', permiso: 'ver_proveedores' },
     { id: 'empleados', label: 'Empleados', permiso: 'ver_empleados' },
+    { id: 'impresoras', label: 'Impresoras', permiso: 'ver_config' }, 
     { id: 'config', label: 'Configuración', permiso: 'ver_config' } 
   ];
 
   const visibleTabs = getTabsConfig().filter(tab => {
     if (!userSession) return false;
     if (isAdmin) return true;
-    if (tab.id === 'config') {
-      return userSession.permisos.includes('ver_unidades') || userSession.permisos.includes('ver_categorias');
+    
+    // Casos especiales para Configuración e Impresoras
+    if (tab.id === 'config' || tab.id === 'impresoras') {
+      return userSession.permisos.includes('ver_unidades') || 
+             userSession.permisos.includes('ver_categorias') || 
+             userSession.permisos.includes('ver_config');
     }
-    // Permitir acceso al mesero si tiene permiso de ver_ventas o ver_empleados (ajustable)
     return userSession.permisos.includes(tab.permiso);
   });
 
@@ -97,16 +103,17 @@ const AdminPage = () => {
 
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '5px' }}>
                 <span className={s.userText}>
-                Sesión: <strong>{userSession.user.nombre}</strong> 
-                {!isAdmin && ` (Sucursal: ${userSession.user.sucursal_id})`}
+                  Sesión: <strong>{userSession.user.nombre}</strong> 
+                  {!isAdmin && ` (ID: ${userSession.user.sucursal_id})`}
                 </span>
                 <button onClick={handleLogout} className={s.logoutBtn}>
-                CERRAR SESIÓN ✕
+                  CERRAR SESIÓN ✕
                 </button>
             </div>
           </div>
         </div>
         
+        {/* NAVEGACIÓN PRINCIPAL */}
         <nav className={s.tabNav}>
           {visibleTabs.map((tab) => (
             <button
@@ -120,20 +127,29 @@ const AdminPage = () => {
         </nav>
       </header>
 
-      <main>
-        {/* NUEVO TAB: MESERO */}
+      <main className={s.contentArea}>
+        {/* OPERATIVA: VENTAS Y COBROS */}
         {activeTab === 'mesero' && (
-            <MeseroTab 
-                sucursalId={filterSucursal} 
-                usuarioId={userSession.user.id} 
-            />
+            <MeseroTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />
         )}
 
+        {activeTab === 'cajero' && (
+            <CajeroTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />
+        )}
+
+        {/* LOGÍSTICA E INVENTARIOS */}
         {activeTab === 'insumos' && <InsumosTab sucursalId={filterSucursal} />}
         {activeTab === 'recetas' && <RecetasTab sucursalId={filterSucursal} />}
         {activeTab === 'productos' && <ProductosTab sucursalId={filterSucursal} />}
         {activeTab === 'proveedores' && <ProveedoresTab sucursalId={filterSucursal} />}
+        
+        {/* ADMINISTRACIÓN Y CONFIGURACIÓN */}
         {activeTab === 'empleados' && <EmpleadosTab />}
+        
+        {activeTab === 'impresoras' && (
+            <ImpresorasTab sucursalId={filterSucursal} />
+        )}
+
         {activeTab === 'config' && <ConfigTab />}
       </main>
     </div>
