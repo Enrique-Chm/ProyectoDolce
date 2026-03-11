@@ -1,9 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-// Importación actualizada con el nuevo nombre del Mensajero
 import { configService } from '../services/Config.service'; 
 import { hasPermission } from '../utils/checkPermiso';
 
-// CORRECCIÓN: Se cambió "useConfig" a "useConfigTab" para que coincida con la importación
 export const useConfigTab = (subTab) => {
   const [loading, setLoading] = useState(false);
 
@@ -22,26 +20,36 @@ export const useConfigTab = (subTab) => {
   const [cMenuEditId, setCMenuEditId] = useState(null);
   const [cInsumoEditId, setCInsumoEditId] = useState(null);
 
+  // --- NUEVOS ESTADOS: MOTIVOS INVENTARIO ---
+  const [motivosInventario, setMotivosInventario] = useState([]);
+  const [mNombre, setMNombre] = useState('');
+  const [mTipo, setMTipo] = useState('ENTRADA');
+  const [mEditId, setMEditId] = useState(null);
+
   // Lógica de Permisos (RBAC)
   const puedeEditarU = hasPermission('ver_unidades');
   const puedeEditarC = hasPermission('ver_categorias');
+  const puedeEditarM = hasPermission('ver_insumos'); // Usamos este para motivos
   const puedeBorrar = hasPermission('borrar_registros');
 
-  // Función para traer datos (El Administrador ordena al Mensajero)
+  // Función para traer datos
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       if (subTab === 'unidades') {
         const res = await configService.getUnidades();
         setUnidades(res.data || []);
-      } else {
-        // Ejecutamos ambas peticiones al mismo tiempo para ganar velocidad
+      } else if (subTab === 'categorias') {
         const [menuRes, insumosRes] = await Promise.all([
           configService.getMenu(),
           configService.getInsumos()
         ]);
         setCatMenu(menuRes.data || []);
         setCatInsumos(insumosRes.data || []);
+      } else if (subTab === 'motivos') {
+        // Nueva petición para motivos
+        const res = await configService.getMotivosInventario();
+        setMotivosInventario(res.data || []);
       }
     } catch (error) {
       console.error("Error al cargar configuración:", error);
@@ -50,38 +58,28 @@ export const useConfigTab = (subTab) => {
     }
   }, [subTab]);
 
-  // Se dispara cada vez que cambias de pestaña
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // --- MANEJADORES DE ENVÍO (Lógica de Negocio) ---
+  // --- MANEJADORES DE ENVÍO ---
 
   const handleSubmitUnidad = async (e) => {
     e.preventDefault();
     if (!puedeEditarU) return;
-    const payload = { nombre: uNombre, abreviatura: uAbrev };
-    
-    const { error } = await configService.saveUnidad(payload, uEditId);
-
-    if (!error) {
-      setUEditId(null); 
-      setUNombre(''); 
-      setUAbrev('');
-      fetchData(); // Refrescamos la lista automáticamente
+    const { error } = await configService.saveUnidad({ nombre: uNombre, abreviatura: uAbrev }, uEditId);
+    if (!error) { 
+      setUEditId(null); setUNombre(''); setUAbrev(''); 
+      fetchData(); 
     }
   };
 
   const handleSubmitCatMenu = async (e) => {
     e.preventDefault();
     if (!puedeEditarC) return;
-    const payload = { nombre: cMenuNombre, color_etiqueta: cMenuColor };
-
-    const { error } = await configService.saveMenu(payload, cMenuEditId);
-    
+    const { error } = await configService.saveMenu({ nombre: cMenuNombre, color_etiqueta: cMenuColor }, cMenuEditId);
     if (!error) { 
-      setCMenuEditId(null); 
-      setCMenuNombre(''); 
+      setCMenuEditId(null); setCMenuNombre(''); 
       fetchData(); 
     }
   };
@@ -89,34 +87,41 @@ export const useConfigTab = (subTab) => {
   const handleSubmitCatInsumo = async (e) => {
     e.preventDefault();
     if (!puedeEditarC) return;
-    const payload = { nombre: cInsumoNombre };
-
-    const { error } = await configService.saveInsumo(payload, cInsumoEditId);
-    
+    const { error } = await configService.saveInsumo({ nombre: cInsumoNombre }, cInsumoEditId);
     if (!error) { 
-      setCInsumoEditId(null); 
-      setCInsumoNombre(''); 
+      setCInsumoEditId(null); setCInsumoNombre(''); 
       fetchData(); 
     }
   };
 
-  // Exponemos todo lo que el JSX necesita consumir
+  // --- NUEVO MANEJADOR: MOTIVOS ---
+  const handleSubmitMotivo = async (e) => {
+    e.preventDefault();
+    if (!puedeEditarM) return;
+    const payload = { nombre_motivo: mNombre, tipo: mTipo };
+    
+    const { error } = await configService.saveMotivoInventario(payload, mEditId);
+    
+    if (!error) {
+      setMEditId(null);
+      setMNombre('');
+      setMTipo('ENTRADA');
+      fetchData();
+    }
+  };
+
   return {
     loading, 
-    puedeEditarU, 
-    puedeEditarC, 
-    puedeBorrar,
+    puedeEditarU, puedeEditarC, puedeEditarM, puedeBorrar,
     // Unidades
     unidades, uNombre, setUNombre, uAbrev, setUAbrev, uEditId, setUEditId, handleSubmitUnidad,
     // Categorías
     catMenu, catInsumos, 
-    cMenuNombre, setCMenuNombre, 
-    cMenuColor, setCMenuColor, 
-    cInsumoNombre, setCInsumoNombre, 
-    cMenuEditId, setCMenuEditId, 
-    cInsumoEditId, setCInsumoEditId,
-    handleSubmitCatMenu, 
-    handleSubmitCatInsumo,
-    refresh: fetchData // Opción por si el JSX quiere refrescar manualmente
+    cMenuNombre, setCMenuNombre, cMenuColor, setCMenuColor, cInsumoNombre, setCInsumoNombre, 
+    cMenuEditId, setCMenuEditId, cInsumoEditId, setCInsumoEditId,
+    handleSubmitCatMenu, handleSubmitCatInsumo,
+    // Motivos Inventario
+    motivosInventario, mNombre, setMNombre, mTipo, setMTipo, mEditId, setMEditId, handleSubmitMotivo,
+    refresh: fetchData 
   };
 };

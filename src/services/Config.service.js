@@ -80,5 +80,33 @@ export const configService = {
       .from('cat_categoria_insumos')
       .delete()
       .eq('id', id);
+  },
+
+  // --- MOTIVOS DE INVENTARIO (NUEVO) ---
+  async getMotivosInventario() {
+    return await supabase
+      .from('cat_motivos_inventario')
+      .select('*')
+      .order('tipo', { ascending: true })
+      .order('nombre_motivo', { ascending: true });
+  },
+
+  async saveMotivoInventario(payload, id = null) {
+    if (id) {
+      return await supabase
+        .from('cat_motivos_inventario')
+        .update(payload)
+        .eq('id', id);
+    }
+    return await supabase
+      .from('cat_motivos_inventario')
+      .insert([payload]);
+  },
+
+  async deleteMotivoInventario(id) {
+    return await supabase
+      .from('cat_motivos_inventario')
+      .delete()
+      .eq('id', id);
   }
 };

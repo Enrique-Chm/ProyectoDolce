@@ -119,11 +119,15 @@ export const ventasService = {
           total: parseFloat(datosPago.totalFinal), // Total que incluye la propina
           pagado_con: parseFloat(datosPago.pagado_con) || 0,
           cambio: parseFloat(datosPago.cambio) || 0,
-          cajero_id: cajeroId,
+          
+          // ⚠️ FIX TEMPORAL: Comentado para evitar el error de "invalid uuid"
+          // Descomenta esta línea solo cuando hayas cambiado el tipo de dato en Supabase de uuid a int4
+          // cajero_id: cajeroId, 
+          
           hora_cierre: new Date().toISOString()
         })
         .eq('id', ventaId)
-        .select(); // Importante para confirmar el cambio
+        .select(); 
 
       if (error) throw error;
       return { success: true, data };

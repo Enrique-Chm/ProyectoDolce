@@ -2,37 +2,51 @@ import { supabase } from '../lib/supabaseClient';
 
 export const authService = {
   /**
-   * Intenta iniciar sesión con username y password
-   * Nota: En un entorno real usarías supabase.auth, pero basándonos 
-   * en tus tablas de usuarios_internos, lo manejamos así:
+   * Intenta iniciar sesión y registra un ID de instancia único.
    */
   async login(username, password) {
     try {
+      // 1. Buscamos al usuario con TODOS los campos necesarios
       const { data: usuario, error } = await supabase
         .from('usuarios_internos')
         .select(`
           id, 
           nombre, 
           rol_id, 
+          sucursal_id,
           pin_seguridad,
+          username,
+          password_hash,
           roles (nombre_rol)
         `)
         .eq('username', username)
-        .eq('password_hash', password) // Aquí deberías usar hash en producción
+        .eq('password_hash', password)
         .eq('status', 'activo')
         .single();
 
       if (error || !usuario) throw new Error('Usuario o contraseña incorrectos');
 
-      // Una vez tenemos el usuario, obtenemos sus permisos
+      // 2. GENERAMOS UN ID DE SESIÓN ÚNICO
+      const uniqueSessionId = crypto.randomUUID();
+
+      // 3. ACTUALIZAMOS LA DB: Esto dispara la señal de Realtime
+      const { error: updateError } = await supabase
+        .from('usuarios_internos')
+        .update({ session_id: uniqueSessionId })
+        .eq('id', usuario.id);
+
+      if (updateError) throw updateError;
+
+      // 4. Obtenemos permisos
       const permisos = await this.getPermisosByRol(usuario.rol_id);
 
       const sessionData = {
         user: usuario,
-        permisos: permisos
+        permisos: permisos,
+        sessionId: uniqueSessionId 
       };
 
-      // Guardamos en localStorage para persistencia simple
+      // Guardamos en localStorage
       localStorage.setItem('cloudkitchen_session', JSON.stringify(sessionData));
       
       return sessionData;
@@ -42,19 +56,13 @@ export const authService = {
     }
   },
 
-  /**
-   * Obtiene la lista de claves de permiso (ej: ['ver_recetas', 'ver_insumos'])
-   */
   async getPermisosByRol(rolId) {
     const { data, error } = await supabase
       .from('rol_permisos')
-      .select(`
-        permisos (clave_permiso)
-      `)
+      .select(`permisos (clave_permiso)`)
       .eq('rol_id', rolId);
 
     if (error) return [];
-    // Limpiamos el array para que solo devuelva los strings de las claves
     return data.map(p => p.permisos.clave_permiso);
   },
 
@@ -65,6 +73,6 @@ export const authService = {
 
   logout() {
     localStorage.removeItem('cloudkitchen_session');
-    window.location.reload();
+    window.location.reload(); 
   }
 };

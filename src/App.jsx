@@ -1,40 +1,40 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useSessionGuard } from './hooks/useSessionGuard'; // Importamos el guardia
 
-// Importamos la página de Admin que ya configuramos con CSS Modules
+// Importamos la página de Admin
 import AdminPage from './modules/Admin/AdminPage';
-
-// Otros componentes que podrías tener (ejemplos)
-// import POSPage from './modules/POS/POSPage';
-// import InventoryPage from './modules/Inventory/InventoryPage';
 
 function App() {
   /**
-   * NOTA: Hemos eliminado useTheme() y cualquier lógica de 
-   * inyección global de CSS para que cada módulo use sus propios .module.css
+   * ACTIVAMOS EL GUARDIA DE SESIÓN ÚNICA
+   * Este hook vigila en tiempo real si el session_id del usuario cambia en la DB.
    */
+  useSessionGuard();
 
   return (
     <Router>
       <div className="app-main-container">
         <Routes>
-          {/* Ruta principal: por ahora redirige a Admin para probar los cambios */}
+          {/* Ruta principal: redirige a Admin */}
           <Route path="/" element={<Navigate to="/admin" replace />} />
 
-          {/* Módulo de Administración (Independiente) */}
+          {/* Módulo de Administración */}
           <Route path="/admin" element={<AdminPage />} />
-
-          {/* Rutas futuras
-          <Route path="/pos" element={<POSPage />} />
-          <Route path="/inventario" element={<InventoryPage />} />
-          */}
 
           {/* Fallback para rutas no encontradas */}
           <Route path="*" element={
             <div style={{ textAlign: 'center', padding: '100px', fontFamily: 'sans-serif' }}>
-              <h1>404</h1>
-              <p>Página no encontrada</p>
-              <a href="/admin" style={{ color: '#005696', fontWeight: 'bold' }}>Volver al Admin</a>
+              <h1 style={{ fontSize: '4rem', color: '#cbd5e1', margin: 0 }}>404</h1>
+              <p style={{ color: '#64748b', marginBottom: '20px' }}>Página no encontrada</p>
+              <a href="/admin" style={{ 
+                color: '#005696', 
+                fontWeight: 'bold', 
+                textDecoration: 'none',
+                border: '1px solid #005696',
+                padding: '10px 20px',
+                borderRadius: '8px'
+              }}>Volver al Admin</a>
             </div>
           } />
         </Routes>

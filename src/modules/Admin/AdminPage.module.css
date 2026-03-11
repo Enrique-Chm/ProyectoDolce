@@ -835,3 +835,152 @@
     padding-bottom: 65vh; /* Espacio para que el carrito no tape el menú */
   }
 }
+/* =========================================
+   16. ESTILOS ESPECÍFICOS PARA INVENTARIOS
+   ========================================= */
+
+/* Cabeceras flexibles para tarjetas complejas (ej. Auditoría) */
+.headerFlex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.headerActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Buscador Autocompletado (Dropdown) */
+.formGroupRelative {
+  position: relative;
+  margin-bottom: 1.25rem;
+}
+
+.dropdownContainer {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  z-index: 100;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.dropdownItem {
+  padding: 10px;
+  cursor: pointer;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.2s;
+}
+
+.dropdownItem:hover {
+  background: #f8fafc;
+}
+
+.dropdownItemNote {
+  opacity: 0.6;
+  font-weight: 700;
+}
+
+/* Mensajes de ayuda debajo de inputs */
+.helperTextInfo {
+  font-size: 11px;
+  color: #0369a1;
+  margin-top: 4px;
+  font-weight: 800;
+}
+
+/* Etiquetas y Badges */
+.badgeCategory {
+  background: #f1f5f9;
+  color: #475569;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+/* --- TABLA DE AUDITORÍA Y EXISTENCIAS --- */
+.cellEstimated {
+  background-color: #f0fdf4 !important;
+  color: #16a34a !important;
+  font-weight: 900 !important;
+}
+
+.cellHighlightBg {
+  background-color: #f8fafc;
+}
+
+.rowAudited {
+  background-color: #f0fdf4;
+  transition: background-color 0.3s ease;
+}
+
+.textAudited {
+  font-weight: 400;
+  color: #475569;
+}
+
+.textPending {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+/* Colores de estado (Diferencias matemáticas) */
+.textDanger { color: #dc2626 !important; font-weight: 800; }
+.textSuccess { color: #16a34a !important; font-weight: 800; }
+.textWarning { color: #d97706 !important; font-weight: 800; }
+
+/* Input pequeño para la báscula */
+.inputSmall {
+  width: 90px;
+  margin: 0;
+  padding: 6px;
+  text-align: center;
+  font-size: 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.inputSmall:focus {
+  border-color: #005696;
+}
+
+/* Textos de Progreso */
+.progressText {
+  font-size: 0.85rem;
+  color: #64748b;
+  font-weight: 800;
+}
+
+.progressComplete {
+  color: #10b981;
+}
+
+/* Botones especiales */
+.btnSuccess {
+  background: #10b981 !important;
+  color: white !important;
+}
+
+.comboFilter {
+  min-width: 150px;
+  font-weight: 700;
+  color: #334155;
+}
