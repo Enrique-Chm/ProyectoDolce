@@ -176,7 +176,7 @@ export const ProductosTab = ({ sucursalId }) => {
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>PRECIO VENTA ($)</label>
                 <input 
                   type="number" step="0.01" 
-                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)' }}
+                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
                   value={formData.precio_venta} 
                   onChange={e => setFormData({...formData, precio_venta: e.target.value})} 
                   required readOnly={!puedeEditar} 

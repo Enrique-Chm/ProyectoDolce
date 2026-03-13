@@ -114,7 +114,7 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>INSUMO</label>
                 <input 
                   type="text" 
-                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)' }}
+                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
                   placeholder="🔍 Buscar producto..."
                   value={searchTermInsumo} onFocus={() => setShowDropdown(true)}
                   onChange={(e) => { setSearchTermInsumo(e.target.value); setShowDropdown(true); }}
@@ -155,7 +155,7 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>CANTIDAD</label>
                   <input 
                     type="number" step="0.01"
-                    style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)' }}
+                    style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
                     value={nuevoMov.cantidad} onChange={(e) => setNuevoMov({...nuevoMov, cantidad: e.target.value})} required 
                   />
                 </div>

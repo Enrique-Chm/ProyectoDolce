@@ -117,9 +117,9 @@ export const InsumosTab = ({ sucursalId }) => {
           </h3>
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>NOMBRE COMERCIAL</label>
+              <label style={{ display: 'flex', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>NOMBRE COMERCIAL</label>
               <input 
-                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)' }}
+                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
                 value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} required readOnly={!puedeEditar} 
               />
             </div>
@@ -127,7 +127,7 @@ export const InsumosTab = ({ sucursalId }) => {
             <div>
               <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>MODELO / VARIANTE</label>
               <input 
-                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)' }}
+                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
                 value={formData.modelo} onChange={e => setFormData({...formData, modelo: e.target.value})} required readOnly={!puedeEditar} 
               />
             </div>
@@ -160,7 +160,7 @@ export const InsumosTab = ({ sucursalId }) => {
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>COSTO CAJA ($)</label>
                 <input 
                   type="number" step="0.01" 
-                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)' }}
+                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
                   value={formData.costo_por_caja} onChange={e => setFormData({...formData, costo_por_caja: e.target.value})} required readOnly={!puedeEditar} 
                 />
               </div>
@@ -168,7 +168,7 @@ export const InsumosTab = ({ sucursalId }) => {
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>CONT. NETO</label>
                 <input 
                   type="number" step="0.01" 
-                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)' }}
+                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
                   value={formData.contenido_neto} onChange={e => setFormData({...formData, contenido_neto: e.target.value})} required readOnly={!puedeEditar} 
                 />
               </div>
@@ -190,7 +190,7 @@ export const InsumosTab = ({ sucursalId }) => {
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>RENDIMIENTO %</label>
                 <input 
                   type="number" step="0.01" 
-                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)' }}
+                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
                   value={formData.factor_rendimiento} onChange={e => setFormData({...formData, factor_rendimiento: e.target.value})} readOnly={!puedeEditar} 
                 />
               </div>
@@ -198,7 +198,7 @@ export const InsumosTab = ({ sucursalId }) => {
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>DÍAS REABAST.</label>
                 <input 
                   type="number" 
-                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)' }}
+                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
                   value={formData.dias_reabastecimiento} onChange={e => setFormData({...formData, dias_reabastecimiento: e.target.value})} readOnly={!puedeEditar} 
                 />
               </div>

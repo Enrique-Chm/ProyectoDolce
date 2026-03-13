@@ -121,7 +121,7 @@ export const RecetasTab = ({ sucursalId }) => {
             <div>
               <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>NOMBRE DE LA PREPARACIÓN</label>
               <input 
-                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)' }}
+                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
                 value={nombreReceta} 
                 onChange={e => setNombreReceta(e.target.value)} 
                 required 
@@ -186,7 +186,7 @@ export const RecetasTab = ({ sucursalId }) => {
                         <label style={{ display: 'block', fontSize: '10px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '4px' }}>CANTIDAD</label>
                         <input 
                           type="number" step="0.001" 
-                          style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--color-border)', fontSize: '13px' }}
+                          style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--color-border)', fontSize: '13px',boxSizing: 'border-box' }}
                           value={ing.cantidad} 
                           onChange={e => {
                             const n = [...ingredientes]; 

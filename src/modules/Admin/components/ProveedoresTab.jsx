@@ -111,7 +111,7 @@ export const ProveedoresTab = () => {
             <div>
               <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>NOMBRE DE LA EMPRESA</label>
               <input 
-                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)' }}
+                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
                 value={formData.nombre_empresa} 
                 onChange={e => setFormData({...formData, nombre_empresa: e.target.value})} 
                 required 
@@ -123,7 +123,7 @@ export const ProveedoresTab = () => {
             <div>
               <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>NOMBRE DEL CONTACTO</label>
               <input 
-                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)' }}
+                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
                 value={formData.contacto_nombre} 
                 onChange={e => setFormData({...formData, contacto_nombre: e.target.value})} 
                 placeholder="Persona de ventas/atención"
@@ -135,7 +135,7 @@ export const ProveedoresTab = () => {
               <div>
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>TELÉFONO</label>
                 <input 
-                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)' }}
+                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
                   value={formData.telefono} 
                   onChange={e => setFormData({...formData, telefono: e.target.value})} 
                   placeholder="WhatsApp/Oficina"
@@ -145,7 +145,7 @@ export const ProveedoresTab = () => {
               <div>
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>DÍAS CRÉDITO</label>
                 <input 
-                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)' }}
+                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
                   type="number" 
                   value={formData.dias_credito} 
                   onChange={e => setFormData({...formData, dias_credito: e.target.value})} 
@@ -157,7 +157,7 @@ export const ProveedoresTab = () => {
             <div>
               <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>CORREO ELECTRÓNICO</label>
               <input 
-                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)' }}
+                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
                 type="email" 
                 value={formData.correo} 
                 onChange={e => setFormData({...formData, correo: e.target.value})} 

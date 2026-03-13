@@ -52,7 +52,7 @@ export const EmpleadosTab = () => {
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>NOMBRE COMPLETO</label>
                 <input 
-                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)' }}
+                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }} 
                   value={emp.formData.nombre} 
                   onChange={e => emp.setFormData({...emp.formData, nombre: e.target.value})} 
                   required 
@@ -76,7 +76,7 @@ export const EmpleadosTab = () => {
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>USUARIO</label>
                   <input 
-                    style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)' }}
+                    style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
                     value={emp.formData.username} 
                     onChange={e => emp.setFormData({...emp.formData, username: e.target.value})} 
                     required 
@@ -101,7 +101,7 @@ export const EmpleadosTab = () => {
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>PASSWORD</label>
                   <input 
                     type="password" 
-                    style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)' }}
+                    style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
                     value={emp.formData.password_hash} 
                     onChange={e => emp.setFormData({...emp.formData, password_hash: e.target.value})} 
                     required={!emp.editId} 
@@ -111,7 +111,7 @@ export const EmpleadosTab = () => {
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>PIN (4 DÍGITOS)</label>
                   <input 
                     type="number" 
-                    style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)' }}
+                    style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}  
                     value={emp.formData.pin_seguridad} 
                     onChange={e => emp.setFormData({...emp.formData, pin_seguridad: e.target.value})} 
                   />

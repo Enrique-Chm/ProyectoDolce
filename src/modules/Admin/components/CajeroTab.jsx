@@ -83,7 +83,7 @@ export const CajeroTab = ({ sucursalId, usuarioId }) => {
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '800', color: 'var(--color-text-muted)', marginBottom: '10px' }}>FONDO INICIAL EN CAJA ($)</label>
                 <input 
                   type="number" 
-                  style={{ width: '100%', padding: '15px', borderRadius: 'var(--radius-ui)', border: '2px solid var(--color-primary)', fontSize: '1.5rem', textAlign: 'center', fontWeight: '900' }}
+                  style={{ width: '100%', padding: '15px', borderRadius: 'var(--radius-ui)', border: '2px solid var(--color-primary)', fontSize: '1.5rem', textAlign: 'center', fontWeight: '900',boxSizing: 'border-box' }}
                   value={montoInicial} 
                   onChange={(e) => setMontoInicial(e.target.value)} 
                   autoFocus
