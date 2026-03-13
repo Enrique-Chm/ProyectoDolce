@@ -1,9 +1,9 @@
+// Archivo: src/modules/Admin/components/ProductosTab.jsx
 import React, { useState, useEffect } from 'react';
 import { productosService } from '../../../services/productos.service'; 
 import s from '../AdminPage.module.css';
 import { hasPermission } from '../../../utils/checkPermiso';
 
-// Recibimos sucursalId como prop
 export const ProductosTab = ({ sucursalId }) => {
   const [productos, setProductos] = useState([]);
   const [categorias, setCategorias] = useState([]);
@@ -12,7 +12,6 @@ export const ProductosTab = ({ sucursalId }) => {
   const [loading, setLoading] = useState(false);
   const [editId, setEditId] = useState(null);
 
-  // Verificación de facultades
   const puedeEditar = hasPermission('editar_productos');
   const puedeBorrar = hasPermission('borrar_registros');
 
@@ -26,7 +25,6 @@ export const ProductosTab = ({ sucursalId }) => {
     extras: [] 
   });
 
-  // Re-cargar datos cada vez que cambie la sucursal seleccionada
   useEffect(() => { 
     fetchData(); 
   }, [sucursalId]);
@@ -34,7 +32,6 @@ export const ProductosTab = ({ sucursalId }) => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Pasamos sucursalId al servicio para que filtre desde el origen
       const data = await productosService.getInitialData(sucursalId);
       setProductos(data.productos || []);
       setCategorias(data.categorias || []);
@@ -55,7 +52,6 @@ export const ProductosTab = ({ sucursalId }) => {
     }
   };
 
-  // --- LÓGICA DE EXTRAS ---
   const addExtraField = () => {
     if (!puedeEditar) return;
     setFormData({
@@ -87,7 +83,6 @@ export const ProductosTab = ({ sucursalId }) => {
     setFormData({ ...formData, extras: newExtras });
   };
 
-  // Margen del producto principal en vivo
   useEffect(() => {
     const costoP = parseFloat(formData.costo_referencia) || 0;
     const ventaP = parseFloat(formData.precio_venta) || 0;
@@ -107,7 +102,7 @@ export const ProductosTab = ({ sucursalId }) => {
       precio_venta: parseFloat(formData.precio_venta),
       disponible: formData.disponible,
       extras: formData.extras,
-      sucursal_id: sucursalId // VINCULACIÓN: Guardamos en la sucursal activa
+      sucursal_id: sucursalId
     };
 
     const { error } = await productosService.saveProducto(payload, editId);
@@ -141,24 +136,34 @@ export const ProductosTab = ({ sucursalId }) => {
   };
 
   return (
-    <div className={s.pageWrapper} style={{ padding: '1rem' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h2 className={s.sectionTitle}>Estrategia de Precios (Menú)</h2>
-        {loading && <span className={s.textMuted} style={{ fontSize: '12px' }}>Actualizando sucursal...</span>}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--color-text-main)', margin: 0 }}>
+          Estrategia de Precios (Menú)
+        </h2>
+        {loading && <span style={{ fontSize: '12px', color: 'var(--color-primary)', fontWeight: '700' }}>ACTUALIZANDO...</span>}
       </header>
-      
-      <div className={s.container}>
-        <aside className={s.card}>
-          <div className={s.cardHeader}>
-            <h3 className={s.cardTitle}>{editId ? 'Ajustar Producto' : 'Nuevo Producto'}</h3>
-          </div>
-          <form className={s.cardBody} onSubmit={handleSubmit}>
-            <div className={s.formGroup}>
-              <label className={s.label}>Receta Principal ({sucursalId === 1 ? 'Matriz' : 'Sucursal'})</label>
-              <select className={s.input} value={formData.nombre} onChange={e => {
+
+      <div style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: '25px', alignItems: 'start' }}>
+        
+        {/* PANEL DE CONFIGURACIÓN DE PRODUCTO */}
+        <aside className={s.adminCard} style={{ padding: '20px' }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: 'var(--color-primary)' }}>
+            {editId ? '📝 Ajustar Producto' : '🍴 Nuevo Producto'}
+          </h3>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            
+            <div>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>RECETA PRINCIPAL</label>
+              <select 
+                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', backgroundColor: 'white' }}
+                value={formData.nombre} 
+                onChange={e => {
                   const rec = recetasCosteadas.find(r => r.nombre === e.target.value);
                   setFormData({...formData, nombre: e.target.value, costo_referencia: rec ? rec.costo_final : 0});
-                }} required disabled={!puedeEditar}>
+                }} 
+                required disabled={!puedeEditar}
+              >
                 <option value="">-- Elige la receta --</option>
                 {recetasCosteadas.map(r => (
                   <option key={r.nombre} value={r.nombre}>{r.nombre} (${r.costo_final.toFixed(2)})</option>
@@ -166,103 +171,185 @@ export const ProductosTab = ({ sucursalId }) => {
               </select>
             </div>
 
-            <div className={s.grid2}>
-              <div className={s.formGroup}>
-                <label className={s.label}>Precio Venta ($)</label>
-                <input type="number" step="0.01" className={s.input} value={formData.precio_venta} onChange={e => setFormData({...formData, precio_venta: e.target.value})} required readOnly={!puedeEditar} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>PRECIO VENTA ($)</label>
+                <input 
+                  type="number" step="0.01" 
+                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)' }}
+                  value={formData.precio_venta} 
+                  onChange={e => setFormData({...formData, precio_venta: e.target.value})} 
+                  required readOnly={!puedeEditar} 
+                />
               </div>
-              <div className={s.formGroup}>
-                <label className={s.label}>Margen %</label>
-                <div className={s.input} style={{ background: '#f8fafc', fontWeight: '800', color: formData.margen_en_vivo > 60 ? '#16a34a' : '#dc2626', display: 'flex', alignItems: 'center' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>MARGEN %</label>
+                <div style={{ 
+                  padding: '10px', 
+                  borderRadius: 'var(--radius-ui)', 
+                  background: 'var(--color-bg-app)', 
+                  fontWeight: '900', 
+                  textAlign: 'center',
+                  color: formData.margen_en_vivo > 60 ? 'var(--color-success)' : 'var(--color-danger)'
+                }}>
                   {formData.margen_en_vivo}%
                 </div>
               </div>
             </div>
 
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label className={s.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                Acompañamientos / Extras
-                {puedeEditar && <button type="button" onClick={addExtraField} className={s.btnEdit} style={{ fontSize: '10px', padding: '4px 8px' }}>+ Agregar</button>}
-              </label>
+            {/* SECCIÓN DE EXTRAS */}
+            <div style={{ marginTop: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <label style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)' }}>EXTRAS / COMPLEMENTOS</label>
+                {puedeEditar && (
+                  <button type="button" onClick={addExtraField} className={s.btnLogout} style={{ padding: '2px 8px', fontSize: '10px' }}>+ AGREGAR</button>
+                )}
+              </div>
 
-              {formData.extras.map((ex, idx) => (
-                <div key={idx} style={{ marginTop: '10px', padding: '12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', position: 'relative' }}>
-                  {puedeEditar && <button type="button" className={s.btnRemoveRow} onClick={() => removeExtraField(idx)}>✕</button>}
-                  <select className={s.input} value={ex.nombre_subreceta} onChange={e => updateExtraField(idx, 'nombre_subreceta', e.target.value)} required disabled={!puedeEditar}>
-                    <option value="">-- Elige el extra --</option>
-                    {subrecetasDisponibles.map(n => (
-                      <option key={n.nombre} value={n.nombre}>{n.nombre} (${n.costo_final.toFixed(2)})</option>
-                    ))}
-                  </select>
-                  <div className={s.grid2} style={{ marginTop: '8px' }}>
-                    <input type="number" step="0.01" className={s.input} placeholder="Precio Venta" value={ex.precio_venta_subreceta} onChange={e => updateExtraField(idx, 'precio_venta_subreceta', e.target.value)} required readOnly={!puedeEditar} />
-                    <div className={s.input} style={{fontWeight: '800', background: '#fff', color: ex.margen_subreceta > 50 ? '#16a34a' : '#dc2626', display: 'flex', alignItems: 'center'}}>{ex.margen_subreceta}% Margen</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {formData.extras.map((ex, idx) => (
+                  <div key={idx} style={{ padding: '12px', background: 'var(--color-bg-muted)', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', position: 'relative' }}>
+                    {puedeEditar && (
+                      <button 
+                        type="button" 
+                        style={{ position: 'absolute', top: '-8px', right: '-8px', border: 'none', background: 'var(--color-danger)', color: 'white', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', fontSize: '10px' }}
+                        onClick={() => removeExtraField(idx)}
+                      >
+                        ✕
+                      </button>
+                    )}
+                    <select 
+                      style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--color-border)', marginBottom: '8px', fontSize: '12px' }}
+                      value={ex.nombre_subreceta} 
+                      onChange={e => updateExtraField(idx, 'nombre_subreceta', e.target.value)} 
+                      required disabled={!puedeEditar}
+                    >
+                      <option value="">-- Elige el extra --</option>
+                      {subrecetasDisponibles.map(n => (
+                        <option key={n.nombre} value={n.nombre}>{n.nombre} (${n.costo_final.toFixed(2)})</option>
+                      ))}
+                    </select>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <input 
+                        type="number" step="0.01" 
+                        style={{ padding: '8px', borderRadius: '4px', border: '1px solid var(--color-border)', fontSize: '12px' }}
+                        placeholder="Precio Venta" 
+                        value={ex.precio_venta_subreceta} 
+                        onChange={e => updateExtraField(idx, 'precio_venta_subreceta', e.target.value)} 
+                        required readOnly={!puedeEditar} 
+                      />
+                      <div style={{ fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', justifyContent: 'center', color: ex.margen_subreceta > 50 ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                        {ex.margen_subreceta}% Margen
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
 
-            <div className={s.formGroup}>
-              <label className={s.label}>Categoría</label>
-              <select className={s.input} value={formData.categoria} onChange={e => setFormData({...formData, categoria: e.target.value})} required disabled={!puedeEditar}>
+            <div>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>CATEGORÍA EN MENÚ</label>
+              <select 
+                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', backgroundColor: 'white' }}
+                value={formData.categoria} 
+                onChange={e => setFormData({...formData, categoria: e.target.value})} 
+                required disabled={!puedeEditar}
+              >
                 <option value="">Seleccionar...</option>
                 {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
               </select>
             </div>
-            {puedeEditar && (
-              <button type="submit" className={s.btnPrimary} style={{ width: '100%' }} disabled={loading}>{loading ? 'Guardando...' : (editId ? 'Actualizar' : 'Guardar en Menú')}</button>
-            )}
-            {editId && <button type="button" onClick={resetForm} className={s.btnCancel}>Cancelar</button>}
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+              {puedeEditar && (
+                <button 
+                  type="submit" 
+                  className={s.btnLogout} 
+                  style={{ backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', flex: 1, padding: '12px' }} 
+                  disabled={loading}
+                >
+                  {loading ? '...' : (editId ? 'ACTUALIZAR' : 'GUARDAR EN MENÚ')}
+                </button>
+              )}
+              {editId && (
+                <button type="button" onClick={resetForm} className={s.btnLogout}>
+                  CANCELAR
+                </button>
+              )}
+            </div>
           </form>
         </aside>
 
-        <div className={s.tableWrapper}>
-          <table className={s.table}>
-            <thead>
+        {/* TABLA DE PRODUCTOS Y ESTRATEGIA */}
+        <div className={s.adminCard} style={{ padding: '0', overflow: 'hidden' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <thead style={{ backgroundColor: 'var(--color-bg-muted)', borderBottom: '1px solid var(--color-border)' }}>
               <tr>
-                <th>Producto / Extras</th>
-                <th>Costo Base</th>
-                <th>Venta / Margen</th>
-                <th style={{ textAlign: 'right' }}>Acciones</th>
+                <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>PRODUCTO / EXTRAS</th>
+                <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>COSTO BASE</th>
+                <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>VENTA / MARGEN</th>
+                <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)', textAlign: 'right' }}>ACCIONES</th>
               </tr>
             </thead>
             <tbody>
               {productos.length === 0 ? (
-                <tr><td colSpan="4" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>No hay productos en este menú local.</td></tr>
-              ) : productos.map(p => {
-                const costoBase = p.costo_actual || 0;
-                const ventaBase = p.precio_venta || 0;
-                const margenBase = ventaBase > 0 ? (((ventaBase - costoBase) / ventaBase) * 100).toFixed(1) : 0;
+                <tr>
+                  <td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-muted)' }}>
+                    No hay productos en este menú local.
+                  </td>
+                </tr>
+              ) : (
+                productos.map(p => {
+                  const costoBase = p.costo_actual || 0;
+                  const ventaBase = p.precio_venta || 0;
+                  const margenBase = ventaBase > 0 ? (((ventaBase - costoBase) / ventaBase) * 100).toFixed(1) : 0;
 
-                return (
-                  <tr key={p.id}>
-                    <td>
-                      <div style={{ fontWeight: '800' }}>{p.nombre}</div>
-                      {p.extras?.map((ex, i) => (
-                        <div key={i} className={s.textMuted} style={{fontSize: '10px', display: 'flex', justifyContent: 'space-between', marginTop: '2px'}}>
-                          <span>+ {ex.nombre_subreceta}</span>
-                          <span style={{fontWeight: 'bold', color: ex.margen_subreceta > 50 ? '#16a34a' : '#dc2626', marginLeft: '8px'}}>
-                            ${parseFloat(ex.precio_venta_subreceta).toFixed(2)} ({ex.margen_subreceta}%)
-                          </span>
+                  return (
+                    <tr key={p.id} style={{ borderBottom: '1px solid var(--color-bg-muted)', backgroundColor: editId === p.id ? 'var(--color-bg-app)' : 'transparent' }}>
+                      <td style={{ padding: '15px' }}>
+                        <div style={{ fontWeight: '800', color: 'var(--color-text-main)' }}>{p.nombre}</div>
+                        {p.extras?.map((ex, i) => (
+                          <div key={i} style={{ fontSize: '10px', display: 'flex', justifyContent: 'space-between', marginTop: '4px', color: 'var(--color-text-muted)' }}>
+                            <span>+ {ex.nombre_subreceta}</span>
+                            <span style={{ fontWeight: '800', color: ex.margen_subreceta > 50 ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                              ${parseFloat(ex.precio_venta_subreceta).toFixed(2)} ({ex.margen_subreceta}%)
+                            </span>
+                          </div>
+                        ))}
+                      </td>
+                      <td style={{ padding: '15px' }}>
+                        <div style={{ fontWeight: '800' }}>${costoBase.toFixed(2)}</div>
+                      </td>
+                      <td style={{ padding: '15px' }}>
+                        <div style={{ fontWeight: '900', color: 'var(--color-primary)' }}>${ventaBase.toFixed(2)}</div>
+                        <div style={{ fontSize: '11px', color: margenBase > 50 ? 'var(--color-success)' : 'var(--color-danger)', fontWeight: '800' }}>
+                          {margenBase}% margen
                         </div>
-                      ))}
-                    </td>
-                    <td className={s.priceTag}>${costoBase.toFixed(2)}</td>
-                    <td>
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ fontWeight: 'bold' }}>${ventaBase.toFixed(2)}</div>
-                        <span style={{ fontSize: '11px', color: margenBase > 50 ? '#16a34a' : '#dc2626', fontWeight: 'bold' }}>{margenBase}% margen</span>
-                      </div>
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <button className={s.btnEdit} onClick={() => handleEdit(p)}>
-                        {puedeEditar ? 'EDITAR' : 'VER'}
-                      </button>
-                      {puedeBorrar && <button className={s.btnDelete} onClick={() => handleDelete(p.id)}>BORRAR</button>}
-                    </td>
-                  </tr>
-                );
-              })}
+                      </td>
+                      <td style={{ padding: '15px', textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: '5px', justifyContent: 'flex-end' }}>
+                          <button 
+                            className={s.btnLogout} 
+                            style={{ padding: '5px 10px', fontSize: '11px' }}
+                            onClick={() => handleEdit(p)}
+                          >
+                            {puedeEditar ? 'EDITAR' : 'VER'}
+                          </button>
+                          {puedeBorrar && (
+                            <button 
+                              className={s.btnLogout} 
+                              style={{ padding: '5px 10px', fontSize: '11px', color: 'var(--color-danger)', borderColor: 'var(--color-danger)' }}
+                              onClick={() => handleDelete(p.id)}
+                            >
+                              BORRAR
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>

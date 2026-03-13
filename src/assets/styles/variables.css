@@ -1,20 +1,35 @@
 /* src/assets/styles/variables.css */
 :root {
-  /* Valores base/fallback (se verán mientras carga Supabase) */
-  --color-primary: #007bff;
-  --color-secondary: #6c757d;
-  --color-success: #28a745;
-  --color-danger: #dc3545;
-  --color-background: #f8f9fa;
-  --color-text: #212529;
-  --font-main: 'Inter', sans-serif;
-  --border-radius: 8px;
-}
+  /* Colores de Marca (Unificados del Comandero y Admin) */
+  --color-primary: #005696;
+  --color-primary-hover: #004477;
+  --color-secondary: #64748b;
+  
+  /* Estados */
+  --color-success: #10b981;
+  --color-danger: #ef4444;
+  --color-warning: #f59e0b;
+  --color-info: #3b82f6;
 
-body {
-  margin: 0;
-  font-family: var(--font-main);
-  background-color: var(--color-background);
-  color: var(--color-text);
-  transition: background-color 0.3s ease; /* Para que el cambio de color sea suave */
+  /* Fondos y Superficies */
+  --color-bg-app: #f3f4f6;
+  --color-bg-card: #ffffff;
+  --color-bg-muted: #f8fafc;
+
+  /* Texto */
+  --color-text-main: #111827;
+  --color-text-muted: #6b7280;
+  --color-text-white: #ffffff;
+
+  /* Bordes y Sombras */
+  --color-border: #e5e7eb;
+  --color-border-dark: #d1d5db;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05);
+
+  /* Tipografía y Formas */
+  --font-main: 'Inter', sans-serif;
+  --radius-ui: 8px;
+  --radius-card: 16px;
+  --radius-button: 12px;
 }

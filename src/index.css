@@ -1,20 +1,11 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-:root {
-  --azul: #005696;
-  --fondo: #f8fafc;
-  --blanco: #ffffff;
-  --borde: #e2e8f0;
-  --radius-ui: 8px;
-  --radius-card: 16px;
-  --font-family: 'Inter', system-ui, sans-serif;
-}
+/* src/index.css */
+@import './assets/styles/variables.css';
+@import './assets/styles/global.css';
 
 body {
   margin: 0;
-  background-color: var(--fondo);
-  font-family: var(--font-family);
-  @apply antialiased text-slate-900;
+  font-family: var(--font-main);
+  background-color: var(--color-bg-app);
+  color: var(--color-text-main);
+  -webkit-font-smoothing: antialiased;
 }

@@ -1,25 +1,16 @@
-/* =========================================
-   SISTEMA POS PRO - MESERO TAB
-   ========================================= */
+/* src/modules/Admin/components/MeseroTab.module.css */
 
-:root {
-  --primary: #005696;
-  --success: #10b981;
-  --danger: #ef4444;
-  --warning: #f59e0b;
-  --bg-app: #f3f4f6;
-  --text-main: #111827;
-  --text-muted: #6b7280;
-  --border-light: #e5e7eb;
-}
+/* =========================================
+   SISTEMA POS PRO - MESERO TAB (HOMOLOGADO)
+   ========================================= */
 
 .posContainer {
   display: flex;
   flex-direction: column;
   padding: 20px;
   min-height: 100vh;
-  background-color: var(--bg-app);
-  font-family: 'Inter', sans-serif;
+  background-color: var(--color-bg-app);
+  font-family: var(--font-main);
   box-sizing: border-box;
 }
 
@@ -34,7 +25,7 @@
 .sectionTitle {
   font-size: 1.8rem;
   font-weight: 800;
-  color: var(--text-main);
+  color: var(--color-text-main);
   margin: 0;
 }
 
@@ -42,9 +33,30 @@
 .flexBetween { display: flex; justify-content: space-between; align-items: center; }
 .flexStartGap { display: flex; align-items: flex-start; gap: 10px; justify-content: space-between; }
 
-.btnPrimary { background: var(--primary); color: white; border: none; padding: 12px 24px; border-radius: 12px; font-weight: 700; cursor: pointer; }
-.btnCancel { background: white; color: var(--text-muted); border: 1px solid #e2e8f0; padding: 12px 24px; border-radius: 12px; cursor: pointer; }
-.btnBackNav { font-weight: 800; color: var(--primary); border-color: var(--primary); }
+.btnPrimary { 
+  background: var(--color-primary); 
+  color: var(--color-text-white); 
+  border: none; 
+  padding: 12px 24px; 
+  border-radius: var(--radius-button); 
+  font-weight: 700; 
+  cursor: pointer; 
+}
+
+.btnCancel { 
+  background: var(--color-bg-card); 
+  color: var(--color-text-muted); 
+  border: 1px solid var(--color-border); 
+  padding: 12px 24px; 
+  border-radius: var(--radius-button); 
+  cursor: pointer; 
+}
+
+.btnBackNav { 
+  font-weight: 800; 
+  color: var(--color-primary); 
+  border-color: var(--color-primary); 
+}
 
 /* --- MONITOR DE SALÓN (VISTA 0) --- */
 .productGrid {
@@ -54,21 +66,53 @@
 }
 
 .mesaCard {
-  background: white;
-  border-radius: 20px;
+  background: var(--color-bg-card);
+  border-radius: var(--radius-card);
   padding: 20px;
-  border: 1px solid var(--border-light);
-  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.mesaCard:hover { transform: translateY(-3px); border-color: var(--primary); }
+.mesaCard:hover { 
+  transform: translateY(-3px); 
+  border-color: var(--color-primary); 
+}
 
-.mesaName { margin: 0; font-size: 1.1rem; font-weight: 800; color: var(--text-main); }
-.mesaBadge { background: #dcfce7; color: #166534; padding: 4px 8px; border-radius: 8px; font-size: 10px; font-weight: 800; text-transform: uppercase; }
-.mesaBadgeCobrar { background: #fef3c7; color: #92400e; padding: 4px 8px; border-radius: 8px; font-size: 10px; font-weight: 800; text-transform: uppercase; }
-.mesaTotal { margin-top: 15px; font-size: 1.5rem; font-weight: 900; color: var(--primary); }
+.mesaName { 
+  margin: 0; 
+  font-size: 1.1rem; 
+  font-weight: 800; 
+  color: var(--color-text-main); 
+}
+
+.mesaBadge { 
+  background: #dcfce7; /* Verde claro éxito */
+  color: #166534; 
+  padding: 4px 8px; 
+  border-radius: var(--radius-ui); 
+  font-size: 10px; 
+  font-weight: 800; 
+  text-transform: uppercase; 
+}
+
+.mesaBadgeCobrar { 
+  background: #fef3c7; /* Ámbar claro advertencia */
+  color: #92400e; 
+  padding: 4px 8px; 
+  border-radius: var(--radius-ui); 
+  font-size: 10px; 
+  font-weight: 800; 
+  text-transform: uppercase; 
+}
+
+.mesaTotal { 
+  margin-top: 15px; 
+  font-size: 1.5rem; 
+  font-weight: 900; 
+  color: var(--color-primary); 
+}
 
 /* --- COMANDERO (VISTA 2) --- */
 .posGrid {
@@ -84,15 +128,15 @@
   margin: 25px 0 15px;
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: var(--text-muted);
+  color: var(--color-text-muted);
   font-size: 12px;
 }
 
 .productCard {
-  background: white;
+  background: var(--color-bg-card);
   padding: 15px;
-  border-radius: 16px;
-  border: 1px solid var(--border-light);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-border);
   font-weight: 700;
   display: flex;
   flex-direction: column;
@@ -101,25 +145,37 @@
   cursor: pointer;
 }
 
-.productCard:active { background: #f1f5f9; }
-.productCardLocked { opacity: 0.5; cursor: not-allowed; grayscale: 1; }
+.productCard:active { background: var(--color-bg-muted); }
+.productCardLocked { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
 
 /* --- AREA DEL CARRITO (SIDEBAR) --- */
 .cartArea {
-  background: white;
-  border-radius: 24px;
+  background: var(--color-bg-card);
+  border-radius: var(--radius-card);
   display: flex;
   flex-direction: column;
   height: calc(100vh - 100px);
   position: sticky;
   top: 20px;
-  box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
-  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--color-border);
   overflow: hidden;
 }
 
-.cartHeader { padding: 20px; border-bottom: 1px solid var(--border-light); cursor: pointer; }
-.dragHandle { width: 40px; height: 4px; background: #e2e8f0; border-radius: 2px; margin: 0 auto 10px; }
+.cartHeader { 
+  padding: 20px; 
+  border-bottom: 1px solid var(--color-border); 
+  cursor: pointer; 
+}
+
+.dragHandle { 
+  width: 40px; 
+  height: 4px; 
+  background: var(--color-border); 
+  border-radius: 2px; 
+  margin: 0 auto 10px; 
+}
+
 .cartTitle { font-size: 1.2rem; font-weight: 800; }
 
 .cartItems { flex: 1; padding: 20px; overflow-y: auto; }
@@ -127,43 +183,55 @@
 .cartItem {
   margin-bottom: 15px;
   padding-bottom: 15px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--color-bg-muted);
 }
 
 .cartItemName { font-size: 14px; }
-.cartItemQty { color: var(--primary); margin-right: 5px; }
+.cartItemQty { color: var(--color-primary); margin-right: 5px; }
 
 .inputNota {
   width: 100%;
   margin-top: 8px;
   padding: 8px;
-  border: 1px solid #f1f5f9;
-  border-radius: 8px;
+  border: 1px solid var(--color-bg-muted);
+  border-radius: var(--radius-ui);
   font-size: 12px;
-  background: #f8fafc;
+  background: var(--color-bg-muted);
 }
 
-.btnRemoveItem { background: #fee2e2; color: var(--danger); border: none; border-radius: 6px; padding: 4px 8px; cursor: pointer; }
+.btnRemoveItem { 
+  background: #fee2e2; 
+  color: var(--color-danger); 
+  border: none; 
+  border-radius: 6px; 
+  padding: 4px 8px; 
+  cursor: pointer; 
+}
 
 /* --- FOOTER DEL CARRITO --- */
-.cartFooter { padding: 20px; background: #f8fafc; border-top: 1px solid var(--border-light); }
+.cartFooter { 
+  padding: 20px; 
+  background: var(--color-bg-muted); 
+  border-top: 1px solid var(--color-border); 
+}
+
 .summaryBox { margin-bottom: 15px; }
-.summaryLabel { font-weight: 700; color: var(--text-muted); }
-.summaryValue { font-size: 1.4rem; font-weight: 900; color: var(--text-main); }
+.summaryLabel { font-weight: 700; color: var(--color-text-muted); }
+.summaryValue { font-size: 1.4rem; font-weight: 900; color: var(--color-text-main); }
 
 .btnOrder {
   width: 100%;
   padding: 16px;
-  border-radius: 12px;
+  border-radius: var(--radius-button);
   border: none;
   font-weight: 800;
   cursor: pointer;
-  background: var(--success);
-  color: white;
+  background: var(--color-success);
+  color: var(--color-text-white);
   transition: all 0.2s;
 }
 
-.btnDelete { background: var(--danger); }
+.btnDelete { background: var(--color-danger); }
 
 /* --- IDENTIFICAR MESA --- */
 .mesaSelectorManual {
@@ -177,19 +245,21 @@
   font-size: 3rem;
   text-align: center;
   padding: 20px;
-  border-radius: 20px;
-  border: 3px solid var(--primary);
+  border-radius: var(--radius-card);
+  border: 3px solid var(--color-primary);
   margin-bottom: 20px;
   font-weight: 900;
+  background: var(--color-bg-card);
+  color: var(--color-text-main);
 }
 
 .btnEmpezarOrden {
   width: 100%;
   padding: 20px;
-  background: var(--primary);
-  color: white;
+  background: var(--color-primary);
+  color: var(--color-text-white);
   border: none;
-  border-radius: 15px;
+  border-radius: var(--radius-button);
   font-size: 1.2rem;
   font-weight: 800;
   cursor: pointer;
@@ -198,21 +268,21 @@
 /* --- HISTORIAL --- */
 .historyGrid { display: flex; flex-direction: column; gap: 10px; }
 .historyCard {
-  background: white;
+  background: var(--color-bg-card);
   padding: 15px 20px;
-  border-radius: 16px;
+  border-radius: var(--radius-card);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--color-border);
 }
 
-.historyCardAmount { font-weight: 900; font-size: 1.2rem; color: var(--success); }
-.historyCardTime { font-size: 11px; color: var(--text-muted); }
+.historyCardAmount { font-weight: 900; font-size: 1.2rem; color: var(--color-success); }
+.historyCardTime { font-size: 11px; color: var(--color-text-muted); }
 
 /* --- ESTADOS VACÍOS --- */
-.emptyStateBox { padding: 40px; text-align: center; color: var(--text-muted); }
-.emptyCartText { text-align: center; padding: 40px; color: var(--text-muted); font-size: 13px; }
+.emptyStateBox { padding: 40px; text-align: center; color: var(--color-text-muted); }
+.emptyCartText { text-align: center; padding: 40px; color: var(--color-text-muted); font-size: 13px; }
 
 /* --- RESPONSIVE MOBILE --- */
 @media (max-width: 768px) {

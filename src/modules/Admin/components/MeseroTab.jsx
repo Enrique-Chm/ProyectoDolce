@@ -1,3 +1,4 @@
+// Archivo: src/modules/Admin/components/MeseroTab.jsx
 import React, { useState } from 'react';
 import s from './MeseroTab.module.css';
 import { useMeseroTab } from '../../../hooks/useMeseroTab';
@@ -55,8 +56,8 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
             
             {!loading && cuentasAbiertas.length === 0 && (
               <div className={s.emptyStateBox}>
-                <h3 className={s.emptyStateTitle}>Salón Libre</h3>
-                <p className={s.emptyStateText}>No hay mesas activas en este momento.</p>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: '800', marginBottom: '10px' }}>Salón Libre</h3>
+                <p style={{ margin: 0 }}>No hay mesas activas en este momento.</p>
               </div>
             )}
           </div>
@@ -66,7 +67,7 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
       {/* VISTA 1: IDENTIFICAR MESA (MODAL MANUAL) */}
       {view === 'mesas' && (
         <div className={s.mesaSelectorManual}>
-          <h2 className={s.manualTitle}>¿Qué mesa es?</h2>
+          <h2 style={{ fontSize: '2rem', fontWeight: '900', marginBottom: '30px' }}>¿Qué mesa es?</h2>
           <form onSubmit={(e) => { e.preventDefault(); if (mesaInput) setView('menu'); }}>
             <input 
               className={s.mesaInput} 
@@ -78,7 +79,7 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
               required 
             />
             <button type="submit" className={s.btnEmpezarOrden}>Tomar Orden</button>
-            <button type="button" className={`${s.btnCancel} ${s.btnCancelFull}`} onClick={() => setView('cuentas')} style={{width: '100%', marginTop: '10px'}}>
+            <button type="button" className={s.btnCancel} onClick={() => setView('cuentas')} style={{width: '100%', marginTop: '10px', padding: '15px'}}>
               Cancelar
             </button>
           </form>
@@ -92,8 +93,8 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
           <div className={s.menuArea}>
             <div className={s.headerRow}>
               <button className={`${s.btnCancel} ${s.btnBackNav}`} onClick={() => { setView('cuentas'); setIsCartExpanded(false); }}>← VOLVER</button>
-              <div className={s.menuHeaderInfo}>
-                <h3 className={s.menuHeaderTitle}>MESA {mesaInput.toUpperCase()}</h3>
+              <div style={{ textAlign: 'right' }}>
+                <h3 style={{ margin: 0, fontWeight: '900', color: 'var(--color-primary)' }}>MESA {mesaInput.toUpperCase()}</h3>
               </div>
             </div>
             
@@ -113,7 +114,7 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
                           onClick={() => !isLocked && agregarAlCarrito(p)}
                         >
                           <div style={{fontWeight: '800'}}>{p.nombre}</div>
-                          <div style={{color: 'var(--primary)', marginTop: '5px'}}>${p.precio_venta}</div>
+                          <div style={{color: 'var(--color-primary)', marginTop: '5px'}}>${p.precio_venta}</div>
                         </div>
                       );
                     })}
@@ -124,14 +125,15 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
           </div>
 
           {/* LADO DERECHO: COMANDA / CARRITO */}
-          <aside className={`${s.cartArea} ${isCartExpanded ? s.cartExpanded : s.cartCollapsed}`}>
+          <aside className={`${s.cartArea} ${isCartExpanded ? s.cartExpanded : ''}`}>
             <div className={s.cartHeader} onClick={() => setIsCartExpanded(!isCartExpanded)}>
               <div className={s.dragHandle}></div>
-              <div className={s.headerRow} style={{ marginBottom: 0 }}>
+              <div className={s.flexBetween}>
                 <strong className={s.cartTitle}>Comanda</strong>
                 <div className={s.flexCenterGap}>
-                   <span className={s.itemsBadge}>{carrito.length} nuevos</span>
-                   <span className={s.toggleIcon}>{isCartExpanded ? '▼' : '▲'}</span>
+                   <span style={{ fontSize: '10px', fontWeight: '800', padding: '4px 8px', borderRadius: '4px', background: 'var(--color-primary)', color: 'white' }}>
+                    {carrito.length} nuevos
+                   </span>
                 </div>
               </div>
             </div>
@@ -139,10 +141,10 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
             <div className={s.cartItems}>
               {/* CONSUMO PREVIO (LO QUE YA SE ENVIÓ A COCINA) */}
               {ventaActiva?.ventas_detalle?.length > 0 && (
-                <div style={{ marginBottom: '20px', background: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                  <div style={{ fontSize: '10px', fontWeight: 800, color: '#94a3b8', marginBottom: '8px', textAlign: 'center' }}>CONSUMO EN MESA</div>
+                <div style={{ marginBottom: '20px', background: 'var(--color-bg-muted)', padding: '12px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)' }}>
+                  <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--color-text-muted)', marginBottom: '8px', textAlign: 'center' }}>CONSUMO EN MESA</div>
                   {ventaActiva.ventas_detalle.map((det, idx) => (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px', color: '#64748b' }}>
+                    <div key={idx} className={s.flexBetween} style={{ fontSize: '12px', marginBottom: '4px', color: 'var(--color-text-muted)' }}>
                       <span>{det.cantidad}x {det.productosmenu?.nombre}</span>
                       <span style={{ fontWeight: 700 }}>${det.subtotal}</span>
                     </div>
@@ -153,7 +155,7 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
               {/* PRODUCTOS NUEVOS (LO QUE ESTÁ EN EL CARRITO) */}
               {carrito.map((item) => (
                 <div key={item.id} className={s.cartItem}>
-                  <div className={s.cartItemHeader} style={{display:'flex', justifyContent:'space-between', alignItems: 'center'}}>
+                  <div className={s.flexBetween}>
                     <strong className={s.cartItemName}><span className={s.cartItemQty}>{item.cantidad}x</span> {item.nombre}</strong>
                     <button onClick={() => eliminarDelCarrito(item.id)} className={s.btnRemoveItem}>✕</button>
                   </div>
@@ -192,7 +194,7 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
               {ventaActiva && (
                 <button 
                   className={`${s.btnOrder} ${s.btnDelete}`} 
-                  style={{ width: '100%', background: ventaActiva.estado === 'por_cobrar' ? '#f59e0b' : '#ef4444', marginTop: '10px' }} 
+                  style={{ background: ventaActiva.estado === 'por_cobrar' ? 'var(--color-warning)' : 'var(--color-danger)', marginTop: '10px' }} 
                   onClick={() => {
                     const msg = ventaActiva.estado === 'por_cobrar' ? '¿Deseas reimprimir el ticket de cuenta?' : '¿Enviar esta mesa a caja para cobrar?';
                     if (window.confirm(msg)) pedirCuenta(ventaActiva.id);

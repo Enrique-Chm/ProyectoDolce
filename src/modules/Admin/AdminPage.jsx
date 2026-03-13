@@ -22,7 +22,6 @@ import EstimacionesTab from "./components/EstimacionesTab";
 const AdminPage = () => {
   /**
    * 🛡️ VIGILANCIA DE SESIÓN ACTIVA
-   * Escucha cambios en tiempo real en la base de datos para evitar doble inicio de sesión.
    */
   useSessionGuard();
 
@@ -62,7 +61,6 @@ const AdminPage = () => {
     if (!userSession) return false;
     if (isAdmin) return true;
     
-    // Lógica especial para pestañas de configuración
     if (tab.id === 'config' || tab.id === 'impresoras') {
       return userSession.permisos.includes('ver_unidades') || 
              userSession.permisos.includes('ver_categorias') || 
@@ -76,70 +74,89 @@ const AdminPage = () => {
     setUserSession(null);
   };
 
-  // Si no hay sesión, mostramos el componente de Login
   if (!userSession) {
     return <Login onLoginSuccess={(session) => setUserSession(session)} />;
   }
 
   return (
-    <div className={s.pageWrapper}>
-      <header className={s.mainHeader}>
-        <div className={s.headerTop}>
-          <h1 className={s.mainTitle}>CloudKitchen <span className={s.accent}>Admin</span></h1>
-
-          <div className={s.sessionInfo}>
-            {isAdmin && (
-              <div className={s.branchSelectorContainer}>
-                <label className={s.branchLabel}>Gestionando Sucursal:</label>
-                <select 
-                  className={s.branchSelect} 
-                  value={filterSucursal} 
-                  onChange={(e) => setFilterSucursal(parseInt(e.target.value))}
-                >
-                  {listaSucursales.map(suc => (
-                    <option key={suc.id} value={suc.id}>
-                      {suc.es_matriz ? '📍' : '🏢'} {suc.nombre}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '5px' }}>
-                <span className={s.userText}>
-                  Sesión: <strong>{userSession.user.nombre}</strong> 
-                  {!isAdmin && ` (Sucursal: ${userSession.user.sucursal_id})`}
-                </span>
-                <button onClick={handleLogout} className={s.logoutBtn}>CERRAR SESIÓN ✕</button>
-            </div>
-          </div>
+    <div className={s.adminContainer}>
+      {/* BARRA LATERAL (SIDEBAR) */}
+      <aside className={s.sidebar}>
+        <div className={s.sidebarHeader}>
+          <h2>CloudKitchen <span style={{ color: 'var(--color-primary)' }}>Admin</span></h2>
         </div>
         
-        <nav className={s.tabNav}>
+        <nav className={s.sidebarNav}>
           {visibleTabs.map((tab) => (
             <button 
               key={tab.id} 
               onClick={() => setActiveTab(tab.id)} 
-              className={`${s.navBtn} ${activeTab === tab.id ? s.navBtnActive : ''}`}
+              className={`${s.navItem} ${activeTab === tab.id ? s.activeNavItem : ''}`}
             >
               {tab.label.toUpperCase()}
             </button>
           ))}
         </nav>
-      </header>
+      </aside>
 
-      <main className={s.contentArea}>
-        {activeTab === 'mesero' && <MeseroTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
-        {activeTab === 'cajero' && <CajeroTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
-        {activeTab === 'insumos' && <InsumosTab sucursalId={filterSucursal} />}
-        {activeTab === 'kardex' && <InventariosTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
-        {activeTab === 'estimaciones' && <EstimacionesTab sucursalId={filterSucursal} />}
-        {activeTab === 'recetas' && <RecetasTab sucursalId={filterSucursal} />}
-        {activeTab === 'productos' && <ProductosTab sucursalId={filterSucursal} />}
-        {activeTab === 'proveedores' && <ProveedoresTab sucursalId={filterSucursal} />}
-        {activeTab === 'empleados' && <EmpleadosTab />}
-        {activeTab === 'impresoras' && <ImpresorasTab sucursalId={filterSucursal} />}
-        {activeTab === 'config' && <ConfigTab />}
+      {/* ÁREA PRINCIPAL */}
+      <main className={s.mainContent}>
+        <header className={s.topBar}>
+          <div className={s.userInfo}>
+            {isAdmin && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--color-text-muted)' }}>
+                  SUCURSAL:
+                </label>
+                <select 
+                  style={{ 
+                    padding: '5px 10px', 
+                    borderRadius: 'var(--radius-ui)', 
+                    border: '1px solid var(--color-border)',
+                    fontSize: '0.9rem' 
+                  }}
+                  value={filterSucursal} 
+                  onChange={(e) => setFilterSucursal(parseInt(e.target.value))}
+                >
+                  {listaSucursales.map(suc => (
+                    <option key={suc.id} value={suc.id}>
+                      {suc.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <span className={s.userName}>
+              {userSession.user.nombre} 
+              <small style={{ display: 'block', fontSize: '10px', color: 'var(--color-text-muted)', textAlign: 'right' }}>
+                {!isAdmin ? `Sucursal: ${userSession.user.sucursal_id}` : 'Administrador Global'}
+              </small>
+            </span>
+            <button onClick={handleLogout} className={s.btnLogout}>
+              SALIR ✕
+            </button>
+          </div>
+        </header>
+
+        {/* CONTENIDO DE TABS */}
+        <section className={s.tabContent}>
+          <div className={s.adminCard}>
+            {activeTab === 'mesero' && <MeseroTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
+            {activeTab === 'cajero' && <CajeroTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
+            {activeTab === 'insumos' && <InsumosTab sucursalId={filterSucursal} />}
+            {activeTab === 'kardex' && <InventariosTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
+            {activeTab === 'estimaciones' && <EstimacionesTab sucursalId={filterSucursal} />}
+            {activeTab === 'recetas' && <RecetasTab sucursalId={filterSucursal} />}
+            {activeTab === 'productos' && <ProductosTab sucursalId={filterSucursal} />}
+            {activeTab === 'proveedores' && <ProveedoresTab sucursalId={filterSucursal} />}
+            {activeTab === 'empleados' && <EmpleadosTab />}
+            {activeTab === 'impresoras' && <ImpresorasTab sucursalId={filterSucursal} />}
+            {activeTab === 'config' && <ConfigTab />}
+          </div>
+        </section>
       </main>
     </div>
   );

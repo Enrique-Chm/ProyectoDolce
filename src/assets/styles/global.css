@@ -1,18 +1,44 @@
-@import "./variables.css";
+/* src/assets/styles/global.css */
+@import './variables.css';
 
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+/* Botones Estándar */
+.btn-ui {
+  padding: 10px 20px;
+  border-radius: var(--radius-button);
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: var(--fondo);
-    color: var(--texto);
-    line-height: 1.6;
+.btn-ui-primary {
+  background-color: var(--color-primary);
+  color: var(--color-text-white);
 }
 
-button {
-    font-family: inherit;
+.btn-ui-primary:hover {
+  background-color: var(--color-primary-hover);
 }
+
+.btn-ui-outline {
+  background-color: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+}
+
+/* Tarjetas Reutilizables */
+.card-ui {
+  background-color: var(--color-bg-card);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-border);
+  padding: 20px;
+  box-shadow: var(--shadow-md);
+}
+
+/* Flexbox Helpers */
+.flex-center { display: flex; align-items: center; justify-content: center; }
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
