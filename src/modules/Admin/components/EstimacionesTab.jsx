@@ -31,18 +31,18 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       
-      {/* NAVEGACIÓN DE SUB-TABS */}
-      <nav style={{ display: 'flex', gap: '10px', borderBottom: '1px solid var(--color-border)', paddingBottom: '15px' }}>
+      {/* NAVEGACIÓN DE SUB-TABS: Soporte para scroll horizontal en tablets */}
+      <nav style={{ display: 'flex', gap: '10px', borderBottom: '1px solid var(--color-border)', paddingBottom: '15px', overflowX: 'auto' }}>
         <button 
           className={`${s.navItem} ${subTab === 'config' ? s.activeNavItem : ''}`} 
-          style={{ width: 'auto', padding: '8px 20px' }}
+          style={{ width: 'auto', padding: '8px 20px', whiteSpace: 'nowrap' }}
           onClick={() => setSubTab('config')}
         >
           ⚙️ ESTRATEGIA DE STOCK
         </button>
         <button 
           className={`${s.navItem} ${subTab === 'compras' ? s.activeNavItem : ''}`} 
-          style={{ width: 'auto', padding: '8px 20px', display: 'flex', alignItems: 'center', gap: '8px' }}
+          style={{ width: 'auto', padding: '8px 20px', display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}
           onClick={() => setSubTab('compras')}
         >
           🛒 LISTA DE MANDADO 
@@ -60,13 +60,28 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
         </button>
       </nav>
 
-      {/* HEADER CON PRESUPUESTO */}
-      <section style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--color-text-main)', margin: 0 }}>
+      {/* HEADER CON PRESUPUESTO: Ajustado para que se apile en móviles/tablets */}
+      <section style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '15px'
+      }}>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--color-text-main)', margin: 0, minWidth: '250px' }}>
           {subTab === 'config' ? 'Proyección de Inventario' : 'Órdenes Sugeridas'}
         </h2>
         
-        <div className={s.adminCard} style={{ padding: '10px 20px', borderLeft: '6px solid var(--color-success)', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+        <div className={s.adminCard} style={{ 
+          padding: '10px 20px', 
+          borderLeft: '6px solid var(--color-success)', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'flex-end',
+          flex: '1',
+          maxWidth: '300px',
+          minWidth: '200px'
+        }}>
           <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
             Inversión Estimada
           </span>
@@ -76,10 +91,10 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
         </div>
       </section>
 
-      {/* --- VISTA 1: ESTRATEGIA (TABLA) --- */}
+      {/* --- VISTA 1: ESTRATEGIA (TABLA RESPONSIVA) --- */}
       {subTab === 'config' && (
-        <div className={s.adminCard} style={{ padding: '0', overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+        <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '900px' }}>
             <thead style={{ backgroundColor: 'var(--color-bg-muted)', borderBottom: '1px solid var(--color-border)' }}>
               <tr>
                 <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>INSUMO</th>
@@ -100,7 +115,7 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
                     {editandoId === item.insumo_id ? (
                       <input 
                         type="number" 
-                        style={{ width: '60px', padding: '5px', borderRadius: '4px', border: '1px solid var(--color-primary)' }}
+                        style={{ width: '60px', padding: '5px', borderRadius: '4px', border: '1px solid var(--color-primary)', boxSizing: 'border-box' }}
                         value={tempPolitica.cobertura} 
                         onChange={e => setTempPolitica({...tempPolitica, cobertura: e.target.value})} 
                         onBlur={() => handleSavePolicy(item.insumo_id)}
@@ -139,11 +154,21 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
         </div>
       )}
 
-      {/* --- VISTA 2: LISTA DE MANDADO (TARJETAS) --- */}
+      {/* --- VISTA 2: LISTA DE MANDADO (TARJETAS FLEXIBLES) --- */}
       {subTab === 'compras' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '15px' }}>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
+          gap: '15px' 
+        }}>
           {listaParaComprar.map(ins => (
-            <div key={ins.insumo_id} className={s.adminCard} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px' }}>
+            <div key={ins.insumo_id} className={s.adminCard} style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              justifyContent: 'space-between', 
+              padding: '20px',
+              gap: '15px'
+            }}>
               <div>
                 <strong style={{ fontSize: '1.1rem', color: 'var(--color-text-main)' }}>{ins.insumo_nombre}</strong>
                 <p style={{ margin: '5px 0 0', fontSize: '12px', color: 'var(--color-text-muted)', fontWeight: '600' }}>
@@ -156,8 +181,9 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
                   backgroundColor: 'var(--color-success)', 
                   color: 'white', 
                   border: 'none', 
-                  padding: '10px 15px',
-                  fontWeight: '800'
+                  padding: '12px 15px',
+                  fontWeight: '800',
+                  width: '100%'
                 }} 
                 onClick={() => confirmarCompra(ins, usuarioId, sucursalId)}
               >

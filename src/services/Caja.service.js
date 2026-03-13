@@ -1,3 +1,4 @@
+// Archivo: src/modules/Admin/services/Caja.service.js
 import { supabase } from '../lib/supabaseClient';
 import { generarHTMLTicket } from '../utils/impresion.util';
 import { impresorasService } from './Impresoras.service';
@@ -45,6 +46,28 @@ export const cajaService = {
     return { data, error };
   },
 
+  /**
+   * Obtiene el historial de turnos. 
+   * NOTA: Usamos !usuario_id para resolver el error PGRST201 de Supabase
+   */
+  async getHistorialTurnos(sucursalId, limite = 30) {
+    const { data, error } = await supabase
+      .from('turnos')
+      .select(`
+        *,
+        usuarios_internos!usuario_id (
+          nombre
+        )
+      `)
+      .eq('sucursal_id', sucursalId)
+      .eq('estado', 'cerrado')
+      .order('fecha_cierre', { ascending: false })
+      .limit(limite);
+    
+    if (error) console.error("Error en getHistorialTurnos:", error.message);
+    return { data, error };
+  },
+
   // ==========================================
   // 2. MOVIMIENTOS DE CAJA (ENTRADAS/SALIDAS)
   // ==========================================
@@ -87,36 +110,25 @@ export const cajaService = {
   // 4. LÓGICA DE IMPRESIÓN
   // ==========================================
 
-  /**
-   * Procesa la impresión buscando la configuración de hardware y diseño
-   */
   async imprimirTicketVenta(venta, sucursalId) {
     try {
-      // 1. Obtener la impresora configurada para 'caja'
       const { data: imps } = await impresorasService.getAll(sucursalId);
       const configHardware = imps?.find(i => i.origen === 'caja') || { formato: '80mm' };
-
-      // 2. Obtener el diseño visual (encabezado, pie, etc.)
       const { data: configVisual } = await this.getConfigTicket(sucursalId);
 
-      // 3. Generar el HTML (Unimos datos + formato papel + diseño visual)
       const html = generarHTMLTicket(
         venta, 
         configHardware.formato, 
         'caja', 
-        configVisual || {} // Si no hay config, usa los defaults del util
+        configVisual || {}
       );
 
-      // 4. Lanzar impresión
       this._dispararVentanaImpresion(html);
     } catch (error) {
       console.error("Error en flujo de impresión:", error);
     }
   },
 
-  /**
-   * Comandas para Cocina o Barra (Normalmente sin precios y letra grande)
-   */
   async imprimirComanda(orden, sucursalId, destino = 'cocina') {
     const { data: imps } = await impresorasService.getAll(sucursalId);
     const configHardware = imps?.find(i => i.origen === destino) || { formato: '80mm' };
@@ -125,14 +137,12 @@ export const cajaService = {
     this._dispararVentanaImpresion(html);
   },
 
-  // Método privado para manejar el objeto Window de impresión
   _dispararVentanaImpresion(html) {
     const win = window.open('', '_blank');
     if (win) {
       win.document.write(html);
       win.document.close();
       
-      // Pequeño delay para asegurar que el DOM cargó antes de imprimir
       setTimeout(() => {
         win.print();
         win.close();

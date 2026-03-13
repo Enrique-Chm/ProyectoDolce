@@ -93,16 +93,17 @@ export const ProveedoresTab = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--color-text-main)', margin: 0 }}>
           Directorio de Proveedores
         </h2>
         {loading && <span style={{ fontSize: '12px', color: 'var(--color-primary)', fontWeight: '700' }}>CARGANDO...</span>}
       </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '350px 1fr', gap: '25px', alignItems: 'start' }}>
+      {/* DISEÑO RESPONSIVO: admin-split-layout-sidebar */}
+      <div className="admin-split-layout-sidebar">
         
-        {/* PANEL DE REGISTRO / EDICIÓN */}
+        {/* PANEL DE REGISTRO / EDICIÓN (ARRIBA EN TABLET) */}
         <aside className={s.adminCard} style={{ padding: '20px' }}>
           <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: 'var(--color-primary)' }}>
             {editId ? '📝 Editar Proveedor' : '🏢 Nuevo Proveedor'}
@@ -111,7 +112,7 @@ export const ProveedoresTab = () => {
             <div>
               <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>NOMBRE DE LA EMPRESA</label>
               <input 
-                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '12px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
                 value={formData.nombre_empresa} 
                 onChange={e => setFormData({...formData, nombre_empresa: e.target.value})} 
                 required 
@@ -123,7 +124,7 @@ export const ProveedoresTab = () => {
             <div>
               <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>NOMBRE DEL CONTACTO</label>
               <input 
-                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '12px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
                 value={formData.contacto_nombre} 
                 onChange={e => setFormData({...formData, contacto_nombre: e.target.value})} 
                 placeholder="Persona de ventas/atención"
@@ -131,11 +132,11 @@ export const ProveedoresTab = () => {
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>TELÉFONO</label>
                 <input 
-                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '12px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
                   value={formData.telefono} 
                   onChange={e => setFormData({...formData, telefono: e.target.value})} 
                   placeholder="WhatsApp/Oficina"
@@ -145,7 +146,7 @@ export const ProveedoresTab = () => {
               <div>
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>DÍAS CRÉDITO</label>
                 <input 
-                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '12px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
                   type="number" 
                   value={formData.dias_credito} 
                   onChange={e => setFormData({...formData, dias_credito: e.target.value})} 
@@ -157,7 +158,7 @@ export const ProveedoresTab = () => {
             <div>
               <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>CORREO ELECTRÓNICO</label>
               <input 
-                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '12px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
                 type="email" 
                 value={formData.correo} 
                 onChange={e => setFormData({...formData, correo: e.target.value})} 
@@ -171,7 +172,7 @@ export const ProveedoresTab = () => {
                 <button 
                   type="submit" 
                   className={s.btnLogout} 
-                  style={{ backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', padding: '12px' }} 
+                  style={{ backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', padding: '16px', fontWeight: '700' }} 
                   disabled={loading}
                 >
                   {loading ? '...' : (editId ? 'ACTUALIZAR DATOS' : 'REGISTRAR PROVEEDOR')}
@@ -182,6 +183,7 @@ export const ProveedoresTab = () => {
                 <button 
                   type="button" 
                   className={s.btnLogout} 
+                  style={{ padding: '14px' }}
                   onClick={resetForm} 
                 >
                   {puedeEditar ? 'CANCELAR EDICIÓN' : 'CERRAR VISTA'}
@@ -191,9 +193,9 @@ export const ProveedoresTab = () => {
           </form>
         </aside>
 
-        {/* TABLA DE PROVEEDORES */}
-        <div className={s.adminCard} style={{ padding: '0', overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+        {/* TABLA DE PROVEEDORES (DEBAJO EN TABLET) */}
+        <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '700px' }}>
             <thead style={{ backgroundColor: 'var(--color-bg-muted)', borderBottom: '1px solid var(--color-border)' }}>
               <tr>
                 <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>EMPRESA / CORREO</th>
@@ -230,10 +232,10 @@ export const ProveedoresTab = () => {
                       </span>
                     </td>
                     <td style={{ padding: '15px', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: '5px', justifyContent: 'flex-end' }}>
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                         <button 
                           className={s.btnLogout} 
-                          style={{ padding: '5px 10px', fontSize: '11px' }}
+                          style={{ padding: '8px 12px', fontSize: '11px' }}
                           onClick={() => prepararEdicion(p)}
                         >
                           {puedeEditar ? 'EDITAR' : 'VER'}
@@ -241,7 +243,7 @@ export const ProveedoresTab = () => {
                         {puedeBorrar && (
                           <button 
                             className={s.btnLogout} 
-                            style={{ padding: '5px 10px', fontSize: '11px', color: 'var(--color-danger)', borderColor: 'var(--color-danger)' }}
+                            style={{ padding: '8px 12px', fontSize: '11px', color: 'var(--color-danger)', borderColor: 'var(--color-danger)' }}
                             onClick={() => handleDelete(p.id, p.nombre_empresa)}
                           >
                             BORRAR

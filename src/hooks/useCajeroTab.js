@@ -1,3 +1,4 @@
+// Archivo: src/modules/Admin/hooks/useCajeroTab.js
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ventasService } from '../services/Ventas.service';
 import { cajaService } from '../services/Caja.service';
@@ -7,13 +8,15 @@ export const useCajeroTab = (sucursalId, usuarioId) => {
   const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
   const [loading, setLoading] = useState(false);
   
-  // --- NUEVOS ESTADOS DE TURNO ---
+  // --- ESTADOS DE TURNO ---
   const [turnoActivo, setTurnoActivo] = useState(null);
   const [cargandoTurno, setCargandoTurno] = useState(true);
 
+  // --- ESTADO PARA EL HISTORIAL DE CORTES ---
+  const [historialTurnos, setHistorialTurnos] = useState([]);
+
   // Estados del Formulario de Cobro
   const [metodoPago, setMetodoPago] = useState('efectivo');
-  const [propina, setPropina] = useState(0);
   const [pagadoCon, setPagadoCon] = useState(0);
 
   // --- 1. CARGA DE TURNO (Prioridad #1) ---
@@ -30,12 +33,23 @@ export const useCajeroTab = (sucursalId, usuarioId) => {
     }
   }, [sucursalId]);
 
-  // --- 2. CARGA DE VENTAS ---
+  // --- 2. CARGAR HISTORIAL DE CIERRES ---
+  const cargarHistorialTurnos = useCallback(async () => {
+    try {
+      const { data, error } = await cajaService.getHistorialTurnos(sucursalId);
+      if (error) throw error;
+      setHistorialTurnos(data || []);
+    } catch (err) {
+      console.error("Error cargando historial de turnos:", err);
+    }
+  }, [sucursalId]);
+
+  // --- 3. CARGA DE VENTAS PENDIENTES ---
   const cargarCuentas = useCallback(async (silencioso = false) => {
-    // Solo cargamos cuentas si hay un turno abierto
     if (!silencioso) setLoading(true);
     try {
       const { data } = await ventasService.getCuentasAbiertas(sucursalId);
+      // Filtramos solo las que están en estado 'por_cobrar'
       const pendientes = data?.filter(v => v.estado === 'por_cobrar') || [];
       setCuentasPorCobrar(pendientes);
     } catch (err) {
@@ -45,10 +59,12 @@ export const useCajeroTab = (sucursalId, usuarioId) => {
     }
   }, [sucursalId]);
 
+  // Efecto inicial: Verificar si hay turno al entrar
   useEffect(() => {
     verificarTurno();
   }, [verificarTurno]);
 
+  // Efecto: Si hay turno, cargar cuentas y refrescar cada 20s
   useEffect(() => {
     if (turnoActivo) {
       cargarCuentas();
@@ -57,13 +73,11 @@ export const useCajeroTab = (sucursalId, usuarioId) => {
     }
   }, [turnoActivo, cargarCuentas]);
 
-  // --- 3. CÁLCULOS REACTIVOS ---
+  // --- 4. CÁLCULOS REACTIVOS ---
   const calculosCobro = useMemo(() => {
-    const subtotalVenta = parseFloat(ventaSeleccionada?.total) || 0;
-    const montoPropina = parseFloat(propina) || 0;
+    const totalFinal = parseFloat(ventaSeleccionada?.total) || 0;
     const montoRecibido = parseFloat(pagadoCon) || 0;
 
-    const totalFinal = subtotalVenta + montoPropina;
     const diferencia = montoRecibido - totalFinal;
 
     return {
@@ -71,9 +85,9 @@ export const useCajeroTab = (sucursalId, usuarioId) => {
       cambio: diferencia > 0 ? diferencia : 0,
       faltaDinero: diferencia < 0 ? Math.abs(diferencia) : 0
     };
-  }, [ventaSeleccionada, propina, pagadoCon]);
+  }, [ventaSeleccionada, pagadoCon]);
 
-  // --- 4. ACCIONES DE TURNO ---
+  // --- 5. ACCIONES DE TURNO Y COBRO ---
   const abrirTurno = async (montoInicial) => {
     setLoading(true);
     try {
@@ -105,7 +119,6 @@ export const useCajeroTab = (sucursalId, usuarioId) => {
         ventaSeleccionada.id,
         {
           metodo_pago: metodoPago,
-          propina: parseFloat(propina) || 0,
           totalFinal: totalFinal,
           pagado_con: parseFloat(pagadoCon) || 0,
           cambio: cambio
@@ -115,37 +128,39 @@ export const useCajeroTab = (sucursalId, usuarioId) => {
 
       if (res.success) {
         setVentaSeleccionada(null);
-        setPropina(0);
         setPagadoCon(0);
         await cargarCuentas();
+        return { success: true };
       } else {
         throw new Error(res.error);
       }
     } catch (error) {
       alert("Error al procesar pago: " + error.message);
+      return { success: false };
     } finally {
       setLoading(false);
     }
   };
 
   return {
-    // Estados de Turno
+    // Estado y acciones del Turno
     turnoActivo, 
     cargandoTurno,
     abrirTurno,
     verificarTurno,
-    // Estados de Venta
+    historialTurnos, 
+    cargarHistorialTurnos, 
+    // Gestión de ventas/cobros
     cuentasPorCobrar,
     ventaSeleccionada, setVentaSeleccionada,
     loading,
     metodoPago, setMetodoPago,
-    propina, setPropina,
     pagadoCon, setPagadoCon,
     calculosCobro,
     abrirCobro: (v) => {
       setVentaSeleccionada(v);
-      setPropina(0);
       setPagadoCon(0);
+      setMetodoPago('efectivo');
     },
     ejecutarCobro,
     cargarCuentas

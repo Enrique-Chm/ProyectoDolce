@@ -7,6 +7,7 @@ import { useSessionGuard } from "../../hooks/useSessionGuard";
 
 // Componentes de las pestañas
 import { Login } from "./Login";
+import { AnaliticaTab } from "./components/AnaliticaTab"; // Nueva Tab integrada
 import { ConfigTab } from "./components/ConfigTab"; 
 import { ProveedoresTab } from "./components/ProveedoresTab";
 import { InsumosTab } from "./components/InsumosTab";
@@ -26,7 +27,7 @@ const AdminPage = () => {
   useSessionGuard();
 
   const [userSession, setUserSession] = useState(authService.getCurrentSession());
-  const [activeTab, setActiveTab] = useState('mesero'); 
+  const [activeTab, setActiveTab] = useState('analitica'); // Analítica como tab inicial
   const [filterSucursal, setFilterSucursal] = useState(userSession?.user?.sucursal_id || 1);
   const [listaSucursales, setListaSucursales] = useState([]);
 
@@ -43,7 +44,11 @@ const AdminPage = () => {
     setListaSucursales(data || []);
   };
 
+  /**
+   * 📋 CONFIGURACIÓN DE NAVEGACIÓN (RBAC)
+   */
   const getTabsConfig = () => [
+    { id: 'analitica', label: 'Dashboard Analítica', permiso: 'ver_config' }, // Permiso de nivel admin
     { id: 'mesero', label: 'Mesero (Ventas)', permiso: 'ver_ventas' },
     { id: 'cajero', label: 'Caja (Cobros)', permiso: 'ver_ventas' },
     { id: 'insumos', label: 'Catálogo Insumos', permiso: 'ver_insumos' },
@@ -61,7 +66,8 @@ const AdminPage = () => {
     if (!userSession) return false;
     if (isAdmin) return true;
     
-    if (tab.id === 'config' || tab.id === 'impresoras') {
+    // Casos especiales para configuración
+    if (tab.id === 'config' || tab.id === 'impresoras' || tab.id === 'analitica') {
       return userSession.permisos.includes('ver_unidades') || 
              userSession.permisos.includes('ver_categorias') || 
              userSession.permisos.includes('ver_config');
@@ -80,7 +86,8 @@ const AdminPage = () => {
 
   return (
     <div className={s.adminContainer}>
-      {/* BARRA LATERAL (SIDEBAR) */}
+      
+      {/* BARRA LATERAL (SIDEBAR FIJO) */}
       <aside className={s.sidebar}>
         <div className={s.sidebarHeader}>
           <h2>CloudKitchen <span style={{ color: 'var(--color-primary)' }}>Admin</span></h2>
@@ -110,18 +117,17 @@ const AdminPage = () => {
                 </label>
                 <select 
                   style={{ 
-                    padding: '5px 10px', 
+                    padding: '8px 12px', 
                     borderRadius: 'var(--radius-ui)', 
                     border: '1px solid var(--color-border)',
-                    fontSize: '0.9rem' 
+                    fontSize: '0.9rem',
+                    background: 'white'
                   }}
                   value={filterSucursal} 
                   onChange={(e) => setFilterSucursal(parseInt(e.target.value))}
                 >
                   {listaSucursales.map(suc => (
-                    <option key={suc.id} value={suc.id}>
-                      {suc.nombre}
-                    </option>
+                    <option key={suc.id} value={suc.id}>{suc.nombre}</option>
                   ))}
                 </select>
               </div>
@@ -141,21 +147,20 @@ const AdminPage = () => {
           </div>
         </header>
 
-        {/* CONTENIDO DE TABS */}
+        {/* CONTENIDO DE TABS DINÁMICO */}
         <section className={s.tabContent}>
-          <div className={s.adminCard}>
-            {activeTab === 'mesero' && <MeseroTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
-            {activeTab === 'cajero' && <CajeroTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
-            {activeTab === 'insumos' && <InsumosTab sucursalId={filterSucursal} />}
-            {activeTab === 'kardex' && <InventariosTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
-            {activeTab === 'estimaciones' && <EstimacionesTab sucursalId={filterSucursal} />}
-            {activeTab === 'recetas' && <RecetasTab sucursalId={filterSucursal} />}
-            {activeTab === 'productos' && <ProductosTab sucursalId={filterSucursal} />}
-            {activeTab === 'proveedores' && <ProveedoresTab sucursalId={filterSucursal} />}
-            {activeTab === 'empleados' && <EmpleadosTab />}
-            {activeTab === 'impresoras' && <ImpresorasTab sucursalId={filterSucursal} />}
-            {activeTab === 'config' && <ConfigTab />}
-          </div>
+           {activeTab === 'analitica' && <AnaliticaTab sucursalId={filterSucursal} />}
+           {activeTab === 'mesero' && <MeseroTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
+           {activeTab === 'cajero' && <CajeroTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
+           {activeTab === 'insumos' && <InsumosTab sucursalId={filterSucursal} />}
+           {activeTab === 'kardex' && <InventariosTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
+           {activeTab === 'estimaciones' && <EstimacionesTab sucursalId={filterSucursal} />}
+           {activeTab === 'recetas' && <RecetasTab sucursalId={filterSucursal} />}
+           {activeTab === 'productos' && <ProductosTab sucursalId={filterSucursal} />}
+           {activeTab === 'proveedores' && <ProveedoresTab sucursalId={filterSucursal} />}
+           {activeTab === 'empleados' && <EmpleadosTab />}
+           {activeTab === 'impresoras' && <ImpresorasTab sucursalId={filterSucursal} />}
+           {activeTab === 'config' && <ConfigTab />}
         </section>
       </main>
     </div>

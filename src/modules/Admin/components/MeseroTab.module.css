@@ -61,7 +61,8 @@
 /* --- MONITOR DE SALÓN (VISTA 0) --- */
 .productGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  /* Aumentamos el tamaño mínimo de la tarjeta de 160px a 180px para mejor respuesta táctil */
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 15px;
 }
 
@@ -117,7 +118,8 @@
 /* --- COMANDERO (VISTA 2) --- */
 .posGrid {
   display: grid;
-  grid-template-columns: 1fr 350px;
+  /* El carrito ahora ocupa 300px en lugar de 350px para dar más aire al menú */
+  grid-template-columns: 1fr 300px; 
   gap: 20px;
   position: relative;
 }
@@ -285,8 +287,19 @@
 .emptyCartText { text-align: center; padding: 40px; color: var(--color-text-muted); font-size: 13px; }
 
 /* --- RESPONSIVE MOBILE --- */
-@media (max-width: 768px) {
-  .posGrid { grid-template-columns: 1fr; }
+@media (max-width: 1024px) {
+  .posGrid {
+    grid-template-columns: 1fr 280px;
+    gap: 15px;
+  }
+} 
+  .posGrid {
+  display: grid;
+  /* El carrito ahora ocupa 300px en lugar de 350px para dar más aire al menú */
+  grid-template-columns: 1fr 300px; 
+  gap: 20px;
+  position: relative;
+}
   .cartArea {
     position: fixed;
     bottom: 0;
@@ -297,4 +310,3 @@
     transition: height 0.3s ease;
   }
   .cartExpanded { height: 80vh; }
-}

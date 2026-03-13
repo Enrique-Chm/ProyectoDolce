@@ -55,6 +55,12 @@ export const InsumosTab = ({ sucursalId }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!puedeEditar) return; 
+
+    // Validación para evitar combos vacíos
+    if (!formData.categoria) return alert("Por favor selecciona una Categoría válida.");
+    if (!formData.proveedor) return alert("Por favor selecciona un Proveedor válido.");
+    if (!formData.unidad_medida) return alert("Por favor selecciona una Unidad de Medida válida.");
+
     setLoading(true);
 
     const costoCaja = parseFloat(formData.costo_por_caja) || 0;
@@ -101,14 +107,15 @@ export const InsumosTab = ({ sucursalId }) => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--color-text-main)', margin: 0 }}>
           Gestión de Insumos
         </h2>
         {loading && <span style={{ fontSize: '12px', color: 'var(--color-primary)', fontWeight: '700' }}>ACTUALIZANDO...</span>}
       </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '350px 1fr', gap: '25px', alignItems: 'start' }}>
+      {/* DISEÑO RESPONSIVO: Formulario arriba y Tabla abajo en Tablets */}
+      <div className="admin-split-layout-sidebar">
         
         {/* FORMULARIO LATERAL */}
         <aside className={s.adminCard} style={{ padding: '20px' }}>
@@ -117,9 +124,9 @@ export const InsumosTab = ({ sucursalId }) => {
           </h3>
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
             <div>
-              <label style={{ display: 'flex', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>NOMBRE COMERCIAL</label>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>NOMBRE COMERCIAL</label>
               <input 
-                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
                 value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} required readOnly={!puedeEditar} 
               />
             </div>
@@ -127,7 +134,7 @@ export const InsumosTab = ({ sucursalId }) => {
             <div>
               <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>MODELO / VARIANTE</label>
               <input 
-                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
                 value={formData.modelo} onChange={e => setFormData({...formData, modelo: e.target.value})} required readOnly={!puedeEditar} 
               />
             </div>
@@ -135,23 +142,29 @@ export const InsumosTab = ({ sucursalId }) => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>CATEGORÍA</label>
-                <select 
-                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', backgroundColor: 'white' }}
-                  value={formData.categoria} onChange={e => setFormData({...formData, categoria: e.target.value})} required disabled={!puedeEditar}
-                >
-                  <option value="">Elegir...</option>
-                  {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                </select>
+                {/* --- COMBOBOX PARA CATEGORÍA --- */}
+                <SearchableSelect 
+                  options={categorias}
+                  value={formData.categoria}
+                  valueKey="id"
+                  labelKey="nombre"
+                  placeholder="Seleccionar..."
+                  disabled={!puedeEditar}
+                  onChange={(val) => setFormData({...formData, categoria: val})}
+                />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>PROVEEDOR</label>
-                <select 
-                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', backgroundColor: 'white' }}
-                  value={formData.proveedor} onChange={e => setFormData({...formData, proveedor: e.target.value})} required disabled={!puedeEditar}
-                >
-                  <option value="">Elegir...</option>
-                  {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre_empresa}</option>)}
-                </select>
+                {/* --- COMBOBOX PARA PROVEEDOR --- */}
+                <SearchableSelect 
+                  options={proveedores}
+                  value={formData.proveedor}
+                  valueKey="id"
+                  labelKey="nombre_empresa"
+                  placeholder="Seleccionar..."
+                  disabled={!puedeEditar}
+                  onChange={(val) => setFormData({...formData, proveedor: val})}
+                />
               </div>
             </div>
 
@@ -160,7 +173,7 @@ export const InsumosTab = ({ sucursalId }) => {
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>COSTO CAJA ($)</label>
                 <input 
                   type="number" step="0.01" 
-                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
                   value={formData.costo_por_caja} onChange={e => setFormData({...formData, costo_por_caja: e.target.value})} required readOnly={!puedeEditar} 
                 />
               </div>
@@ -168,7 +181,7 @@ export const InsumosTab = ({ sucursalId }) => {
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>CONT. NETO</label>
                 <input 
                   type="number" step="0.01" 
-                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
                   value={formData.contenido_neto} onChange={e => setFormData({...formData, contenido_neto: e.target.value})} required readOnly={!puedeEditar} 
                 />
               </div>
@@ -176,13 +189,17 @@ export const InsumosTab = ({ sucursalId }) => {
 
             <div>
               <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>UNIDAD DE MEDIDA</label>
-              <select 
-                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', backgroundColor: 'white' }}
-                value={formData.unidad_medida} onChange={e => setFormData({...formData, unidad_medida: e.target.value})} required disabled={!puedeEditar}
-              >
-                <option value="">Seleccionar...</option>
-                {unidades.map(u => <option key={u.id} value={u.id}>{u.nombre} ({u.abreviatura})</option>)}
-              </select>
+              {/* --- COMBOBOX PARA UNIDAD DE MEDIDA --- */}
+              <SearchableSelect 
+                options={unidades}
+                value={formData.unidad_medida}
+                valueKey="id"
+                labelKey="nombre"
+                placeholder="Seleccionar unidad..."
+                formatLabel={(opt) => `${opt.nombre} (${opt.abreviatura})`}
+                disabled={!puedeEditar}
+                onChange={(val) => setFormData({...formData, unidad_medida: val})}
+              />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
@@ -190,7 +207,7 @@ export const InsumosTab = ({ sucursalId }) => {
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>RENDIMIENTO %</label>
                 <input 
                   type="number" step="0.01" 
-                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
                   value={formData.factor_rendimiento} onChange={e => setFormData({...formData, factor_rendimiento: e.target.value})} readOnly={!puedeEditar} 
                 />
               </div>
@@ -198,7 +215,7 @@ export const InsumosTab = ({ sucursalId }) => {
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>DÍAS REABAST.</label>
                 <input 
                   type="number" 
-                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
                   value={formData.dias_reabastecimiento} onChange={e => setFormData({...formData, dias_reabastecimiento: e.target.value})} readOnly={!puedeEditar} 
                 />
               </div>
@@ -209,14 +226,14 @@ export const InsumosTab = ({ sucursalId }) => {
                 <button 
                   type="submit" 
                   className={s.btnLogout} 
-                  style={{ backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', flex: 1 }} 
+                  style={{ backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', flex: 1, padding: '12px' }} 
                   disabled={loading}
                 >
                   {loading ? '...' : (editId ? 'ACTUALIZAR' : 'GUARDAR')}
                 </button>
               )}
               {editId && (
-                <button type="button" onClick={resetForm} className={s.btnLogout}>
+                <button type="button" onClick={resetForm} className={s.btnLogout} style={{ padding: '12px' }}>
                   CANCELAR
                 </button>
               )}
@@ -224,9 +241,9 @@ export const InsumosTab = ({ sucursalId }) => {
           </form>
         </aside>
 
-        {/* TABLA DE INSUMOS */}
-        <div className={s.adminCard} style={{ padding: '0', overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+        {/* TABLA DE INSUMOS RESPONSIVA */}
+        <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '700px' }}>
             <thead style={{ backgroundColor: 'var(--color-bg-muted)', borderBottom: '1px solid var(--color-border)' }}>
               <tr>
                 <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>INSUMO / VARIANTE</th>
@@ -239,7 +256,7 @@ export const InsumosTab = ({ sucursalId }) => {
               {insumos.length === 0 ? (
                 <tr>
                   <td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-muted)' }}>
-                    No hay insumos registrados en esta sucursal.
+                    No hay insumos registrados.
                   </td>
                 </tr>
               ) : (
@@ -286,6 +303,113 @@ export const InsumosTab = ({ sucursalId }) => {
           </table>
         </div>
       </div>
+    </div>
+  );
+};
+
+
+/**
+ * SUB-COMPONENTE MEJORADO: SearchableSelect 
+ * Soporta diferentes llaves para value (valueKey) y label (labelKey).
+ */
+const SearchableSelect = ({ 
+  options, 
+  value, 
+  onChange, 
+  disabled, 
+  placeholder = "Buscar...",
+  valueKey = "id", 
+  labelKey = "nombre",
+  formatLabel
+}) => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+
+  // Sincroniza el texto inicial si se edita el formulario desde afuera
+  useEffect(() => {
+    const selected = options.find((opt) => String(opt[valueKey]) === String(value));
+    if (selected) {
+      setSearchTerm(selected[labelKey]);
+    } else {
+      setSearchTerm("");
+    }
+  }, [value, options, valueKey, labelKey]);
+
+  const filteredOptions = options.filter(opt =>
+    String(opt[labelKey]).toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <input
+        type="text"
+        value={searchTerm}
+        disabled={disabled}
+        placeholder={placeholder}
+        style={{
+          width: "100%",
+          padding: "10px",
+          borderRadius: "var(--radius-ui)",
+          border: "1px solid var(--color-border)",
+          fontSize: "14px",
+          boxSizing: "border-box",
+          backgroundColor: disabled ? "var(--color-bg-app)" : "white"
+        }}
+        onChange={(e) => {
+          setSearchTerm(e.target.value);
+          setIsOpen(true);
+          if (value) onChange(""); // Forzar a elegir uno de la lista si cambian el texto
+        }}
+        onFocus={() => setIsOpen(true)}
+        onBlur={() => {
+          setTimeout(() => {
+            setIsOpen(false);
+            const selected = options.find((opt) => String(opt[valueKey]) === String(value));
+            if (selected) setSearchTerm(selected[labelKey]);
+            else setSearchTerm("");
+          }, 200);
+        }}
+      />
+      
+      {isOpen && !disabled && (
+        <ul style={{
+          position: 'absolute',
+          top: '100%',
+          left: 0,
+          right: 0,
+          maxHeight: '200px',
+          overflowY: 'auto',
+          background: 'white',
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--radius-ui)',
+          zIndex: 1000,
+          margin: '4px 0 0 0',
+          padding: 0,
+          listStyle: 'none',
+          boxShadow: 'var(--shadow-ui)'
+        }}>
+          {filteredOptions.length > 0 ? filteredOptions.map((opt, index) => (
+            <li
+              key={index}
+              style={{ padding: '10px 15px', cursor: 'pointer', borderBottom: '1px solid var(--color-bg-muted)', fontSize: '13px' }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onChange(opt[valueKey]);
+                setSearchTerm(opt[labelKey]);
+                setIsOpen(false);
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--color-bg-app)'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+            >
+              {formatLabel ? formatLabel(opt) : opt[labelKey]}
+            </li>
+          )) : (
+            <li style={{ padding: '10px 15px', color: 'var(--color-text-muted)', fontSize: '13px' }}>
+              No se encontraron coincidencias...
+            </li>
+          )}
+        </ul>
+      )}
     </div>
   );
 };

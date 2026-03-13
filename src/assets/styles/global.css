@@ -1,6 +1,16 @@
 /* src/assets/styles/global.css */
 @import './variables.css';
 
+/* Aplicar a todo el proyecto para cálculos de ancho exactos */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Evitar selecciones accidentales al tocar la pantalla en tablets */
+.btn-ui, .navItem, .productCard {
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
 /* Botones Estándar */
 .btn-ui {
   padding: 10px 20px;
@@ -42,3 +52,35 @@
 /* Flexbox Helpers */
 .flex-center { display: flex; align-items: center; justify-content: center; }
 .flex-between { display: flex; align-items: center; justify-content: space-between; }
+
+/* Contenedor que se divide en 2 columnas en PC y 1 columna en Tablet/Móvil */
+.admin-split-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* Dos columnas iguales en escritorio */
+  gap: 24px;
+  align-items: start;
+}
+
+/* Cuando la pantalla sea menor a 1024px (Tablets y menos) */
+@media (max-width: 1024px) {
+  .admin-split-layout {
+    grid-template-columns: 1fr; /* Cambia a una sola columna */
+    gap: 32px; /* Aumentamos el espacio entre el formulario y la tabla */
+  }
+}
+
+.admin-split-layout-sidebar {
+  display: grid;
+  /* En PC: Formulario de 350px y el resto para la tabla */
+  grid-template-columns: 350px 1fr; 
+  gap: 25px;
+  align-items: start;
+}
+
+/* El "truco" para la tablet */
+@media (max-width: 1024px) {
+  .admin-split-layout-sidebar {
+    grid-template-columns: 1fr; /* Una sola columna: todo al 100% de ancho */
+    gap: 30px; /* Más espacio vertical para que respiren las secciones */
+  }
+}

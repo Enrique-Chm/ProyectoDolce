@@ -1,5 +1,5 @@
 // Archivo: src/modules/Admin/components/EmpleadosTab.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useEmpleados } from '../../../hooks/useEmpleados';
 import { MATRIZ_MODULOS } from '../../../utils/checkPermiso';
 import s from '../AdminPage.module.css';
@@ -16,34 +16,34 @@ export const EmpleadosTab = () => {
         Gestión de Capital Humano
       </h2>
 
-      {/* Navegación de Sub-pestañas Homologada */}
-      <nav style={{ display: 'flex', gap: '10px', borderBottom: '1px solid var(--color-border)', paddingBottom: '15px' }}>
+      {/* Navegación de Sub-pestañas Homologada con scroll lateral en móviles */}
+      <nav style={{ display: 'flex', gap: '10px', borderBottom: '1px solid var(--color-border)', paddingBottom: '15px', overflowX: 'auto' }}>
         <button 
           className={`${s.navItem} ${subTab === 'usuarios' ? s.activeNavItem : ''}`} 
-          style={{ width: 'auto', padding: '8px 20px' }}
+          style={{ width: 'auto', padding: '8px 20px', whiteSpace: 'nowrap' }}
           onClick={() => setSubTab('usuarios')}
         >
           EQUIPO
         </button>
         <button 
           className={`${s.navItem} ${subTab === 'permisos' ? s.activeNavItem : ''}`} 
-          style={{ width: 'auto', padding: '8px 20px' }}
+          style={{ width: 'auto', padding: '8px 20px', whiteSpace: 'nowrap' }}
           onClick={() => setSubTab('permisos')}
         >
           PERMISOS Y ROLES
         </button>
         <button 
           className={`${s.navItem} ${subTab === 'sucursales' ? s.activeNavItem : ''}`} 
-          style={{ width: 'auto', padding: '8px 20px' }}
+          style={{ width: 'auto', padding: '8px 20px', whiteSpace: 'nowrap' }}
           onClick={() => setSubTab('sucursales')}
         >
           SUCURSALES
         </button>
       </nav>
 
-      {/* --- SUBTAB: EQUIPO (VISTA ESTÁNDAR 2 COLUMNAS) --- */}
+      {/* --- SUBTAB: EQUIPO (VISTA RESPONSIVA APILADA) --- */}
       {subTab === 'usuarios' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '350px 1fr', gap: '25px', alignItems: 'start' }}>
+        <div className="admin-split-layout-sidebar">
           <aside className={s.adminCard} style={{ padding: '20px' }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: 'var(--color-primary)' }}>
               {emp.editId ? '📝 Editar Perfil' : '👤 Nuevo Integrante'}
@@ -52,7 +52,7 @@ export const EmpleadosTab = () => {
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>NOMBRE COMPLETO</label>
                 <input 
-                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }} 
+                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }} 
                   value={emp.formData.nombre} 
                   onChange={e => emp.setFormData({...emp.formData, nombre: e.target.value})} 
                   required 
@@ -61,22 +61,22 @@ export const EmpleadosTab = () => {
               
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>SUCURSAL ASIGNADA</label>
-                <select 
-                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', backgroundColor: 'white' }}
-                  value={emp.formData.sucursal_id} 
-                  onChange={e => emp.setFormData({...emp.formData, sucursal_id: e.target.value})} 
-                  required
-                >
-                  <option value="">Seleccionar sucursal...</option>
-                  {emp.sucursales.map(suc => <option key={suc.id} value={suc.id}>{suc.nombre}</option>)}
-                </select>
+                {/* --- COMBOBOX PARA SUCURSAL --- */}
+                <SearchableSelect 
+                  options={emp.sucursales}
+                  value={emp.formData.sucursal_id}
+                  valueKey="id"
+                  labelKey="nombre"
+                  placeholder="Seleccionar sucursal..."
+                  onChange={(val) => emp.setFormData({...emp.formData, sucursal_id: val})}
+                />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>USUARIO</label>
                   <input 
-                    style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
                     value={emp.formData.username} 
                     onChange={e => emp.setFormData({...emp.formData, username: e.target.value})} 
                     required 
@@ -84,15 +84,15 @@ export const EmpleadosTab = () => {
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>ROL</label>
-                  <select 
-                    style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', backgroundColor: 'white' }}
-                    value={emp.formData.rol_id} 
-                    onChange={e => emp.setFormData({...emp.formData, rol_id: e.target.value})} 
-                    required
-                  >
-                    <option value="">Elegir...</option>
-                    {emp.roles.map(r => <option key={r.id} value={r.id}>{r.nombre_rol}</option>)}
-                  </select>
+                  {/* --- COMBOBOX PARA ROL --- */}
+                  <SearchableSelect 
+                    options={emp.roles}
+                    value={emp.formData.rol_id}
+                    valueKey="id"
+                    labelKey="nombre_rol"
+                    placeholder="Elegir rol..."
+                    onChange={(val) => emp.setFormData({...emp.formData, rol_id: val})}
+                  />
                 </div>
               </div>
 
@@ -101,7 +101,7 @@ export const EmpleadosTab = () => {
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>PASSWORD</label>
                   <input 
                     type="password" 
-                    style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
                     value={emp.formData.password_hash} 
                     onChange={e => emp.setFormData({...emp.formData, password_hash: e.target.value})} 
                     required={!emp.editId} 
@@ -111,7 +111,7 @@ export const EmpleadosTab = () => {
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>PIN (4 DÍGITOS)</label>
                   <input 
                     type="number" 
-                    style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}  
+                    style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}  
                     value={emp.formData.pin_seguridad} 
                     onChange={e => emp.setFormData({...emp.formData, pin_seguridad: e.target.value})} 
                   />
@@ -119,16 +119,16 @@ export const EmpleadosTab = () => {
               </div>
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                <button type="submit" className={s.btnLogout} style={{ backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', flex: 1 }}>
+                <button type="submit" className={s.btnLogout} style={{ backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', flex: 1, padding: '12px' }}>
                   {emp.editId ? 'ACTUALIZAR' : 'REGISTRAR'}
                 </button>
-                {emp.editId && <button type="button" className={s.btnLogout} onClick={emp.resetUserForm}>CANCELAR</button>}
+                {emp.editId && <button type="button" className={s.btnLogout} onClick={emp.resetUserForm} style={{ padding: '12px' }}>CANCELAR</button>}
               </div>
             </form>
           </aside>
 
-          <div className={s.adminCard} style={{ padding: '0', overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
               <thead style={{ backgroundColor: 'var(--color-bg-muted)', borderBottom: '1px solid var(--color-border)' }}>
                 <tr>
                   <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>EMPLEADO / SUCURSAL</th>
@@ -161,9 +161,9 @@ export const EmpleadosTab = () => {
         </div>
       )}
 
-      {/* --- SUBTAB: PERMISOS (MATRIZ DE ROLES) --- */}
+      {/* --- SUBTAB: PERMISOS (MATRIZ RESPONSIVA) --- */}
       {subTab === 'permisos' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '25px', alignItems: 'start' }}>
+        <div className="admin-split-layout-sidebar">
           <aside className={s.adminCard} style={{ padding: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--color-primary)', margin: 0 }}>Roles</h3>
@@ -173,7 +173,7 @@ export const EmpleadosTab = () => {
             {emp.mostrarFormRol && (
               <form onSubmit={emp.handleSaveRol} style={{ padding: '15px', background: 'var(--color-bg-app)', borderRadius: 'var(--radius-ui)', marginBottom: '15px' }}>
                 <input 
-                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', marginBottom: '10px' }}
+                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', marginBottom: '10px', boxSizing: 'border-box' }}
                   placeholder="Nombre Rol" 
                   onChange={e => emp.setRolFormData({ nombre_rol: e.target.value })} 
                   required 
@@ -204,14 +204,14 @@ export const EmpleadosTab = () => {
             </div>
           </aside>
 
-          <div className={s.adminCard} style={{ padding: '0', overflow: 'hidden' }}>
+          <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto' }}>
             <div style={{ padding: '20px', borderBottom: '1px solid var(--color-border)' }}>
               <h3 style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0 }}>Matriz de Facultades</h3>
             </div>
             {!emp.rolSeleccionado ? (
               <p style={{ textAlign: 'center', padding: '60px', color: 'var(--color-text-muted)' }}>Selecciona un rol de la izquierda para configurar sus accesos...</p>
             ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
                 <thead style={{ backgroundColor: 'var(--color-bg-muted)', borderBottom: '1px solid var(--color-border)' }}>
                   <tr>
                     <th style={{ padding: '15px', fontSize: '12px' }}>MÓDULO DEL SISTEMA</th>
@@ -242,9 +242,9 @@ export const EmpleadosTab = () => {
         </div>
       )}
 
-      {/* --- SUBTAB: SUCURSALES (VISTA ESTÁNDAR) --- */}
+      {/* --- SUBTAB: SUCURSALES (VISTA RESPONSIVA) --- */}
       {subTab === 'sucursales' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '350px 1fr', gap: '25px', alignItems: 'start' }}>
+        <div className="admin-split-layout-sidebar">
           <aside className={s.adminCard} style={{ padding: '20px' }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: 'var(--color-primary)' }}>
               {emp.editSucursalId ? '📝 Editar Sucursal' : '🏢 Nueva Sucursal'}
@@ -252,18 +252,27 @@ export const EmpleadosTab = () => {
             <form onSubmit={emp.handleSaveSucursal} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>NOMBRE</label>
-                <input style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)' }} value={emp.sucursalFormData.nombre} onChange={e => emp.setSucursalFormData({ ...emp.sucursalFormData, nombre: e.target.value })} required />
+                <input 
+                    style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }} 
+                    value={emp.sucursalFormData.nombre} 
+                    onChange={e => emp.setSucursalFormData({ ...emp.sucursalFormData, nombre: e.target.value })} 
+                    required 
+                />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>DIRECCIÓN</label>
-                <input style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)' }} value={emp.sucursalFormData.direccion} onChange={e => emp.setSucursalFormData({ ...emp.sucursalFormData, direccion: e.target.value })} />
+                <input 
+                    style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }} 
+                    value={emp.sucursalFormData.direccion} 
+                    onChange={e => emp.setSucursalFormData({ ...emp.sucursalFormData, direccion: e.target.value })} 
+                />
               </div>
-              <button type="submit" className={s.btnLogout} style={{ backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', width: '100%', marginTop: '10px' }}>GUARDAR SUCURSAL</button>
+              <button type="submit" className={s.btnLogout} style={{ backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', width: '100%', marginTop: '10px', padding: '12px' }}>GUARDAR SUCURSAL</button>
             </form>
           </aside>
           
-          <div className={s.adminCard} style={{ padding: '0', overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '500px' }}>
               <thead style={{ backgroundColor: 'var(--color-bg-muted)', borderBottom: '1px solid var(--color-border)' }}>
                 <tr>
                   <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>NOMBRE</th>
@@ -285,6 +294,111 @@ export const EmpleadosTab = () => {
             </table>
           </div>
         </div>
+      )}
+    </div>
+  );
+};
+
+
+/**
+ * SUB-COMPONENTE MEJORADO: SearchableSelect 
+ */
+const SearchableSelect = ({ 
+  options, 
+  value, 
+  onChange, 
+  disabled, 
+  placeholder = "Buscar...",
+  valueKey = "id", 
+  labelKey = "nombre",
+  formatLabel
+}) => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    const selected = options.find((opt) => String(opt[valueKey]) === String(value));
+    if (selected) {
+      setSearchTerm(selected[labelKey]);
+    } else {
+      setSearchTerm("");
+    }
+  }, [value, options, valueKey, labelKey]);
+
+  const filteredOptions = options.filter(opt =>
+    String(opt[labelKey]).toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <input
+        type="text"
+        value={searchTerm}
+        disabled={disabled}
+        placeholder={placeholder}
+        style={{
+          width: "100%",
+          padding: "10px",
+          borderRadius: "var(--radius-ui)",
+          border: "1px solid var(--color-border)",
+          fontSize: "14px",
+          boxSizing: "border-box",
+          backgroundColor: disabled ? "var(--color-bg-app)" : "white"
+        }}
+        onChange={(e) => {
+          setSearchTerm(e.target.value);
+          setIsOpen(true);
+          if (value) onChange(""); 
+        }}
+        onFocus={() => setIsOpen(true)}
+        onBlur={() => {
+          setTimeout(() => {
+            setIsOpen(false);
+            const selected = options.find((opt) => String(opt[valueKey]) === String(value));
+            if (selected) setSearchTerm(selected[labelKey]);
+            else setSearchTerm("");
+          }, 200);
+        }}
+      />
+      
+      {isOpen && !disabled && (
+        <ul style={{
+          position: 'absolute',
+          top: '100%',
+          left: 0,
+          right: 0,
+          maxHeight: '200px',
+          overflowY: 'auto',
+          background: 'white',
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--radius-ui)',
+          zIndex: 1000,
+          margin: '4px 0 0 0',
+          padding: 0,
+          listStyle: 'none',
+          boxShadow: 'var(--shadow-ui)'
+        }}>
+          {filteredOptions.length > 0 ? filteredOptions.map((opt, index) => (
+            <li
+              key={index}
+              style={{ padding: '10px 15px', cursor: 'pointer', borderBottom: '1px solid var(--color-bg-muted)', fontSize: '13px' }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onChange(opt[valueKey]);
+                setSearchTerm(opt[labelKey]);
+                setIsOpen(false);
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--color-bg-app)'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+            >
+              {formatLabel ? formatLabel(opt) : opt[labelKey]}
+            </li>
+          )) : (
+            <li style={{ padding: '10px 15px', color: 'var(--color-text-muted)', fontSize: '13px' }}>
+              No se encontraron coincidencias...
+            </li>
+          )}
+        </ul>
       )}
     </div>
   );

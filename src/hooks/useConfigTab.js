@@ -1,3 +1,4 @@
+// Archivo: src/hooks/useConfigTab.js
 import { useState, useEffect, useCallback } from 'react';
 import { configService } from '../services/Config.service'; 
 import { hasPermission } from '../utils/checkPermiso';
@@ -20,39 +21,42 @@ export const useConfigTab = (subTab) => {
   const [cMenuEditId, setCMenuEditId] = useState(null);
   const [cInsumoEditId, setCInsumoEditId] = useState(null);
 
-  // --- NUEVOS ESTADOS: MOTIVOS INVENTARIO ---
+  // --- ESTADOS: MOTIVOS INVENTARIO ---
   const [motivosInventario, setMotivosInventario] = useState([]);
   const [mNombre, setMNombre] = useState('');
   const [mTipo, setMTipo] = useState('ENTRADA');
   const [mEditId, setMEditId] = useState(null);
 
-  // Lógica de Permisos (RBAC)
+  // Lógica de Permisos
   const puedeEditarU = hasPermission('ver_unidades');
   const puedeEditarC = hasPermission('ver_categorias');
-  const puedeEditarM = hasPermission('ver_insumos'); // Usamos este para motivos
+  const puedeEditarM = hasPermission('ver_insumos'); 
   const puedeBorrar = hasPermission('borrar_registros');
 
-  // Función para traer datos
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       if (subTab === 'unidades') {
-        const res = await configService.getUnidades();
-        setUnidades(res.data || []);
-      } else if (subTab === 'categorias') {
-        const [menuRes, insumosRes] = await Promise.all([
-          configService.getMenu(),
-          configService.getInsumos()
-        ]);
+        const { data } = await configService.getUnidades();
+        setUnidades(data || []);
+      } 
+      else if (subTab === 'categorias') {
+        // Ejecutamos por separado para que una tabla mala no rompa la otra
+        const menuRes = await configService.getMenu();
+        const insumosRes = await configService.getInsumos();
+        
+        if (menuRes.error) console.error("Error en Categorías Menú:", menuRes.error);
+        if (insumosRes.error) console.error("Error en Categorías Insumos:", insumosRes.error);
+
         setCatMenu(menuRes.data || []);
         setCatInsumos(insumosRes.data || []);
-      } else if (subTab === 'motivos') {
-        // Nueva petición para motivos
-        const res = await configService.getMotivosInventario();
-        setMotivosInventario(res.data || []);
+      } 
+      else if (subTab === 'motivos') {
+        const { data } = await configService.getMotivosInventario();
+        setMotivosInventario(data || []);
       }
     } catch (error) {
-      console.error("Error al cargar configuración:", error);
+      console.error("Error crítico en useConfigTab:", error);
     } finally {
       setLoading(false);
     }
@@ -62,65 +66,49 @@ export const useConfigTab = (subTab) => {
     fetchData();
   }, [fetchData]);
 
-  // --- MANEJADORES DE ENVÍO ---
-
+  // --- HANDLERS ---
   const handleSubmitUnidad = async (e) => {
     e.preventDefault();
     if (!puedeEditarU) return;
     const { error } = await configService.saveUnidad({ nombre: uNombre, abreviatura: uAbrev }, uEditId);
-    if (!error) { 
-      setUEditId(null); setUNombre(''); setUAbrev(''); 
-      fetchData(); 
-    }
+    if (!error) { resetUnidad(); fetchData(); }
   };
 
   const handleSubmitCatMenu = async (e) => {
     e.preventDefault();
     if (!puedeEditarC) return;
     const { error } = await configService.saveMenu({ nombre: cMenuNombre, color_etiqueta: cMenuColor }, cMenuEditId);
-    if (!error) { 
-      setCMenuEditId(null); setCMenuNombre(''); 
-      fetchData(); 
-    }
+    if (!error) { resetCatMenu(); fetchData(); }
+    else alert("Error al guardar: " + error.message);
   };
 
   const handleSubmitCatInsumo = async (e) => {
     e.preventDefault();
     if (!puedeEditarC) return;
     const { error } = await configService.saveInsumo({ nombre: cInsumoNombre }, cInsumoEditId);
-    if (!error) { 
-      setCInsumoEditId(null); setCInsumoNombre(''); 
-      fetchData(); 
-    }
+    if (!error) { resetCatInsumo(); fetchData(); }
+    else alert("Error al guardar: " + error.message);
   };
 
-  // --- NUEVO MANEJADOR: MOTIVOS ---
   const handleSubmitMotivo = async (e) => {
     e.preventDefault();
     if (!puedeEditarM) return;
-    const payload = { nombre_motivo: mNombre, tipo: mTipo };
-    
-    const { error } = await configService.saveMotivoInventario(payload, mEditId);
-    
-    if (!error) {
-      setMEditId(null);
-      setMNombre('');
-      setMTipo('ENTRADA');
-      fetchData();
-    }
+    const { error } = await configService.saveMotivoInventario({ nombre_motivo: mNombre, tipo: mTipo }, mEditId);
+    if (!error) { resetMotivo(); fetchData(); }
   };
+
+  // Resets auxiliares
+  const resetUnidad = () => { setUEditId(null); setUNombre(''); setUAbrev(''); };
+  const resetCatMenu = () => { setCMenuEditId(null); setCMenuNombre(''); setCMenuColor('#005696'); };
+  const resetCatInsumo = () => { setCInsumoEditId(null); setCInsumoNombre(''); };
+  const resetMotivo = () => { setMEditId(null); setMNombre(''); setMTipo('ENTRADA'); };
 
   return {
     loading, 
     puedeEditarU, puedeEditarC, puedeEditarM, puedeBorrar,
-    // Unidades
     unidades, uNombre, setUNombre, uAbrev, setUAbrev, uEditId, setUEditId, handleSubmitUnidad,
-    // Categorías
-    catMenu, catInsumos, 
-    cMenuNombre, setCMenuNombre, cMenuColor, setCMenuColor, cInsumoNombre, setCInsumoNombre, 
-    cMenuEditId, setCMenuEditId, cInsumoEditId, setCInsumoEditId,
-    handleSubmitCatMenu, handleSubmitCatInsumo,
-    // Motivos Inventario
+    catMenu, catInsumos, cMenuNombre, setCMenuNombre, cMenuColor, setCMenuColor, cInsumoNombre, setCInsumoNombre, 
+    cMenuEditId, setCMenuEditId, cInsumoEditId, setCInsumoEditId, handleSubmitCatMenu, handleSubmitCatInsumo,
     motivosInventario, mNombre, setMNombre, mTipo, setMTipo, mEditId, setMEditId, handleSubmitMotivo,
     refresh: fetchData 
   };

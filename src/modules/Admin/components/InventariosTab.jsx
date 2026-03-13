@@ -1,13 +1,13 @@
 // Archivo: src/modules/Admin/components/InventariosTab.jsx
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useInventarios } from "../../../hooks/useInventariosTab"; 
 import s from "../AdminPage.module.css"; 
 
 const InventariosTab = ({ sucursalId, usuarioId }) => {
   const { 
-    insumos,              
+    insumos,               
     insumosFiltrados,     
-    searchTerm, setSearchTerm,         
+    searchTerm, setSearchTerm,          
     movimientos, 
     motivosCatalogo,
     contrasteData, 
@@ -29,31 +29,20 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
   });
   
   const [nuevoMov, setNuevoMov] = useState({ insumo_id: '', tipo: 'ENTRADA', cantidad: '', motivo: '' });
-  const [searchTermInsumo, setSearchTermInsumo] = useState(''); 
-  const [showDropdown, setShowDropdown] = useState(false);
-  const dropdownRef = useRef(null);
 
   const insumoSeleccionado = useMemo(() => insumos?.find(i => i.id === Number(nuevoMov.insumo_id)), [insumos, nuevoMov.insumo_id]);
-  const insumosFiltradosCombo = useMemo(() => insumos?.filter(i => i.nombre.toLowerCase().includes(searchTermInsumo.toLowerCase())) || [], [insumos, searchTermInsumo]);
   const motivosDisponibles = useMemo(() => motivosCatalogo?.filter(m => m.tipo === nuevoMov.tipo) || [], [motivosCatalogo, nuevoMov.tipo]);
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setShowDropdown(false);
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   // --- HANDLERS ---
   const handleSubmitMovimiento = async (e) => {
     e.preventDefault();
+    if (!nuevoMov.insumo_id) return alert("Por favor selecciona un insumo de la lista.");
+
     const res = await procesarNuevoMovimiento(nuevoMov, insumoSeleccionado, usuarioId);
     
     if (res.success) {
       alert("Movimiento guardado.");
       setNuevoMov({ insumo_id: '', tipo: 'ENTRADA', cantidad: '', motivo: '' });
-      setSearchTermInsumo('');
     } else {
       alert(res.error);
     }
@@ -77,66 +66,55 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
         Control de Inventarios
       </h2>
 
-      {/* Navegación de Sub-pestañas Homologada */}
-      <nav style={{ display: 'flex', gap: '10px', borderBottom: '1px solid var(--color-border)', paddingBottom: '15px' }}>
+      {/* Navegación de Sub-pestañas Homologada con scroll lateral */}
+      <nav style={{ display: 'flex', gap: '10px', borderBottom: '1px solid var(--color-border)', paddingBottom: '15px', overflowX: 'auto' }}>
         <button 
           className={`${s.navItem} ${activeSubTab === 'stock' ? s.activeNavItem : ''}`} 
-          style={{ width: 'auto', padding: '8px 20px' }}
+          style={{ width: 'auto', padding: '8px 20px', whiteSpace: 'nowrap' }}
           onClick={() => setActiveSubTab('stock')}
         >
           📦 EXISTENCIAS
         </button>
         <button 
           className={`${s.navItem} ${activeSubTab === 'movimientos' ? s.activeNavItem : ''}`} 
-          style={{ width: 'auto', padding: '8px 20px' }}
+          style={{ width: 'auto', padding: '8px 20px', whiteSpace: 'nowrap' }}
           onClick={() => setActiveSubTab('movimientos')}
         >
           📜 HISTORIAL
         </button>
         <button 
           className={`${s.navItem} ${activeSubTab === 'contraste' ? s.activeNavItem : ''}`} 
-          style={{ width: 'auto', padding: '8px 20px' }}
+          style={{ width: 'auto', padding: '8px 20px', whiteSpace: 'nowrap' }}
           onClick={() => setActiveSubTab('contraste')}
         >
           ⚖️ CIERRE DE TURNO
         </button>
       </nav>
 
-      <div style={{ display: 'grid', gridTemplateColumns: activeSubTab === 'contraste' ? '1fr' : '350px 1fr', gap: '25px', alignItems: 'start' }}>
+      {/* Aplicación de admin-split-layout-sidebar condicional */}
+      <div className={activeSubTab === 'contraste' ? "" : "admin-split-layout-sidebar"}>
         
-        {/* PANEL DE MOVIMIENTO MANUAL (SIDEBAR) */}
+        {/* PANEL DE MOVIMIENTO MANUAL (SIDEBAR) - Arriba en tablet */}
         {activeSubTab !== 'contraste' && (
           <aside className={s.adminCard} style={{ padding: '20px' }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: 'var(--color-primary)' }}>Nuevo Movimiento</h3>
             <form onSubmit={handleSubmitMovimiento} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               
-              <div style={{ position: 'relative' }} ref={dropdownRef}>
+              <div>
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>INSUMO</label>
-                <input 
-                  type="text" 
-                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
+                
+                {/* --- NUEVO COMBOBOX AUTOFILTRADO --- */}
+                <SearchableSelect 
+                  options={insumos || []}
+                  value={nuevoMov.insumo_id}
+                  valueKey="id"
+                  labelKey="nombre"
                   placeholder="🔍 Buscar producto..."
-                  value={searchTermInsumo} onFocus={() => setShowDropdown(true)}
-                  onChange={(e) => { setSearchTermInsumo(e.target.value); setShowDropdown(true); }}
+                  formatLabel={(opt) => `${opt.nombre} (Stock: ${opt.stock_fisico} ${opt.unidad})`}
+                  disabled={loading}
+                  onChange={(val) => setNuevoMov({...nuevoMov, insumo_id: val})}
                 />
-                {showDropdown && (
-                  <div style={{ 
-                    position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
-                    background: 'white', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',
-                    boxShadow: 'var(--shadow-md)', maxHeight: '200px', overflowY: 'auto'
-                  }}>
-                    {insumosFiltradosCombo.map(i => (
-                      <div 
-                        key={i.id} 
-                        style={{ padding: '10px', cursor: 'pointer', borderBottom: '1px solid var(--color-bg-app)', fontSize: '13px' }}
-                        onClick={() => { setNuevoMov({...nuevoMov, insumo_id: i.id}); setSearchTermInsumo(i.nombre); setShowDropdown(false); }}
-                      >
-                        <div style={{ fontWeight: '700' }}>{i.nombre}</div>
-                        <small style={{ color: 'var(--color-text-muted)' }}>Actual: {i.stock_fisico} {i.unidad}</small>
-                      </div>
-                    ))}
-                  </div>
-                )}
+
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '10px' }}>
@@ -155,7 +133,7 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>CANTIDAD</label>
                   <input 
                     type="number" step="0.01"
-                    style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)',boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
                     value={nuevoMov.cantidad} onChange={(e) => setNuevoMov({...nuevoMov, cantidad: e.target.value})} required 
                   />
                 </div>
@@ -171,14 +149,14 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                   {motivosDisponibles.map(m => <option key={m.id} value={m.nombre_motivo}>{m.nombre_motivo}</option>)}
                 </select>
                 <small style={{ fontSize: '10px', color: 'var(--color-primary)', display: 'block', marginTop: '5px', fontWeight: '700' }}>
-                   {insumoSeleccionado ? `UNIDAD: ${insumoSeleccionado.unidad}` : 'Selecciona un insumo'}
+                   {insumoSeleccionado ? `UNIDAD: ${insumoSeleccionado.unidad}` : 'Selecciona un insumo para ver la U.M.'}
                 </small>
               </div>
 
               <button 
                 type="submit" 
                 className={s.btnLogout} 
-                style={{ backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', width: '100%', marginTop: '10px' }}
+                style={{ backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', width: '100%', marginTop: '10px', padding: '12px' }}
                 disabled={loading}
               >
                 {loading ? 'GUARDANDO...' : 'CONFIRMAR MOVIMIENTO'}
@@ -187,26 +165,26 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
           </aside>
         )}
 
-        {/* ÁREA DE TABLAS */}
+        {/* ÁREA DE TABLAS - Debajo en tablet */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
           {/* VISTA: EXISTENCIAS */}
           {activeSubTab === 'stock' && (
-            <div className={s.adminCard} style={{ padding: '0', overflow: 'hidden' }}>
+            <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto' }}>
               <div style={{ padding: '15px', borderBottom: '1px solid var(--color-border)' }}>
                 <input 
                   type="text" 
                   style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)' }}
-                  placeholder="🔍 Filtrar existencias por nombre o categoría..." 
+                  placeholder="🔍 Filtrar existencias..." 
                   value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} 
                 />
               </div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '700px' }}>
                 <thead style={{ backgroundColor: 'var(--color-bg-muted)', borderBottom: '1px solid var(--color-border)' }}>
                   <tr>
                     <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>INSUMO</th>
                     <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>STOCK FÍSICO 🔒</th>
-                    <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-primary)' }}>ESTIMADO (EN VIVO) ⚡</th>
+                    <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-primary)' }}>ESTIMADO ⚡</th>
                     <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>U.M.</th>
                     <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>CATEGORÍA</th>
                   </tr>
@@ -232,42 +210,50 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
 
           {/* VISTA: CIERRE DE TURNO (AUDITORÍA) */}
           {activeSubTab === 'contraste' && (
-            <div className={s.adminCard} style={{ padding: '0', overflow: 'hidden' }}>
-              <div style={{ padding: '20px', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--color-bg-muted)' }}>
+            <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto' }}>
+              <div style={{ 
+                padding: '20px', 
+                borderBottom: '1px solid var(--color-border)', 
+                display: 'flex', 
+                flexWrap: 'wrap',
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                backgroundColor: 'var(--color-bg-muted)',
+                gap: '15px'
+              }}>
                 <div>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: '800', margin: 0 }}>Auditoría y Cierre de Turno</h3>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: '800', margin: 0 }}>Auditoría y Cierre</h3>
                   {contrasteData.length > 0 && (
                     <div style={{ fontSize: '12px', marginTop: '5px', fontWeight: '700', color: auditados.length === contrasteData.length ? 'var(--color-success)' : 'var(--color-primary)' }}>
-                      Progreso: {auditados.length} de {contrasteData.length} auditados {auditados.length === contrasteData.length ? '✅' : '⏳'}
+                      Progreso: {auditados.length} de {contrasteData.length}
                     </div>
                   )}
                 </div>
 
-                <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                   <select 
                     style={{ padding: '8px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', fontSize: '12px' }}
                     value={filtroAuditoria} 
                     onChange={(e) => setFiltroAuditoria(e.target.value)}
                   >
-                    <option value="todos">📋 Mostrar Todos</option>
-                    <option value="pendientes">⏳ Solo Pendientes</option>
-                    <option value="auditados">✅ Ya Auditados</option>
+                    <option value="todos">📋 Todos</option>
+                    <option value="pendientes">⏳ Pendientes</option>
                   </select>
                   <input type="date" style={{ padding: '8px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', fontSize: '12px' }} value={filtroFechas.inicio} onChange={(e) => setFiltroFechas({...filtroFechas, inicio: e.target.value})} />
                   <input type="date" style={{ padding: '8px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', fontSize: '12px' }} value={filtroFechas.fin} onChange={(e) => setFiltroFechas({...filtroFechas, fin: e.target.value})} />
-                  <button className={s.btnLogout} style={{ backgroundColor: 'var(--color-text-main)', color: 'white', border: 'none' }} onClick={() => generarContraste(filtroFechas.inicio, filtroFechas.fin)} disabled={loading}>
-                    {loading ? 'CALCULANDO...' : 'GENERAR BALANCE'}
+                  <button className={s.btnLogout} style={{ backgroundColor: 'var(--color-text-main)', color: 'white', border: 'none', padding: '8px 15px' }} onClick={() => generarContraste(filtroFechas.inicio, filtroFechas.fin)} disabled={loading}>
+                    {loading ? '...' : 'BALANCE'}
                   </button>
                 </div>
               </div>
 
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '850px' }}>
                 <thead style={{ backgroundColor: 'var(--color-bg-muted)', borderBottom: '1px solid var(--color-border)' }}>
                   <tr>
                     <th style={{ padding: '15px', fontSize: '12px' }}>INSUMO</th>
                     <th style={{ padding: '15px', fontSize: '12px' }}>ESPERADO</th>
                     <th style={{ padding: '15px', fontSize: '12px' }}>VENTAS (-)</th>
-                    <th style={{ padding: '15px', fontSize: '12px', backgroundColor: '#fff7ed' }}>FÍSICO (BÁSCULA)</th>
+                    <th style={{ padding: '15px', fontSize: '12px', backgroundColor: '#fff7ed' }}>FÍSICO</th>
                     <th style={{ padding: '15px', fontSize: '12px' }}>DIFERENCIA</th>
                     <th style={{ padding: '15px', fontSize: '12px', textAlign: 'right' }}>ACCIÓN</th>
                   </tr>
@@ -299,11 +285,11 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                         <td style={{ padding: '15px', textAlign: 'right' }}>
                           <button 
                             className={s.btnLogout} 
-                            style={{ backgroundColor: yaAuditado ? 'var(--color-success)' : 'var(--color-primary)', color: 'white', border: 'none', fontSize: '11px' }}
+                            style={{ backgroundColor: yaAuditado ? 'var(--color-success)' : 'var(--color-primary)', color: 'white', border: 'none', fontSize: '11px', padding: '8px 12px' }}
                             onClick={() => handleGuardarConteo(row)}
                             disabled={loading || !tieneConteo}
                           >
-                            {yaAuditado ? '✅ AUDITADO' : 'GUARDAR'}
+                            {yaAuditado ? '✅ OK' : 'GUARDAR'}
                           </button>
                         </td>
                       </tr>
@@ -316,11 +302,11 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
 
           {/* VISTA: HISTORIAL MOVIMIENTOS */}
           {activeSubTab === 'movimientos' && (
-            <div className={s.adminCard} style={{ padding: '0', overflow: 'hidden' }}>
+            <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto' }}>
               <div style={{ padding: '20px', borderBottom: '1px solid var(--color-border)' }}>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: '800', margin: 0 }}>Historial de Movimientos</h3>
               </div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '700px' }}>
                 <thead style={{ backgroundColor: 'var(--color-bg-muted)', borderBottom: '1px solid var(--color-border)' }}>
                   <tr>
                     <th style={{ padding: '15px', fontSize: '12px' }}>FECHA</th>
@@ -351,3 +337,108 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
 };
 
 export default InventariosTab;
+
+
+/**
+ * SUB-COMPONENTE: SearchableSelect 
+ */
+const SearchableSelect = ({ 
+  options, 
+  value, 
+  onChange, 
+  disabled, 
+  placeholder = "Buscar...",
+  valueKey = "id", 
+  labelKey = "nombre",
+  formatLabel
+}) => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    const selected = options.find((opt) => String(opt[valueKey]) === String(value));
+    if (selected) {
+      setSearchTerm(selected[labelKey]);
+    } else {
+      setSearchTerm("");
+    }
+  }, [value, options, valueKey, labelKey]);
+
+  const filteredOptions = options.filter(opt =>
+    String(opt[labelKey]).toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <input
+        type="text"
+        value={searchTerm}
+        disabled={disabled}
+        placeholder={placeholder}
+        style={{
+          width: "100%",
+          padding: "10px",
+          borderRadius: "var(--radius-ui)",
+          border: "1px solid var(--color-border)",
+          fontSize: "14px",
+          boxSizing: "border-box",
+          backgroundColor: disabled ? "var(--color-bg-app)" : "white"
+        }}
+        onChange={(e) => {
+          setSearchTerm(e.target.value);
+          setIsOpen(true);
+          if (value) onChange(""); 
+        }}
+        onFocus={() => setIsOpen(true)}
+        onBlur={() => {
+          setTimeout(() => {
+            setIsOpen(false);
+            const selected = options.find((opt) => String(opt[valueKey]) === String(value));
+            if (selected) setSearchTerm(selected[labelKey]);
+            else setSearchTerm("");
+          }, 200);
+        }}
+      />
+      
+      {isOpen && !disabled && (
+        <ul style={{
+          position: 'absolute',
+          top: '100%',
+          left: 0,
+          right: 0,
+          maxHeight: '200px',
+          overflowY: 'auto',
+          background: 'white',
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--radius-ui)',
+          zIndex: 1000,
+          margin: '4px 0 0 0',
+          padding: 0,
+          listStyle: 'none',
+          boxShadow: 'var(--shadow-ui)'
+        }}>
+          {filteredOptions.length > 0 ? filteredOptions.map((opt, index) => (
+            <li
+              key={index}
+              style={{ padding: '10px 15px', cursor: 'pointer', borderBottom: '1px solid var(--color-bg-muted)', fontSize: '13px' }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onChange(opt[valueKey]);
+                setSearchTerm(opt[labelKey]);
+                setIsOpen(false);
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--color-bg-app)'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+            >
+              {formatLabel ? formatLabel(opt) : opt[labelKey]}
+            </li>
+          )) : (
+            <li style={{ padding: '10px 15px', color: 'var(--color-text-muted)', fontSize: '13px' }}>
+              No se encontraron coincidencias...
+            </li>
+          )}
+        </ul>
+      )}
+    </div>
+  );
+};
