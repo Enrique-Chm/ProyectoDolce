@@ -1,16 +1,13 @@
+// Archivo: src/App.jsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useSessionGuard } from './hooks/useSessionGuard'; // Importamos el guardia
 
 // Importamos la página de Admin
 import AdminPage from './modules/Admin/AdminPage';
 
 function App() {
-  /**
-   * ACTIVAMOS EL GUARDIA DE SESIÓN ÚNICA
-   * Este hook vigila en tiempo real si el session_id del usuario cambia en la DB.
-   */
-  useSessionGuard();
+  // 🛑 ELIMINAMOS useSessionGuard() DE AQUÍ 
+  // Ahora el guardia solo vivirá dentro de AdminPage.jsx o donde realmente haya una sesión activa.
 
   return (
     <Router>

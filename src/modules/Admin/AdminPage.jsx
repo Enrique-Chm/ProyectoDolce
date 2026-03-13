@@ -1,9 +1,11 @@
+// Archivo: src/modules/Admin/AdminPage.jsx
 import React, { useState, useEffect } from "react";
 import s from "./AdminPage.module.css";
 import { authService } from "../../services/Auth.service";
 import { sucursalesService } from "../../services/Sucursales.service";
 import { useSessionGuard } from "../../hooks/useSessionGuard";
 
+// Componentes de las pestañas
 import { Login } from "./Login";
 import { ConfigTab } from "./components/ConfigTab"; 
 import { ProveedoresTab } from "./components/ProveedoresTab";
@@ -18,7 +20,10 @@ import InventariosTab from "./components/InventariosTab";
 import EstimacionesTab from "./components/EstimacionesTab"; 
 
 const AdminPage = () => {
-  // Vigilancia de sesión activa
+  /**
+   * 🛡️ VIGILANCIA DE SESIÓN ACTIVA
+   * Escucha cambios en tiempo real en la base de datos para evitar doble inicio de sesión.
+   */
   useSessionGuard();
 
   const [userSession, setUserSession] = useState(authService.getCurrentSession());
@@ -29,7 +34,9 @@ const AdminPage = () => {
   const isAdmin = userSession?.user?.roles?.nombre_rol === 'Administrador';
 
   useEffect(() => {
-    if (userSession) { cargarSucursales(); }
+    if (userSession) { 
+      cargarSucursales(); 
+    }
   }, [userSession]);
 
   const cargarSucursales = async () => {
@@ -54,6 +61,8 @@ const AdminPage = () => {
   const visibleTabs = getTabsConfig().filter(tab => {
     if (!userSession) return false;
     if (isAdmin) return true;
+    
+    // Lógica especial para pestañas de configuración
     if (tab.id === 'config' || tab.id === 'impresoras') {
       return userSession.permisos.includes('ver_unidades') || 
              userSession.permisos.includes('ver_categorias') || 
@@ -67,6 +76,7 @@ const AdminPage = () => {
     setUserSession(null);
   };
 
+  // Si no hay sesión, mostramos el componente de Login
   if (!userSession) {
     return <Login onLoginSuccess={(session) => setUserSession(session)} />;
   }
@@ -81,9 +91,15 @@ const AdminPage = () => {
             {isAdmin && (
               <div className={s.branchSelectorContainer}>
                 <label className={s.branchLabel}>Gestionando Sucursal:</label>
-                <select className={s.branchSelect} value={filterSucursal} onChange={(e) => setFilterSucursal(parseInt(e.target.value))}>
+                <select 
+                  className={s.branchSelect} 
+                  value={filterSucursal} 
+                  onChange={(e) => setFilterSucursal(parseInt(e.target.value))}
+                >
                   {listaSucursales.map(suc => (
-                    <option key={suc.id} value={suc.id}>{suc.es_matriz ? '📍' : '🏢'} {suc.nombre}</option>
+                    <option key={suc.id} value={suc.id}>
+                      {suc.es_matriz ? '📍' : '🏢'} {suc.nombre}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -101,7 +117,11 @@ const AdminPage = () => {
         
         <nav className={s.tabNav}>
           {visibleTabs.map((tab) => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`${s.navBtn} ${activeTab === tab.id ? s.navBtnActive : ''}`}>
+            <button 
+              key={tab.id} 
+              onClick={() => setActiveTab(tab.id)} 
+              className={`${s.navBtn} ${activeTab === tab.id ? s.navBtnActive : ''}`}
+            >
               {tab.label.toUpperCase()}
             </button>
           ))}

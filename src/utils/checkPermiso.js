@@ -1,8 +1,7 @@
-import { authService } from '../services/Auth.service';
+// Archivo: src/utils/checkPermiso.js
 
 /**
- * MATRIZ DE MÓDULOS ACTUALIZADA
- * Basada en tu barra de navegación y archivos .jsx
+ * MATRIZ DE MÓDULOS (Referencia visual para el desarrollador)
  */
 export const MATRIZ_MODULOS = [
   { label: 'Mesero (Ventas)',   slug: 'mesero',      acciones: ['ver'] },
@@ -20,8 +19,28 @@ export const MATRIZ_MODULOS = [
 ];
 
 export const hasPermission = (clave) => {
-  const session = authService.getCurrentSession();
-  if (!session || !session.user) return false;
-  if (session.user.roles?.nombre_rol === 'Administrador') return true;
-  return session.permisos?.includes(clave) || false;
+  // Leemos directamente de localStorage para evitar dependencias circulares con Auth.service
+  const sessionStr = localStorage.getItem('cloudkitchen_session');
+  if (!sessionStr) return false;
+
+  try {
+    const session = JSON.parse(sessionStr);
+    
+    if (!session || !session.user) return false;
+
+    // 1. Verificación de Administrador (ignora mayúsculas/minúsculas)
+    const nombreRol = session.user.roles?.nombre_rol?.toLowerCase();
+    if (nombreRol === 'administrador') return true;
+
+    // 2. Verificación de Permiso Específico
+    const tienePermiso = session.permisos?.includes(clave) || false;
+
+    // DEBUG: Descomenta la siguiente línea si quieres ver por qué falla un permiso en consola
+    // console.log(`🔐 [Permisos] Buscando: ${clave} | Resultado: ${tienePermiso} | Mis permisos:`, session.permisos);
+
+    return tienePermiso;
+  } catch (error) {
+    console.error("Error al parsear la sesión en hasPermission:", error);
+    return false;
+  }
 };

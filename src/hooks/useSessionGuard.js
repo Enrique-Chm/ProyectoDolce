@@ -1,13 +1,13 @@
+// Archivo: src/hooks/useSessionGuard.js
 import { useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { authService } from '../services/Auth.service';
 
 export const useSessionGuard = () => {
-  // Obtenemos la sesión actual para usarla como disparador
-  const session = authService.getCurrentSession();
-
   useEffect(() => {
-    // 1. Verificación: Si no hay datos, esperamos (antes aquí moría el proceso)
+    // Obtenemos la sesión fresca al momento de montar el componente
+    const session = authService.getCurrentSession();
+
     if (!session || !session.user?.id || !session.sessionId) {
       return; 
     }
@@ -15,9 +15,8 @@ export const useSessionGuard = () => {
     const userId = session.user.id;
     const localId = session.sessionId;
 
-    console.log(`🛡️ [SessionGuard] ¡Guardia activado! Vigilando usuario #${userId}`);
+    console.log(`🛡️ [SessionGuard] ¡Guardia activado! Vigilando usuario #${userId}. Mi ID local es:`, localId);
 
-    // 2. Suscripción al canal de Supabase
     const channel = supabase
       .channel(`active_session_check_${userId}`)
       .on(
@@ -31,23 +30,27 @@ export const useSessionGuard = () => {
         (payload) => {
           const remoteId = payload.new.session_id;
           
-          console.log("🔔 [Realtime] Cambio detectado. DB dice:", remoteId);
+          console.log("🔔 [Realtime] Cambio en DB detectado. ID en DB:", remoteId);
 
+          // Si el ID de la base de datos es diferente a mi ID local, alguien más entró
           if (remoteId && remoteId !== localId) {
-            console.error("🚨 [CONFLICTO] ID diferente detectado. Expulsando...");
+            console.error("🚨 [CONFLICTO] ID diferente detectado. Expulsando sesión local...");
             alert("⚠️ SESIÓN DUPLICADA: Se ha iniciado sesión en otro dispositivo con esta cuenta.");
             authService.logout();
           }
         }
       )
       .subscribe((status) => {
-        console.log("📡 [Realtime] Estado:", status);
+        if (status === 'SUBSCRIBED') {
+          console.log("📡 [Realtime] Conectado y escuchando cambios en la DB.");
+        }
       });
 
+    // Función de limpieza cuando el componente se desmonta
     return () => {
+      console.log("🛑 [SessionGuard] Apagando guardia...");
       supabase.removeChannel(channel);
     };
     
-    // 3. LA CLAVE: El guardia se reinicia cada vez que la sesión cambia
-  }, [session?.sessionId]); 
+  }, []); // El array vacío asegura que se ejecute solo al cargar el componente
 };

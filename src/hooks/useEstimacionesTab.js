@@ -1,93 +1,58 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { estimacionesService } from '../services/Estimaciones.service';
 
-export const useEstimaciones = () => {
+export const useEstimacionesTab = () => {
   const [sugerencias, setSugerencias] = useState([]);
   const [proveedores, setProveedores] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  // --- FILTROS ---
-  const [filtroProveedor, setFiltroProveedor] = useState('todos'); 
-  
-  // --- ESTADO DE COMPRADOS (Persistente durante la sesión) ---
+  const [filtroProveedor, setFiltroProveedor] = useState('todos');
   const [compradosIds, setCompradosIds] = useState([]);
 
   const cargarDatos = useCallback(async () => {
     setLoading(true);
-    setError(null);
-    try {
-      const [resSugerencias, resProveedores] = await Promise.all([
-        estimacionesService.getSugerenciasCompra(),
-        estimacionesService.getProveedoresActivos()
-      ]);
-
-      if (!resSugerencias.success) throw new Error(resSugerencias.error);
-      if (!resProveedores.success) throw new Error(resProveedores.error);
-
-      setSugerencias(resSugerencias.data || []);
-      setProveedores(resProveedores.data || []);
-    } catch (err) {
-      console.error("Error al cargar estimaciones:", err);
-      setError("No se pudieron cargar las estimaciones.");
-    } finally {
-      setLoading(false);
-    }
+    const [resS, resP] = await Promise.all([
+      estimacionesService.getSugerenciasCompra(),
+      estimacionesService.getProveedoresActivos()
+    ]);
+    if (resS.success) setSugerencias(resS.data || []);
+    if (resP.success) setProveedores(resP.data || []);
+    setLoading(false);
   }, []);
 
-  // --- LÓGICA DE FILTRADO Y PROYECCIÓN ---
   const sugerenciasFiltradas = useMemo(() => {
-    return sugerencias.filter(item => {
-      const cumpleProveedor = filtroProveedor === 'todos' || item.proveedor_nombre === filtroProveedor;
-      return cumpleProveedor;
-    });
+    return sugerencias.filter(item => 
+      filtroProveedor === 'todos' || item.proveedor_nombre === filtroProveedor
+    );
   }, [sugerencias, filtroProveedor]);
 
-  // --- CÁLCULO DE PRESUPUESTO ---
-  // Sumamos solo lo que NO ha sido marcado como comprado aún
   const presupuestoTotal = useMemo(() => {
     return sugerenciasFiltradas
       .filter(item => !compradosIds.includes(item.insumo_id))
       .reduce((total, item) => total + (parseFloat(item.presupuesto_estimado) || 0), 0);
   }, [sugerenciasFiltradas, compradosIds]);
 
-  const guardarPolitica = async (insumoId, diasCobertura, diasSeguridad) => {
-    try {
-      const res = await estimacionesService.actualizarPoliticaCompra(insumoId, diasCobertura, diasSeguridad);
-      if (!res.success) throw new Error(res.error);
-      await cargarDatos(); // Recargamos para ver el nuevo cálculo
-      return { success: true };
-    } catch (err) {
-      return { success: false, error: err.message };
+  const guardarPolitica = async (id, cob, seg) => {
+    const res = await estimacionesService.actualizarPoliticaCompra(id, cob, seg);
+    if (res.success) await cargarDatos();
+    return res;
+  };
+
+  const confirmarCompra = async (insumo, usuarioId, sucursalId) => {
+    const res = await estimacionesService.registrarCompraRealizada(
+      insumo.insumo_id, insumo.cajas_a_pedir, insumo.presupuesto_estimado, usuarioId, sucursalId
+    );
+    if (res.success) {
+      setCompradosIds(prev => [...prev, insumo.insumo_id]);
+      await cargarDatos();
     }
+    return res;
   };
 
-  // --- FUNCIONES PARA LA LISTA DE MANDADO ---
-  const marcarComoComprado = (id) => {
-    setCompradosIds(prev => [...prev, id]);
-  };
-
-  const resetearListaDeCompras = () => {
-    setCompradosIds([]);
-  };
-
-  useEffect(() => {
-    cargarDatos();
-  }, [cargarDatos]);
+  useEffect(() => { cargarDatos(); }, [cargarDatos]);
 
   return {
-    sugerencias,
-    sugerenciasFiltradas,
-    proveedores,
-    filtroProveedor, 
-    setFiltroProveedor,
-    compradosIds,
-    marcarComoComprado,
-    resetearListaDeCompras,
-    presupuestoTotal,
-    loading,
-    error,
-    guardarPolitica,
-    recargarDatos: cargarDatos
+    sugerenciasFiltradas, proveedores, filtroProveedor, setFiltroProveedor,
+    presupuestoTotal, loading, recargarDatos: cargarDatos, guardarPolitica,
+    compradosIds, confirmarCompra
   };
 };
