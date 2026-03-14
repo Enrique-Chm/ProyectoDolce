@@ -1,152 +1,161 @@
-// Archivo: src/modules/Admin/services/Caja.service.js
 import { supabase } from '../lib/supabaseClient';
-import { generarHTMLTicket } from '../utils/impresion.util';
-import { impresorasService } from './Impresoras.service';
 
 export const cajaService = {
-  // ==========================================
-  // 1. GESTIÓN DE TURNOS (APERTURA/CIERRE)
-  // ==========================================
-
-  async getTurnoActivo(sucursalId) {
+  /**
+   * Verifica si existe una sesión abierta para la sucursal.
+   */
+  async getSesionActiva(sucursalId) {
     const { data, error } = await supabase
-      .from('turnos')
+      .from('caja_sesiones')
       .select('*')
       .eq('sucursal_id', sucursalId)
-      .eq('estado', 'abierto')
+      .eq('estado', 'abierta')
       .maybeSingle();
     return { data, error };
   },
 
-  async abrirTurno(sucursalId, usuarioId, montoApertura) {
+  /**
+   * Crea un nuevo registro en caja_sesiones.
+   */
+  async abrirCaja(sucursalId, montoApertura, usuarioId) {
     const { data, error } = await supabase
-      .from('turnos')
+      .from('caja_sesiones')
       .insert([{
         sucursal_id: sucursalId,
-        usuario_id: usuarioId,
-        monto_apertura: parseFloat(montoApertura) || 0,
-        estado: 'abierto'
+        monto_apertura: parseFloat(montoApertura),
+        usuario_id: usuarioId, // UUID del cajero
+        estado: 'abierta',
+        fecha_apertura: new Date().toISOString()
       }])
       .select()
       .single();
     return { data, error };
   },
 
-  async cerrarTurno(turnoId, datosCierre) {
-    const { data, error } = await supabase
-      .from('turnos')
-      .update({
-        fecha_cierre: new Date().toISOString(),
-        monto_cierre_esperado: datosCierre.esperado,
-        monto_cierre_real: datosCierre.real,
-        diferencia: datosCierre.real - datosCierre.esperado,
-        estado: 'cerrado'
-      })
-      .eq('id', turnoId);
-    return { data, error };
-  },
-
   /**
-   * Obtiene el historial de turnos. 
-   * NOTA: Usamos !usuario_id para resolver el error PGRST201 de Supabase
+   * Registra entradas o salidas manuales en la tabla caja_movimientos.
    */
-  async getHistorialTurnos(sucursalId, limite = 30) {
-    const { data, error } = await supabase
-      .from('turnos')
-      .select(`
-        *,
-        usuarios_internos!usuario_id (
-          nombre
-        )
-      `)
-      .eq('sucursal_id', sucursalId)
-      .eq('estado', 'cerrado')
-      .order('fecha_cierre', { ascending: false })
-      .limit(limite);
-    
-    if (error) console.error("Error en getHistorialTurnos:", error.message);
-    return { data, error };
-  },
-
-  // ==========================================
-  // 2. MOVIMIENTOS DE CAJA (ENTRADAS/SALIDAS)
-  // ==========================================
-
-  async registrarMovimiento(turnoId, usuarioId, tipo, monto, motivo) {
+  async registrarMovimiento(idSesion, tipo, monto, descripcion) {
     const { data, error } = await supabase
       .from('caja_movimientos')
       .insert([{
-        turno_id: turnoId,
-        usuario_id: usuarioId,
-        tipo, // 'entrada' o 'salida'
+        id_sesion: idSesion,
+        tipo, // 'ingreso' o 'egreso'
         monto: parseFloat(monto),
-        motivo
-      }]);
-    return { data, error };
-  },
-
-  // ==========================================
-  // 3. CONFIGURACIÓN VISUAL DEL TICKET
-  // ==========================================
-
-  async getConfigTicket(sucursalId) {
-    const { data, error } = await supabase
-      .from('config_tickets')
-      .select('*')
-      .eq('sucursal_id', sucursalId)
-      .maybeSingle();
-    return { data, error };
-  },
-
-  async guardarConfigTicket(config) {
-    const { data, error } = await supabase
-      .from('config_tickets')
-      .upsert([config])
+        descripcion,
+        fecha: new Date().toISOString()
+      }])
       .select();
     return { data, error };
   },
 
-  // ==========================================
-  // 4. LÓGICA DE IMPRESIÓN
-  // ==========================================
+  /**
+   * Recupera los movimientos manuales del turno actual.
+   */
+  async getMovimientos(idSesion) {
+    const { data, error } = await supabase
+      .from('caja_movimientos')
+      .select('*')
+      .eq('id_sesion', idSesion)
+      .order('fecha', { ascending: false });
+    return { data, error };
+  },
 
-  async imprimirTicketVenta(venta, sucursalId) {
+  /**
+   * LÓGICA DE ARQUEO: Suma ventas y movimientos vinculados al id_sesion_caja.
+   */
+  async obtenerEstadoArqueo(idSesion) {
     try {
-      const { data: imps } = await impresorasService.getAll(sucursalId);
-      const configHardware = imps?.find(i => i.origen === 'caja') || { formato: '80mm' };
-      const { data: configVisual } = await this.getConfigTicket(sucursalId);
+      // 1. Obtener monto inicial
+      const { data: sesion } = await supabase
+        .from('caja_sesiones')
+        .select('monto_apertura')
+        .eq('id', idSesion)
+        .single();
 
-      const html = generarHTMLTicket(
-        venta, 
-        configHardware.formato, 
-        'caja', 
-        configVisual || {}
-      );
+      // 2. Obtener todas las ventas pagadas de esta sesión específica
+      const { data: ventas } = await supabase
+        .from('ventas')
+        .select('total, metodo_pago, propina')
+        .eq('id_sesion_caja', idSesion)
+        .eq('estado', 'pagado');
 
-      this._dispararVentanaImpresion(html);
+      // 3. Obtener movimientos manuales (gastos/refuerzos)
+      const { data: movimientos } = await supabase
+        .from('caja_movimientos')
+        .select('tipo, monto')
+        .eq('id_sesion', idSesion);
+
+      const apertura = parseFloat(sesion?.monto_apertura || 0);
+
+      // Procesar totales de ventas por método de pago
+      const totalesVentas = ventas?.reduce((acc, v) => {
+        const totalVenta = parseFloat(v.total) || 0;
+        const propina = parseFloat(v.propina) || 0;
+        const neto = totalVenta - propina;
+
+        if (v.metodo_pago === 'efectivo') acc.efectivo += neto;
+        if (v.metodo_pago === 'tarjeta') acc.tarjeta += neto;
+        return acc;
+      }, { efectivo: 0, tarjeta: 0 }) || { efectivo: 0, tarjeta: 0 };
+
+      // Procesar totales de movimientos manuales
+      const movs = movimientos?.reduce((acc, m) => {
+        if (m.tipo === 'ingreso') acc.ingresos += parseFloat(m.monto);
+        if (m.tipo === 'egreso') acc.egresos += parseFloat(m.monto);
+        return acc;
+      }, { ingresos: 0, egresos: 0 }) || { ingresos: 0, egresos: 0 };
+
+      // Cálculo final de lo que debe haber físicamente en efectivo
+      const montoEsperado = apertura + totalesVentas.efectivo + movs.ingresos - movs.egresos;
+
+      return {
+        data: {
+          apertura,
+          ventasEfectivo: totalesVentas.efectivo,
+          ventasTarjeta: totalesVentas.tarjeta,
+          entradasManuales: movs.ingresos,
+          salidasManuales: movs.egresos,
+          montoEsperado
+        },
+        error: null
+      };
     } catch (error) {
-      console.error("Error en flujo de impresión:", error);
+      return { data: null, error: error.message };
     }
   },
 
-  async imprimirComanda(orden, sucursalId, destino = 'cocina') {
-    const { data: imps } = await impresorasService.getAll(sucursalId);
-    const configHardware = imps?.find(i => i.origen === destino) || { formato: '80mm' };
+  /**
+   * CIERRE DEFINITIVO: Actualiza caja_sesiones con los totales finales y la diferencia.
+   */
+  async cerrarCaja(idSesion, montoCierre, notas = '') {
+    try {
+      const { data: arqueo } = await this.obtenerEstadoArqueo(idSesion);
+      const diferencia = parseFloat(montoCierre) - arqueo.montoEsperado;
 
-    const html = generarHTMLTicket(orden, configHardware.formato, 'cocina');
-    this._dispararVentanaImpresion(html);
-  },
+      const { data, error } = await supabase
+        .from('caja_sesiones')
+        .update({
+          monto_cierre: parseFloat(montoCierre),
+          diferencia: diferencia,
+          notas: notas,
+          estado: 'cerrada',
+          fecha_cierre: new Date().toISOString(),
+          // Columnas de resumen de tu tabla caja_sesiones
+          total_ventas_efectivo: arqueo.ventasEfectivo,
+          total_ventas_tarjeta: arqueo.ventasTarjeta,
+          total_ingresos: arqueo.entradasManuales,
+          total_egresos: arqueo.salidasManuales
+        })
+        .eq('id', idSesion)
+        .select()
+        .single();
 
-  _dispararVentanaImpresion(html) {
-    const win = window.open('', '_blank');
-    if (win) {
-      win.document.write(html);
-      win.document.close();
-      
-      setTimeout(() => {
-        win.print();
-        win.close();
-      }, 500);
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error("Error al cerrar caja:", error.message);
+      return { success: false, error: error.message };
     }
   }
 };

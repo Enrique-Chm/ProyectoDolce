@@ -1,168 +1,170 @@
-// Archivo: src/modules/Admin/hooks/useCajeroTab.js
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { ventasService } from '../services/Ventas.service';
+import { useState, useEffect, useCallback } from 'react';
 import { cajaService } from '../services/Caja.service';
+import { ventasService } from '../services/Ventas.service';
+import { supabase } from '../lib/supabaseClient';
 
-export const useCajeroTab = (sucursalId, usuarioId) => {
-  const [cuentasPorCobrar, setCuentasPorCobrar] = useState([]);
-  const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
-  const [loading, setLoading] = useState(false);
-  
-  // --- ESTADOS DE TURNO ---
-  const [turnoActivo, setTurnoActivo] = useState(null);
-  const [cargandoTurno, setCargandoTurno] = useState(true);
+export const useCaja = (sucursalId) => {
+  const [sesion, setSesion] = useState(null);
+  const [cuentasPendientes, setCuentasPendientes] = useState([]);
+  const [historialVentas, setHistorialVentas] = useState([]);
+  const [movimientos, setMovimientos] = useState([]);
+  const [resumen, setResumen] = useState({
+    efectivo: 0,
+    tarjeta: 0,
+    totalPropinas: 0,
+    montoEsperado: 0,
+    detalleArqueo: null
+  });
+  const [loading, setLoading] = useState(true);
 
-  // --- ESTADO PARA EL HISTORIAL DE CORTES ---
-  const [historialTurnos, setHistorialTurnos] = useState([]);
-
-  // Estados del Formulario de Cobro
-  const [metodoPago, setMetodoPago] = useState('efectivo');
-  const [pagadoCon, setPagadoCon] = useState(0);
-
-  // --- 1. CARGA DE TURNO (Prioridad #1) ---
-  const verificarTurno = useCallback(async () => {
-    setCargandoTurno(true);
-    try {
-      const { data, error } = await cajaService.getTurnoActivo(sucursalId);
-      if (error) throw error;
-      setTurnoActivo(data);
-    } catch (err) {
-      console.error("Error al verificar turno:", err);
-    } finally {
-      setCargandoTurno(false);
-    }
-  }, [sucursalId]);
-
-  // --- 2. CARGAR HISTORIAL DE CIERRES ---
-  const cargarHistorialTurnos = useCallback(async () => {
-    try {
-      const { data, error } = await cajaService.getHistorialTurnos(sucursalId);
-      if (error) throw error;
-      setHistorialTurnos(data || []);
-    } catch (err) {
-      console.error("Error cargando historial de turnos:", err);
-    }
-  }, [sucursalId]);
-
-  // --- 3. CARGA DE VENTAS PENDIENTES ---
-  const cargarCuentas = useCallback(async (silencioso = false) => {
-    if (!silencioso) setLoading(true);
-    try {
-      const { data } = await ventasService.getCuentasAbiertas(sucursalId);
-      // Filtramos solo las que están en estado 'por_cobrar'
-      const pendientes = data?.filter(v => v.estado === 'por_cobrar') || [];
-      setCuentasPorCobrar(pendientes);
-    } catch (err) {
-      console.error("Error cargando caja:", err);
-    } finally {
-      if (!silencioso) setLoading(false);
-    }
-  }, [sucursalId]);
-
-  // Efecto inicial: Verificar si hay turno al entrar
-  useEffect(() => {
-    verificarTurno();
-  }, [verificarTurno]);
-
-  // Efecto: Si hay turno, cargar cuentas y refrescar cada 20s
-  useEffect(() => {
-    if (turnoActivo) {
-      cargarCuentas();
-      const intervalo = setInterval(() => cargarCuentas(true), 20000);
-      return () => clearInterval(intervalo);
-    }
-  }, [turnoActivo, cargarCuentas]);
-
-  // --- 4. CÁLCULOS REACTIVOS ---
-  const calculosCobro = useMemo(() => {
-    const totalFinal = parseFloat(ventaSeleccionada?.total) || 0;
-    const montoRecibido = parseFloat(pagadoCon) || 0;
-
-    const diferencia = montoRecibido - totalFinal;
-
-    return {
-      totalFinal,
-      cambio: diferencia > 0 ? diferencia : 0,
-      faltaDinero: diferencia < 0 ? Math.abs(diferencia) : 0
-    };
-  }, [ventaSeleccionada, pagadoCon]);
-
-  // --- 5. ACCIONES DE TURNO Y COBRO ---
-  const abrirTurno = async (montoInicial) => {
+  /**
+   * Carga toda la información financiera y operativa 
+   * vinculada a la sucursal y a la sesión activa.
+   */
+  const cargarDatosCaja = useCallback(async () => {
+    if (!sucursalId) return;
+    
     setLoading(true);
     try {
-      const { data, error } = await cajaService.abrirTurno(sucursalId, usuarioId, montoInicial);
-      if (error) throw error;
-      setTurnoActivo(data);
-      return { success: true };
+      // 1. Obtener la sesión de caja activa para esta sucursal
+      const { data: sesionActiva } = await cajaService.getSesionActiva(sucursalId);
+      setSesion(sesionActiva);
+
+      if (sesionActiva) {
+        // 2. Cargar cuentas pendientes de cobro (por_cobrar o entregado)
+        const { data: pendientes } = await ventasService.getCuentasAbiertas(sucursalId);
+        setCuentasPendientes(pendientes || []);
+
+        // 3. Cargar historial de ventas realizadas en ESTA sesión
+        const { data: historial } = await ventasService.getHistorialCobradas(sucursalId, sesionActiva.id);
+        setHistorialVentas(historial || []);
+
+        // 4. Cargar movimientos manuales (ingresos/egresos)
+        const { data: movs } = await cajaService.getMovimientos(sesionActiva.id);
+        setMovimientos(movs || []);
+
+        // 5. Calcular arqueo y resumen financiero
+        const [resArqueo, resFinanciero] = await Promise.all([
+          cajaService.obtenerEstadoArqueo(sesionActiva.id),
+          ventasService.getResumenCaja(sucursalId, sesionActiva.id)
+        ]);
+
+        setResumen({
+          ...resFinanciero.data,
+          montoEsperado: resArqueo.data?.montoEsperado || 0,
+          detalleArqueo: resArqueo.data
+        });
+      } else {
+        // Si no hay sesión, limpiamos los estados
+        setCuentasPendientes([]);
+        setHistorialVentas([]);
+        setMovimientos([]);
+        setResumen({ efectivo: 0, tarjeta: 0, totalPropinas: 0, montoEsperado: 0, detalleArqueo: null });
+      }
     } catch (error) {
-      alert("Error al abrir turno: " + error.message);
-      return { success: false };
+      console.error("Error al sincronizar datos de caja:", error);
     } finally {
       setLoading(false);
+    }
+  }, [sucursalId]);
+
+  useEffect(() => {
+    cargarDatosCaja();
+  }, [cargarDatosCaja]);
+
+  /**
+   * Inicia un nuevo turno de caja.
+   */
+  const abrirCaja = async (monto) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("No hay usuario autenticado");
+
+      const { data, error } = await cajaService.abrirCaja(sucursalId, monto, user.id);
+      
+      if (error) throw error;
+      
+      setSesion(data);
+      await cargarDatosCaja();
+      return { success: true, data };
+    } catch (error) {
+      return { success: false, error: error.message };
     }
   };
 
-  const ejecutarCobro = async () => {
-    if (!ventaSeleccionada || !turnoActivo) return;
-
-    const { totalFinal, cambio, faltaDinero } = calculosCobro;
-
-    if (metodoPago === 'efectivo' && faltaDinero > 0) {
-      alert(`⚠️ Faltan $${faltaDinero.toFixed(2)}`);
-      return;
-    }
-
-    setLoading(true);
+  /**
+   * Finaliza el turno actual y registra los totales.
+   */
+  const cerrarCaja = async (montoCierre, notas) => {
     try {
-      const res = await ventasService.cerrarCuenta(
-        ventaSeleccionada.id,
-        {
-          metodo_pago: metodoPago,
-          totalFinal: totalFinal,
-          pagado_con: parseFloat(pagadoCon) || 0,
-          cambio: cambio
-        },
-        usuarioId
+      if (!sesion) throw new Error("No hay una sesión activa para cerrar");
+
+      const { success, error } = await cajaService.cerrarCaja(sesion.id, montoCierre, notas);
+      
+      if (success) {
+        setSesion(null);
+        await cargarDatosCaja();
+      }
+      return { success, error };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  };
+
+  /**
+   * Procesa el pago de una cuenta.
+   */
+  const cobrarCuenta = async (ventaId, datosPago) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { success, error } = await ventasService.cerrarCuenta(ventaId, datosPago, user.id);
+      
+      if (success) {
+        await cargarDatosCaja();
+      }
+      return { success, error };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  };
+
+  /**
+   * Registra un egreso (gasto) o ingreso manual.
+   */
+  const registrarMovimientoManual = async (tipo, monto, descripcion) => {
+    try {
+      if (!sesion) throw new Error("Debe haber una sesión abierta");
+
+      const { data, error } = await cajaService.registrarMovimiento(
+        sesion.id, 
+        tipo, 
+        monto, 
+        descripcion
       );
 
-      if (res.success) {
-        setVentaSeleccionada(null);
-        setPagadoCon(0);
-        await cargarCuentas();
-        return { success: true };
-      } else {
-        throw new Error(res.error);
+      if (!error) {
+        await cargarDatosCaja();
       }
+      return { data, error };
     } catch (error) {
-      alert("Error al procesar pago: " + error.message);
-      return { success: false };
-    } finally {
-      setLoading(false);
+      return { error: error.message };
     }
   };
 
   return {
-    // Estado y acciones del Turno
-    turnoActivo, 
-    cargandoTurno,
-    abrirTurno,
-    verificarTurno,
-    historialTurnos, 
-    cargarHistorialTurnos, 
-    // Gestión de ventas/cobros
-    cuentasPorCobrar,
-    ventaSeleccionada, setVentaSeleccionada,
+    sesion,
+    cuentasPendientes,
+    historialVentas,
+    movimientos,
+    resumen,
     loading,
-    metodoPago, setMetodoPago,
-    pagadoCon, setPagadoCon,
-    calculosCobro,
-    abrirCobro: (v) => {
-      setVentaSeleccionada(v);
-      setPagadoCon(0);
-      setMetodoPago('efectivo');
-    },
-    ejecutarCobro,
-    cargarCuentas
+    acciones: {
+      abrirCaja,
+      cerrarCaja,
+      cobrarCuenta,
+      registrarMovimientoManual,
+      refrescar: cargarDatosCaja
+    }
   };
 };
