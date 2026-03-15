@@ -1,4 +1,3 @@
-// Archivo: src/modules/Admin/components/MeseroTab.jsx
 import React, { useState } from 'react';
 import s from './MeseroTab.module.css';
 import { useMeseroTab } from '../../../hooks/useMeseroTab';
@@ -128,7 +127,7 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
             </div>
           </div>
 
-          {/* LADO DERECHO: COMANDA / CARRITO (Flotante o lateral según CSS) */}
+          {/* LADO DERECHO: COMANDA / CARRITO */}
           <aside className={`${s.cartArea} ${isCartExpanded ? s.cartExpanded : ''}`}>
             <div className={s.cartHeader} onClick={() => setIsCartExpanded(!isCartExpanded)}>
               <div className={s.dragHandle}></div>
@@ -147,12 +146,16 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
               {ventaActiva?.ventas_detalle?.length > 0 && (
                 <div style={{ marginBottom: '20px', background: 'var(--color-bg-muted)', padding: '15px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)' }}>
                   <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--color-text-muted)', marginBottom: '10px', textAlign: 'center', textTransform: 'uppercase' }}>Consumo en Mesa</div>
-                  {ventaActiva.ventas_detalle.map((det, idx) => (
-                    <div key={idx} className={s.flexBetween} style={{ fontSize: '13px', marginBottom: '6px', color: 'var(--color-text-muted)' }}>
-                      <span>{det.cantidad}x {det.productosmenu?.nombre}</span>
-                      <span style={{ fontWeight: 700 }}>${det.subtotal}</span>
-                    </div>
-                  ))}
+                  {ventaActiva.ventas_detalle.map((det, idx) => {
+                    // AQUÍ ESTÁ LA SOLUCIÓN AL ERROR: Buscamos el nombre del producto en el menú usando producto_id
+                    const nombreProducto = productos.find(p => p.id === det.producto_id)?.nombre || `Prod. #${det.producto_id}`;
+                    return (
+                      <div key={idx} className={s.flexBetween} style={{ fontSize: '13px', marginBottom: '6px', color: 'var(--color-text-muted)' }}>
+                        <span>{det.cantidad}x {nombreProducto}</span>
+                        <span style={{ fontWeight: 700 }}>${det.subtotal}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 

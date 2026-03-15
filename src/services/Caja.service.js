@@ -6,10 +6,6 @@ export const CajaService = {
      1. CATÁLOGOS (cat_motivos_inventario)
      ========================================== */
 
-  /**
-   * Obtiene los motivos configurados en el catálogo de inventario
-   * para alimentar el select de movimientos de caja.
-   */
   getMotivosInventario: async () => {
     const { data, error } = await supabase
       .from('cat_motivos_inventario')
@@ -18,34 +14,27 @@ export const CajaService = {
     return { data, error };
   },
 
-
   /* ==========================================
      2. GESTIÓN DE SESIONES (cajas_sesiones)
      ========================================== */
 
-  /**
-   * Busca si el usuario tiene una sesión abierta actualmente.
-   */
   getSesionActiva: async (usuarioId) => {
     const { data, error } = await supabase
       .from('cajas_sesiones')
       .select('*')
       .is('fecha_cierre', null)
-      .eq('usuario_id', parseInt(usuarioId)) // Asegura int4 para la comparación
+      .eq('usuario_id', parseInt(usuarioId)) 
       .maybeSingle();
     return { data, error };
   },
 
-  /**
-   * Registra la apertura de una nueva caja.
-   */
   abrirCaja: async (datos) => {
     const { data, error } = await supabase
       .from('cajas_sesiones')
       .insert([{ 
         usuario_id: parseInt(datos.usuario_id),
         monto_apertura: parseFloat(datos.monto_apertura),
-        estado: 'abierta',
+        estado: 'abierto',
         fecha_apertura: new Date().toISOString() 
       }])
       .select()
@@ -53,10 +42,6 @@ export const CajaService = {
     return { data, error };
   },
 
-  /**
-   * Finaliza la sesión de caja con los datos del arqueo.
-   * Actualizado según las columnas reales de la DB: monto_cierre_real, monto_cierre_esperado
-   */
   cerrarCaja: async (sesionId, datosCierre) => {
     const { data, error } = await supabase
       .from('cajas_sesiones')
@@ -72,21 +57,17 @@ export const CajaService = {
     return { data, error };
   },
 
-
   /* ==========================================
      3. MOVIMIENTOS DE CAJA (caja_movimientos)
      ========================================== */
 
-  /**
-   * Registra un ingreso o egreso vinculado a un turno.
-   */
   registrarMovimiento: async (movimiento) => {
     const { data, error } = await supabase
       .from('caja_movimientos')
       .insert([{
         turno_id: movimiento.turno_id,
         usuario_id: parseInt(movimiento.usuario_id),
-        tipo: movimiento.tipo, // 'ingreso' o 'egreso' validado por el catálogo
+        tipo: movimiento.tipo, 
         monto: parseFloat(movimiento.monto),
         motivo: movimiento.motivo 
       }])
@@ -94,9 +75,6 @@ export const CajaService = {
     return { data, error };
   },
 
-  /**
-   * Lista todos los movimientos de la sesión actual.
-   */
   getMovimientosSesion: async (turnoId) => {
     const { data, error } = await supabase
       .from('caja_movimientos')
@@ -106,19 +84,15 @@ export const CajaService = {
     return { data, error };
   },
 
-
   /* ==========================================
      4. CÁLCULOS DE ARQUEO Y VENTAS
      ========================================== */
 
-  /**
-   * Suma todas las ventas pagadas en efectivo para el cálculo del balance.
-   */
   getTotalesEfectivoSesion: async (turnoId) => {
     const { data, error } = await supabase
       .from('ventas')
       .select('total')
-      .eq('turno_id', turnoId)
+      // .eq('turno_id', turnoId) <--- ATENCIÓN: Lo comenté porque borraste la columna en tu BD
       .eq('metodo_pago', 'efectivo')
       .eq('estado', 'pagado');
     
@@ -126,9 +100,6 @@ export const CajaService = {
     return { totalVentas, error };
   },
 
-  /**
-   * Obtiene las últimas sesiones para la pestaña de Historial.
-   */
   getHistorialSesiones: async (limit = 20) => {
     const { data, error } = await supabase
       .from('cajas_sesiones')
@@ -136,6 +107,41 @@ export const CajaService = {
       .not('fecha_cierre', 'is', null)
       .order('fecha_apertura', { ascending: false })
       .limit(limit);
+    return { data, error };
+  },
+
+  /* ==========================================
+     5. COBROS Y GESTIÓN DE CUENTAS 
+     ========================================== */
+
+  getVentasPendientes: async () => {
+    const { data, error } = await supabase
+      .from('ventas')
+      .select('*')
+      .in('estado', ['pendiente', 'por_cobrar'])
+      .order('created_at', { ascending: false });
+    return { data, error };
+  },
+
+  finalizarVenta: async (idVenta, datos) => {
+    const { data, error } = await supabase
+      .from('ventas')
+      .update({
+        estado: datos.estado || 'pagado',
+        metodo_pago: datos.metodo_pago,
+        // SE ELIMINÓ cajero_id y turno_id PORQUE LOS BORRASTE DE TU BASE DE DATOS
+        hora_cierre: new Date().toISOString()
+      })
+      .eq('id', idVenta)
+      .select();
+    return { data, error };
+  },
+
+  getDetalleVenta: async (idVenta) => {
+    const { data, error } = await supabase
+      .from('ventas_detalle')
+      .select('*')
+      .eq('venta_id', idVenta);
     return { data, error };
   }
 };

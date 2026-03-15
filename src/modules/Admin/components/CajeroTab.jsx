@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useCajeroTab } from '../../../hooks/useCajeroTab';
-import { VentasService } from '../../../services/Ventas.service';
+import { CajaService } from '../../../services/Caja.service'; 
 import stylesAdmin from '../AdminPage.module.css';
 import stylesPOS from './MeseroTab.module.css';
 import { formatCurrency } from '../../../utils/formatCurrency';
@@ -18,7 +18,7 @@ const CajeroTab = ({ usuarioId }) => {
     const [montoArqueo, setMontoArqueo] = useState('');
     const [montoApertura, setMontoApertura] = useState('');
 
-    // 2. Hook de Lógica (Actualizado con tiposDisponibles)
+    // 2. Hook de Lógica
     const { 
         sesionActiva, 
         loading, 
@@ -34,7 +34,7 @@ const CajeroTab = ({ usuarioId }) => {
     // 3. Carga de Cuentas Pendientes (Meseros)
     const cargarCuentas = async () => {
         try {
-            const { data } = await VentasService.getVentasPendientes();
+            const { data } = await CajaService.getVentasPendientes();
             setCuentasPendientes(data || []);
         } catch (error) {
             console.error("Error al obtener cuentas:", error);
@@ -49,34 +49,102 @@ const CajeroTab = ({ usuarioId }) => {
         }
     }, [sesionActiva]);
 
-    // 4. Lógica de Cobro Directo
+    // 4. Lógica de Cobro Directo con Modal Dinámico
     const manejarCobro = async (venta) => {
-        const { value: metodo } = await Swal.fire({
+        const totalVenta = venta.total || 0;
+
+        const { value: resultado, isConfirmed } = await Swal.fire({
             title: `Cobrar Mesa ${venta.mesa || 'S/N'}`,
-            text: `Monto total: ${formatCurrency(venta.total)}`,
-            input: 'select',
-            inputOptions: {
-                'efectivo': 'Efectivo',
-                'tarjeta': 'Tarjeta',
-                'transferencia': 'Transferencia'
-            },
-            inputPlaceholder: 'Método de pago',
+            html: `
+                <div style="text-align: left; font-size: 1.1rem; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px;">
+                    <span style="color: #666;">Total a cobrar:</span> <br/>
+                    <strong style="font-size: 2rem; color: var(--color-primary);">${formatCurrency(totalVenta)}</strong>
+                </div>
+                
+                <div style="display: flex; flex-direction: column; gap: 15px; text-align: left;">
+                    <div>
+                        <label style="font-weight: bold; font-size: 0.9rem; color: #555;">Método de Pago:</label>
+                        <select id="swal-metodo" class="swal2-select" style="width: 100%; margin: 5px 0 0 0; font-size: 1.1rem; padding: 10px;">
+                            <option value="efectivo">Efectivo</option>
+                            <option value="tarjeta">Tarjeta</option>
+                            <option value="transferencia">Transferencia</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-weight: bold; font-size: 0.9rem; color: #555;">Monto Recibido ($):</label>
+                        <input id="swal-monto" type="number" step="0.5" class="swal2-input" placeholder="0.00" style="width: 100%; margin: 5px 0 0 0; font-size: 1.5rem; text-align: right; padding: 10px; box-sizing: border-box; background: #f9fafb;" />
+                    </div>
+                    
+                    <div id="swal-cambio-container" style="text-align: center; font-size: 1.3rem; font-weight: 800; margin-top: 15px; padding: 15px; background: #fee2e2; border-radius: 8px; color: #ef4444;">
+                        Falta: ${formatCurrency(totalVenta)}
+                    </div>
+                </div>
+            `,
             showCancelButton: true,
-            confirmButtonText: 'Finalizar Pago',
-            confirmButtonColor: '#10b981'
+            confirmButtonText: 'CONFIRMAR PAGO',
+            confirmButtonColor: '#10b981',
+            cancelButtonText: 'Cancelar',
+            didOpen: () => {
+                const montoInput = Swal.getPopup().querySelector('#swal-monto');
+                const cambioContainer = Swal.getPopup().querySelector('#swal-cambio-container');
+                const metodoSelect = Swal.getPopup().querySelector('#swal-metodo');
+
+                metodoSelect.addEventListener('change', () => {
+                    if (metodoSelect.value !== 'efectivo') {
+                        montoInput.value = totalVenta;
+                        montoInput.dispatchEvent(new Event('input')); 
+                    }
+                });
+
+                montoInput.addEventListener('input', () => {
+                    const recibido = parseFloat(montoInput.value) || 0;
+                    const diferencia = recibido - totalVenta;
+
+                    if (diferencia < 0) {
+                        cambioContainer.style.background = '#fee2e2'; 
+                        cambioContainer.style.color = '#ef4444'; 
+                        cambioContainer.innerHTML = `Falta: $${Math.abs(diferencia).toFixed(2)}`;
+                    } else {
+                        cambioContainer.style.background = '#d1fae5'; 
+                        cambioContainer.style.color = '#059669'; 
+                        cambioContainer.innerHTML = `Cambio a entregar: $${diferencia.toFixed(2)}`;
+                    }
+                });
+                
+                setTimeout(() => montoInput.focus(), 100);
+            },
+            preConfirm: () => {
+                const metodo = Swal.getPopup().querySelector('#swal-metodo').value;
+                const recibido = parseFloat(Swal.getPopup().querySelector('#swal-monto').value) || 0;
+
+                if (recibido < totalVenta) {
+                    Swal.showValidationMessage(`Pago incompleto. Faltan $${(totalVenta - recibido).toFixed(2)}`);
+                    return false; 
+                }
+
+                return { metodo, recibido };
+            }
         });
 
-        if (metodo) {
-            const { error } = await VentasService.finalizarVenta(venta.id, {
+        if (isConfirmed && resultado) {
+            const { error } = await CajaService.finalizarVenta(venta.id, {
                 estado: 'pagado',
-                metodo_pago: metodo,
+                metodo_pago: resultado.metodo,
                 cajero_id: usuarioId,
                 turno_id: sesionActiva.id
             });
 
             if (!error) {
-                Swal.fire('Venta Cerrada', 'El pago se registró correctamente', 'success');
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Cobro Exitoso!',
+                    text: `Cambio entregado: $${(resultado.recibido - totalVenta).toFixed(2)}`,
+                    timer: 2000,
+                    showConfirmButton: false
+                });
                 cargarCuentas();
+            } else {
+                Swal.fire('Error', 'No se pudo registrar el pago', 'error');
             }
         }
     };
@@ -96,7 +164,6 @@ const CajeroTab = ({ usuarioId }) => {
 
         await registrarMovimientoEfectivo(tipoSeleccionado, movData.monto, descFinal);
         
-        // Limpiar formulario y resetear filtro
         setMovData({ motivoId: '', monto: '', comentario: '' });
         setTipoSeleccionado('');
     };
@@ -153,7 +220,9 @@ const CajeroTab = ({ usuarioId }) => {
                                         <div key={venta.id} className={stylesPOS.mesaCard} onClick={() => manejarCobro(venta)} style={{ borderLeft: '5px solid var(--color-primary)' }}>
                                             <div className={stylesPOS.flexBetween}>
                                                 <span className={stylesPOS.mesaName}>Mesa {venta.mesa || 'S/N'}</span>
-                                                <span className={stylesPOS.mesaBadgeCobrar}>Pendiente</span>
+                                                <span className={venta.estado === 'por_cobrar' ? stylesPOS.mesaBadgeCobrar : stylesPOS.mesaBadge}>
+                                                    {venta.estado === 'por_cobrar' ? 'Por Cobrar' : 'Pendiente'}
+                                                </span>
                                             </div>
                                             <div className={stylesPOS.mesaTotal}>{formatCurrency(venta.total)}</div>
                                             <button className={stylesPOS.btnOrder} style={{ marginTop: '10px' }}>COBRAR</button>
@@ -165,14 +234,13 @@ const CajeroTab = ({ usuarioId }) => {
                     </div>
                 )}
 
-                {/* --- VISTA: MOVIMIENTOS REORGANIZADA CON FILTROS DINÁMICOS --- */}
+                {/* --- VISTA: MOVIMIENTOS --- */}
                 {activeSubTab === 'MOVIMIENTOS' && (
                     <div style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: '25px' }}>
                         {/* Formulario */}
                         <div className={stylesAdmin.adminCard} style={{ height: 'fit-content' }}>
                             <h4 className={stylesAdmin.label} style={{ marginBottom: '15px' }}>Nuevo Movimiento</h4>
                             
-                            {/* Selector 1: Tipo de Flujo (Alimentado por la DB) */}
                             <div className={stylesAdmin.formGroup}>
                                 <label className={stylesAdmin.label}>Tipo de Flujo</label>
                                 <select 
@@ -192,7 +260,6 @@ const CajeroTab = ({ usuarioId }) => {
                                 </select>
                             </div>
 
-                            {/* Selector 2: Motivo (Filtrado por el Tipo anterior) */}
                             <div className={stylesAdmin.formGroup}>
                                 <label className={stylesAdmin.label}>Motivo</label>
                                 <select 
@@ -252,26 +319,91 @@ const CajeroTab = ({ usuarioId }) => {
                     </div>
                 )}
 
-                {/* --- VISTA: TURNO Y ARQUEO --- */}
+                {/* --- VISTA REDISEÑADA: TURNO Y ARQUEO --- */}
                 {activeSubTab === 'TURNO Y ARQUEO' && (
-                    <div className={stylesAdmin.adminCard}>
+                    <div style={{ animation: 'fadeIn 0.3s ease' }}>
                         {!sesionActiva ? (
-                            <div style={{ maxWidth: '400px', margin: '40px auto', textAlign: 'center' }}>
-                                <h3 className={stylesAdmin.pageTitle}>Apertura de Caja</h3>
-                                <input type="number" className={stylesAdmin.loginInput} style={{ fontSize: '2.5rem', textAlign: 'center', height: '80px', margin: '20px 0' }} value={montoApertura} onChange={e => setMontoApertura(e.target.value)} placeholder="$0.00" />
-                                <button className={stylesAdmin.loginBtn} onClick={() => abrirTurno(montoApertura)}>INICIAR JORNADA</button>
+                            <div className={stylesAdmin.adminCard} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '60px 20px', textAlign: 'center' }}>
+                                <div style={{ background: 'var(--color-bg-app)', width: '80px', height: '80px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', marginBottom: '20px' }}>
+                                    💵
+                                </div>
+                                <h2 style={{ fontSize: '1.8rem', fontWeight: '900', marginBottom: '10px', color: 'var(--color-text)' }}>Caja Cerrada</h2>
+                                <p style={{ color: 'var(--color-text-muted)', marginBottom: '30px', maxWidth: '350px' }}>
+                                    Ingresa el monto de efectivo base (fondo de caja) para aperturar e iniciar la jornada.
+                                </p>
+                                
+                                <div style={{ width: '100%', maxWidth: '350px' }}>
+                                    <label className={stylesAdmin.label} style={{ display: 'block', textAlign: 'left', marginBottom: '8px' }}>Fondo de Caja ($)</label>
+                                    <input 
+                                        type="number" 
+                                        className={stylesAdmin.loginInput} 
+                                        style={{ fontSize: '2rem', textAlign: 'center', height: '70px', marginBottom: '20px', fontWeight: '700', color: 'var(--color-primary)' }} 
+                                        value={montoApertura} 
+                                        onChange={e => setMontoApertura(e.target.value)} 
+                                        placeholder="0.00" 
+                                    />
+                                    <button 
+                                        className={stylesAdmin.loginBtn} 
+                                        style={{ padding: '18px', fontSize: '1.1rem', fontWeight: '800' }}
+                                        onClick={() => abrirTurno(montoApertura)}
+                                    >
+                                        INICIAR JORNADA
+                                    </button>
+                                </div>
                             </div>
                         ) : (
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
-                                <div className={stylesPOS.historyCard}>
-                                    <span className={stylesAdmin.label}>Resumen de Sesión</span>
-                                    <div className={stylesPOS.mesaTotal}>{formatCurrency(sesionActiva.monto_apertura)}</div>
-                                    <p style={{ fontSize: '12px', marginTop: '10px' }}>Apertura: {new Date(sesionActiva.fecha_apertura).toLocaleString()}</p>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '25px' }}>
+                                
+                                {/* Tarjeta de Estado Actual */}
+                                <div className={stylesAdmin.adminCard} style={{ borderTop: '4px solid var(--color-primary)' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '25px' }}>
+                                        <div>
+                                            <h3 style={{ fontSize: '1.2rem', fontWeight: '800', margin: 0 }}>Turno Activo</h3>
+                                            <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>En curso</span>
+                                        </div>
+                                        <span style={{ background: '#d1fae5', color: '#059669', padding: '5px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '800' }}>● ABIERTA</span>
+                                    </div>
+                                    
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '15px', borderBottom: '1px solid var(--color-border)' }}>
+                                            <span style={{ color: 'var(--color-text-muted)', fontWeight: '600' }}>Fecha/Hora Apertura</span>
+                                            <span style={{ fontWeight: '700' }}>{new Date(sesionActiva.fecha_apertura).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '15px', borderBottom: '1px solid var(--color-border)' }}>
+                                            <span style={{ color: 'var(--color-text-muted)', fontWeight: '600' }}>Cajero ID</span>
+                                            <span style={{ fontWeight: '700' }}>#{sesionActiva.usuario_id || 'S/N'}</span>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
+                                            <span style={{ color: 'var(--color-text-muted)', fontWeight: '600' }}>Fondo Inicial</span>
+                                            <span style={{ fontSize: '1.5rem', fontWeight: '900', color: 'var(--color-primary)' }}>{formatCurrency(sesionActiva.monto_apertura)}</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div style={{ background: 'var(--color-bg-app)', padding: '25px', borderRadius: 'var(--radius-card)' }}>
-                                    <h4 className={stylesAdmin.label}>Finalizar Turno</h4>
-                                    <input type="number" className={stylesAdmin.loginInput} style={{ fontSize: '2rem', height: '70px', marginBottom: '15px' }} value={montoArqueo} onChange={e => setMontoArqueo(e.target.value)} placeholder="Efectivo físico" />
-                                    <button className={`${stylesAdmin.loginBtn} ${stylesPOS.btnDelete}`} onClick={() => cerrarTurno(montoArqueo)}>CERRAR CAJA Y ARQUEAR</button>
+
+                                {/* Tarjeta de Cierre/Arqueo */}
+                                <div className={stylesAdmin.adminCard} style={{ borderTop: '4px solid #ef4444', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                    <h3 style={{ fontSize: '1.2rem', fontWeight: '800', marginBottom: '10px' }}>Arqueo de Caja</h3>
+                                    <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', marginBottom: '20px' }}>
+                                        Ingresa el efectivo físico total que hay en la caja (incluyendo el fondo inicial) para calcular diferencias.
+                                    </p>
+                                    
+                                    <label className={stylesAdmin.label} style={{ marginBottom: '8px' }}>Efectivo en Cajón ($)</label>
+                                    <input 
+                                        type="number" 
+                                        className={stylesAdmin.loginInput} 
+                                        style={{ fontSize: '2rem', height: '70px', marginBottom: '20px', fontWeight: '800', textAlign: 'right' }} 
+                                        value={montoArqueo} 
+                                        onChange={e => setMontoArqueo(e.target.value)} 
+                                        placeholder="0.00" 
+                                    />
+                                    
+                                    <button 
+                                        className={`${stylesAdmin.loginBtn}`} 
+                                        style={{ background: '#ef4444', padding: '18px', fontSize: '1.1rem', fontWeight: '800', marginTop: 'auto' }}
+                                        onClick={() => cerrarTurno(montoArqueo)}
+                                    >
+                                        🔒 CERRAR CAJA Y ARQUEAR
+                                    </button>
                                 </div>
                             </div>
                         )}
@@ -289,7 +421,7 @@ const CajeroTab = ({ usuarioId }) => {
                                         <div style={{ fontWeight: '700' }}>{new Date(h.fecha_apertura).toLocaleDateString()}</div>
                                     </div>
                                     <div style={{ textAlign: 'right' }}>
-                                        <div className={stylesPOS.historyCardAmount}>{formatCurrency(h.monto_cierre)}</div>
+                                        <div className={stylesPOS.historyCardAmount}>{formatCurrency(h.monto_cierre_real || 0)}</div>
                                         <span className={h.diferencia < 0 ? stylesPOS.mesaBadgeCobrar : stylesPOS.mesaBadge}>
                                             DIF: {formatCurrency(h.diferencia)}
                                         </span>

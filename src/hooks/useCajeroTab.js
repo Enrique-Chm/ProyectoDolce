@@ -20,7 +20,7 @@ export const useCajeroTab = (usuarioId) => {
             const { data: catData } = await CajaService.getMotivosInventario();
             setMotivosCatalogo(catData || []);
 
-            // Extraer tipos únicos para alimentar el primer select
+            // Extraer tipos únicos para alimentar el primer select dinámico
             if (catData) {
                 const tiposUnicos = [...new Set(catData.map(item => item.tipo))];
                 setTiposDisponibles(tiposUnicos);
@@ -52,7 +52,7 @@ export const useCajeroTab = (usuarioId) => {
     }, [cargarDatosCaja]);
 
     /**
-     * Filtra los motivos del catálogo según el tipo
+     * Filtra los motivos del catálogo según el tipo seleccionado en la UI
      */
     const getMotivosPorTipo = (tipo) => {
         return motivosCatalogo.filter(m => m.tipo === tipo);
@@ -82,7 +82,7 @@ export const useCajeroTab = (usuarioId) => {
     };
 
     /**
-     * Registra movimiento usando los datos del catálogo
+     * Registra un ingreso o egreso de dinero (ej. pago a proveedor, retiro)
      */
     const registrarMovimientoEfectivo = async (tipo, monto, motivoNombre) => {
         if (!sesionActiva) return;
@@ -110,8 +110,7 @@ export const useCajeroTab = (usuarioId) => {
     };
 
     /**
-     * Arqueo y cierre de caja
-     * ACTUALIZADO: Usa monto_cierre_real y monto_cierre_esperado para coincidir con la DB
+     * Arqueo y cierre de caja usando las columnas correctas de la base de datos
      */
     const cerrarTurno = async (montoCierre) => {
         const montoCierreNum = parseFloat(montoCierre);
@@ -123,6 +122,7 @@ export const useCajeroTab = (usuarioId) => {
         const ingresos = movimientos.filter(m => m.tipo === 'ingreso').reduce((a, b) => a + b.monto, 0);
         const egresos = movimientos.filter(m => m.tipo === 'egreso').reduce((a, b) => a + b.monto, 0);
         
+        // Fórmula del arqueo
         const montoEsperado = sesionActiva.monto_apertura + totalVentas + ingresos - egresos;
         const diferencia = montoCierreNum - montoEsperado;
 
@@ -140,7 +140,6 @@ export const useCajeroTab = (usuarioId) => {
         });
 
         if (confirm.isConfirmed) {
-            // Enviamos los datos mapeados a las columnas reales de tu tabla
             const { error } = await CajaService.cerrarCaja(sesionActiva.id, {
                 monto_cierre_real: montoCierreNum,
                 monto_cierre_esperado: montoEsperado,

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { productosService } from '../services/productos.service';
-import { VentasService } from '../services/Ventas.service';
+import { MeseroService } from '../services/Mesero.service'; // <--- IMPORTACIÓN ACTUALIZADA
 
 export const useMeseroTab = (sucursalId, usuarioId) => {
   // --- ESTADOS ---
@@ -20,16 +20,16 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   const cargarCuentas = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await VentasService.getCuentasAbiertas(sucursalId);
+      // USAMOS MeseroService AHORA
+      const { data } = await MeseroService.getCuentasAbiertas(sucursalId);
       setCuentasAbiertas(data || []);
       
-      // Sincronizar venta activa si hubo cambios externos (ej. la cajera la cobró)
+      // Sincronizar venta activa
       if (ventaActiva) {
         const actualizada = data.find(v => v.id === ventaActiva.id);
         if (actualizada) {
           setVentaActiva(actualizada);
         } else if (view === 'menu') {
-          // Si ya no aparece en abiertas, es que se cobró o canceló
           alert("La mesa ya no está activa.");
           resetTodo();
         }
@@ -54,7 +54,8 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   const cargarHistorial = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await VentasService.getHistorialCobradas(sucursalId);
+      // USAMOS MeseroService AHORA
+      const { data } = await MeseroService.getHistorialCobradas(sucursalId);
       setCuentasCobradas(data || []);
     } catch (err) {
       console.error("Error al cargar historial:", err);
@@ -80,7 +81,6 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   };
 
   const agregarAlCarrito = (p) => {
-    // REGLA DE ORO: Si ya se pidió la cuenta, el consumo está bloqueado
     if (ventaActiva?.estado === 'por_cobrar') {
       alert("⚠️ CUENTA BLOQUEADA: La mesa está en proceso de pago. No puedes agregar más productos.");
       return;
@@ -105,7 +105,6 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   };
 
   const eliminarDelCarrito = (id) => {
-    // Bloqueo adicional por seguridad
     if (ventaActiva?.estado === 'por_cobrar') return;
     setCarrito(prev => prev.filter(item => item.id !== id));
   };
@@ -129,7 +128,8 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
     
     setLoading(true);
     try {
-      const res = await VentasService.procesarVenta({
+      // USAMOS MeseroService AHORA
+      const res = await MeseroService.procesarVenta({
         id: ventaActiva?.id,
         folio: ventaActiva?.folio,
         sucursal_id: sucursalId,
@@ -154,9 +154,9 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
     if (!ventaId) return;
     setLoading(true);
     try {
-      const res = await VentasService.marcarPorCobrar(ventaId);
+      // USAMOS MeseroService AHORA
+      const res = await MeseroService.marcarPorCobrar(ventaId);
       if (res.success) {
-        // Si el estado ya era por_cobrar, es una reimpresión
         const esReimpresion = ventaActiva?.estado === 'por_cobrar';
         alert(esReimpresion ? "Ticket enviado a reimpresión." : "Ticket enviado a caja. Mesa bloqueada.");
         resetTodo();
@@ -181,7 +181,6 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
     categorias,
     carrito, setCarrito,
     loading,
-    // Funciones
     seleccionarCuenta,
     agregarAlCarrito,
     eliminarDelCarrito,
