@@ -15,7 +15,7 @@ import { RecetasTab } from "./components/RecetasTab";
 import { ProductosTab } from "./components/ProductosTab";
 import { EmpleadosTab } from "./components/EmpleadosTab";
 import { MeseroTab } from "./components/MeseroTab"; 
-import { CajeroTab } from "./components/CajeroTab";
+import CajeroTab from './components/CajeroTab';
 import { ImpresorasTab } from "./components/ImpresorasTab";
 import InventariosTab from "./components/InventariosTab"; 
 import EstimacionesTab from "./components/EstimacionesTab"; 

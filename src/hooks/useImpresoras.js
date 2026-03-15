@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { impresorasService } from '../services/Impresoras.service';
-import { cajaService } from '../services/Caja.service';
+import { CajaService } from '../services/Caja.service';
 
 /**
  * Hook integral para gestionar hardware de impresión y diseño de tickets
@@ -40,7 +40,7 @@ export const useImpresoras = (sucursalId) => {
       // Cargamos impresoras y configuración de ticket en paralelo
       const [resImps, resConfig] = await Promise.all([
         impresorasService.getAll(sucursalId),
-        cajaService.getConfigTicket(sucursalId)
+        CajaService.getConfigTicket(sucursalId)
       ]);
 
       if (resImps.data) setImpresoras(resImps.data);
@@ -105,7 +105,7 @@ export const useImpresoras = (sucursalId) => {
   const guardarConfigTicket = async () => {
     setLoading(true);
     try {
-      const { error } = await cajaService.guardarConfigTicket({
+      const { error } = await CajaService.guardarConfigTicket({
         ...configTicket,
         sucursal_id: sucursalId
       });

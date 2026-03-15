@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { productosService } from '../services/productos.service';
-import { ventasService } from '../services/Ventas.service';
+import { VentasService } from '../services/Ventas.service';
 
 export const useMeseroTab = (sucursalId, usuarioId) => {
   // --- ESTADOS ---
@@ -20,7 +20,7 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   const cargarCuentas = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await ventasService.getCuentasAbiertas(sucursalId);
+      const { data } = await VentasService.getCuentasAbiertas(sucursalId);
       setCuentasAbiertas(data || []);
       
       // Sincronizar venta activa si hubo cambios externos (ej. la cajera la cobró)
@@ -54,7 +54,7 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   const cargarHistorial = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await ventasService.getHistorialCobradas(sucursalId);
+      const { data } = await VentasService.getHistorialCobradas(sucursalId);
       setCuentasCobradas(data || []);
     } catch (err) {
       console.error("Error al cargar historial:", err);
@@ -129,7 +129,7 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
     
     setLoading(true);
     try {
-      const res = await ventasService.procesarVenta({
+      const res = await VentasService.procesarVenta({
         id: ventaActiva?.id,
         folio: ventaActiva?.folio,
         sucursal_id: sucursalId,
@@ -154,7 +154,7 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
     if (!ventaId) return;
     setLoading(true);
     try {
-      const res = await ventasService.marcarPorCobrar(ventaId);
+      const res = await VentasService.marcarPorCobrar(ventaId);
       if (res.success) {
         // Si el estado ya era por_cobrar, es una reimpresión
         const esReimpresion = ventaActiva?.estado === 'por_cobrar';

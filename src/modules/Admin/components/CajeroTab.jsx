@@ -1,282 +1,308 @@
-import React, { useState } from 'react';
-import { useCaja } from '../../../hooks/useCajeroTab';
+import React, { useState, useEffect } from 'react';
+import { useCajeroTab } from '../../../hooks/useCajeroTab';
+import { VentasService } from '../../../services/Ventas.service';
+import stylesAdmin from '../AdminPage.module.css';
+import stylesPOS from './MeseroTab.module.css';
 import { formatCurrency } from '../../../utils/formatCurrency';
-import { 
-  Wallet, 
-  ArrowUpCircle, 
-  ArrowDownCircle, 
-  Receipt, 
-  LogOut, 
-  PlusCircle,
-  Calculator,
-  User,
-  Clock
-} from 'lucide-react';
-import styles from './MeseroTab.module.css'; 
+import Swal from 'sweetalert2';
 
-const CajeroTab = ({ sucursalId }) => {
-  const { 
-    sesion, 
-    cuentasPendientes, 
-    resumen, 
-    movimientos, 
-    loading, 
-    acciones 
-  } = useCaja(sucursalId);
-
-  const [montoApertura, setMontoApertura] = useState('');
-  const [modalPago, setModalPago] = useState(null);
-  const [modalMovimiento, setModalMovimiento] = useState(false);
-  const [modalCierre, setModalCierre] = useState(false);
-  
-  // Estados para formularios
-  const [datosPago, setDatosPago] = useState({ metodo: 'efectivo', propina: 0, pagadoCon: 0 });
-  const [datosMov, setDatosMov] = useState({ tipo: 'egreso', monto: '', descripcion: '' });
-  const [montoCierreReal, setMontoCierreReal] = useState('');
-
-  if (loading) return <div className={styles.loader}>Cargando caja...</div>;
-
-  // --- VISTA: APERTURA DE CAJA ---
-  if (!sesion) {
-    return (
-      <div className={styles.aperturaContainer}>
-        <div className={styles.aperturaCard}>
-          <Wallet size={48} />
-          <h2>Apertura de Caja</h2>
-          <p>Ingrese el monto inicial en efectivo para comenzar el turno.</p>
-          <input
-            type="number"
-            placeholder="Monto inicial (ej. 1000)"
-            value={montoApertura}
-            onChange={(e) => setMontoApertura(e.target.value)}
-          />
-          <button 
-            onClick={() => acciones.abrirCaja(montoApertura)}
-            disabled={!montoApertura}
-          >
-            Abrir Turno
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // --- LÓGICA DE COBRO ---
-  const handleCobrar = async () => {
-    const totalVenta = parseFloat(modalPago.total) || 0;
-    const propina = parseFloat(datosPago.propina) || 0;
-    const totalFinal = totalVenta + propina;
-
-    const success = await acciones.cobrarCuenta(modalPago.id, {
-      metodo_pago: datosPago.metodo,
-      propina: propina,
-      totalFinal: totalFinal,
-      pagado_con: parseFloat(datosPago.pagadoCon) || 0,
-      cambio: (parseFloat(datosPago.pagadoCon) || 0) - totalFinal
-    });
+const CajeroTab = ({ usuarioId }) => {
+    // 1. Estados de Navegación y Formularios
+    const [activeSubTab, setActiveSubTab] = useState('COBRAR');
+    const [cuentasPendientes, setCuentasPendientes] = useState([]);
     
-    if (success) setModalPago(null);
-  };
+    // Estado para el tipo de flujo seleccionado (Filtro Dinámico)
+    const [tipoSeleccionado, setTipoSeleccionado] = useState('');
+    const [movData, setMovData] = useState({ motivoId: '', monto: '', comentario: '' });
+    
+    const [montoArqueo, setMontoArqueo] = useState('');
+    const [montoApertura, setMontoApertura] = useState('');
 
-  return (
-    <div className={styles.cajeroGrid}>
-      
-      {/* SECCIÓN IZQUIERDA: CUENTAS POR COBRAR */}
-      <div className={styles.panelCuentas}>
-        <div className={styles.panelHeader}>
-          <h3><Receipt size={20} /> Cuentas por Cobrar</h3>
-          <span className={styles.badge}>{cuentasPendientes.length} Pendientes</span>
-        </div>
+    // 2. Hook de Lógica (Actualizado con tiposDisponibles)
+    const { 
+        sesionActiva, 
+        loading, 
+        movimientos, 
+        historial, 
+        tiposDisponibles,
+        getMotivosPorTipo, 
+        abrirTurno, 
+        cerrarTurno, 
+        registrarMovimientoEfectivo 
+    } = useCajeroTab(usuarioId);
+
+    // 3. Carga de Cuentas Pendientes (Meseros)
+    const cargarCuentas = async () => {
+        try {
+            const { data } = await VentasService.getVentasPendientes();
+            setCuentasPendientes(data || []);
+        } catch (error) {
+            console.error("Error al obtener cuentas:", error);
+        }
+    };
+
+    useEffect(() => {
+        if (sesionActiva) {
+            cargarCuentas();
+            const interval = setInterval(cargarCuentas, 30000);
+            return () => clearInterval(interval);
+        }
+    }, [sesionActiva]);
+
+    // 4. Lógica de Cobro Directo
+    const manejarCobro = async (venta) => {
+        const { value: metodo } = await Swal.fire({
+            title: `Cobrar Mesa ${venta.mesa || 'S/N'}`,
+            text: `Monto total: ${formatCurrency(venta.total)}`,
+            input: 'select',
+            inputOptions: {
+                'efectivo': 'Efectivo',
+                'tarjeta': 'Tarjeta',
+                'transferencia': 'Transferencia'
+            },
+            inputPlaceholder: 'Método de pago',
+            showCancelButton: true,
+            confirmButtonText: 'Finalizar Pago',
+            confirmButtonColor: '#10b981'
+        });
+
+        if (metodo) {
+            const { error } = await VentasService.finalizarVenta(venta.id, {
+                estado: 'pagado',
+                metodo_pago: metodo,
+                cajero_id: usuarioId,
+                turno_id: sesionActiva.id
+            });
+
+            if (!error) {
+                Swal.fire('Venta Cerrada', 'El pago se registró correctamente', 'success');
+                cargarCuentas();
+            }
+        }
+    };
+
+    // 5. Lógica para Guardar Movimiento con Catálogo Filtrado
+    const guardarMovimiento = async () => {
+        const motivosFiltrados = getMotivosPorTipo(tipoSeleccionado);
+        const motivo = motivosFiltrados.find(m => m.id === parseInt(movData.motivoId));
         
-        <div className={styles.listaCuentas}>
-          {cuentasPendientes.length === 0 ? (
-            <p className={styles.emptyMsg}>No hay mesas pendientes de cobro.</p>
-          ) : (
-            cuentasPendientes.map(venta => (
-              <div key={venta.id} className={styles.ventaCard}>
-                <div className={styles.ventaInfo}>
-                  <strong>Mesa {venta.mesa} {venta.folio && `- ${venta.folio}`}</strong>
-                  <span>Atendió: {venta.mesero?.nombre}</span>
-                  <span className={styles.montoTotal}>{formatCurrency(venta.total)}</span>
-                </div>
-                <button onClick={() => {
-                  setModalPago(venta);
-                  setDatosPago({ ...datosPago, pagadoCon: venta.total, propina: 0 });
+        if (!motivo || !movData.monto) {
+            return Swal.fire('Error', 'Selecciona un motivo e ingresa el monto', 'error');
+        }
+
+        const descFinal = movData.comentario 
+            ? `${motivo.nombre_motivo}: ${movData.comentario}` 
+            : motivo.nombre_motivo;
+
+        await registrarMovimientoEfectivo(tipoSeleccionado, movData.monto, descFinal);
+        
+        // Limpiar formulario y resetear filtro
+        setMovData({ motivoId: '', monto: '', comentario: '' });
+        setTipoSeleccionado('');
+    };
+
+    if (loading) return <div className={stylesPOS.emptyStateBox}>Sincronizando caja...</div>;
+
+    return (
+        <div className={stylesAdmin.mainContent}>
+            <div className={stylesAdmin.tabContent}>
+                
+                <h2 className={stylesAdmin.pageTitle} style={{ marginBottom: '20px' }}>Gestión de Caja</h2>
+
+                {/* --- NAVEGACIÓN HORIZONTAL ESTILO GESTIÓN DE CAPITAL HUMANO --- */}
+                <div style={{ 
+                    display: 'flex', 
+                    gap: '20px', 
+                    borderBottom: '1px solid var(--color-border)', 
+                    marginBottom: '30px',
+                    paddingBottom: '10px'
                 }}>
-                  Cobrar
-                </button>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
+                    {['COBRAR', 'MOVIMIENTOS', 'TURNO Y ARQUEO', 'HISTORIAL'].map((tab) => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveSubTab(tab)}
+                            style={{
+                                background: activeSubTab === tab ? 'var(--color-primary)' : 'transparent',
+                                color: activeSubTab === tab ? 'white' : 'var(--color-text-muted)',
+                                border: 'none',
+                                padding: '8px 18px',
+                                borderRadius: 'var(--radius-ui)',
+                                fontWeight: '800',
+                                fontSize: '13px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                textTransform: 'uppercase'
+                            }}
+                        >
+                            {tab}
+                        </button>
+                    ))}
+                </div>
 
-      {/* SECCIÓN DERECHA: RESUMEN Y ACCIONES */}
-      <div className={styles.panelControl}>
-        
-        <div className={styles.resumenCard}>
-          <h4>Estado del Turno</h4>
-          <div className={styles.statsGrid}>
-            <div className={styles.statItem}>
-              <span>Efectivo en Ventas</span>
-              <strong>{formatCurrency(resumen.efectivo)}</strong>
-            </div>
-            <div className={styles.statItem}>
-              <span>Tarjeta</span>
-              <strong>{formatCurrency(resumen.tarjeta)}</strong>
-            </div>
-            <div className={styles.statItem}>
-              <span>Gastos/Egresos</span>
-              <strong className={styles.egresoText}>
-                -{formatCurrency(resumen.detalleArqueo?.salidasManuales || 0)}
-              </strong>
-            </div>
-            <div className={styles.statTotal}>
-              <span>EFECTIVO ESPERADO</span>
-              <strong className={styles.totalText}>{formatCurrency(resumen.montoEsperado)}</strong>
-            </div>
-          </div>
-        </div>
+                {/* --- VISTA: COBRAR --- */}
+                {activeSubTab === 'COBRAR' && (
+                    <div className={stylesAdmin.adminCard}>
+                        {!sesionActiva ? (
+                            <div className={stylesPOS.emptyStateBox}>Debes abrir un turno para cobrar cuentas.</div>
+                        ) : (
+                            <div className={stylesPOS.productGrid}>
+                                {cuentasPendientes.length === 0 ? (
+                                    <p className={stylesPOS.emptyCartText}>No hay cuentas pendientes.</p>
+                                ) : (
+                                    cuentasPendientes.map(venta => (
+                                        <div key={venta.id} className={stylesPOS.mesaCard} onClick={() => manejarCobro(venta)} style={{ borderLeft: '5px solid var(--color-primary)' }}>
+                                            <div className={stylesPOS.flexBetween}>
+                                                <span className={stylesPOS.mesaName}>Mesa {venta.mesa || 'S/N'}</span>
+                                                <span className={stylesPOS.mesaBadgeCobrar}>Pendiente</span>
+                                            </div>
+                                            <div className={stylesPOS.mesaTotal}>{formatCurrency(venta.total)}</div>
+                                            <button className={stylesPOS.btnOrder} style={{ marginTop: '10px' }}>COBRAR</button>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
 
-        <div className={styles.accionesCaja}>
-          <button className={styles.btnMovimiento} onClick={() => setModalMovimiento(true)}>
-            <PlusCircle size={18} /> Registrar Gasto/Ingreso
-          </button>
-          <button className={styles.btnCerrar} onClick={() => setModalCierre(true)}>
-            <LogOut size={18} /> Cerrar Turno
-          </button>
-        </div>
+                {/* --- VISTA: MOVIMIENTOS REORGANIZADA CON FILTROS DINÁMICOS --- */}
+                {activeSubTab === 'MOVIMIENTOS' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: '25px' }}>
+                        {/* Formulario */}
+                        <div className={stylesAdmin.adminCard} style={{ height: 'fit-content' }}>
+                            <h4 className={stylesAdmin.label} style={{ marginBottom: '15px' }}>Nuevo Movimiento</h4>
+                            
+                            {/* Selector 1: Tipo de Flujo (Alimentado por la DB) */}
+                            <div className={stylesAdmin.formGroup}>
+                                <label className={stylesAdmin.label}>Tipo de Flujo</label>
+                                <select 
+                                    className={stylesAdmin.loginInput} 
+                                    value={tipoSeleccionado} 
+                                    onChange={(e) => {
+                                        setTipoSeleccionado(e.target.value);
+                                        setMovData({ ...movData, motivoId: '' }); 
+                                    }}
+                                >
+                                    <option value="">-- Seleccione Tipo --</option>
+                                    {tiposDisponibles.map(tipo => (
+                                        <option key={tipo} value={tipo}>
+                                            {tipo.toUpperCase()}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
 
-        {/* HISTORIAL RECIENTE */}
-        <div className={styles.miniHistorial}>
-          <h5>Últimos Movimientos</h5>
-          {movimientos.slice(0, 5).map(m => (
-            <div key={m.id} className={styles.movItem}>
-              {m.tipo === 'egreso' ? <ArrowDownCircle size={14} color="red" /> : <ArrowUpCircle size={14} color="green" />}
-              <span>{m.descripcion}</span>
-              <strong>{formatCurrency(m.monto)}</strong>
-            </div>
-          ))}
-        </div>
-      </div>
+                            {/* Selector 2: Motivo (Filtrado por el Tipo anterior) */}
+                            <div className={stylesAdmin.formGroup}>
+                                <label className={stylesAdmin.label}>Motivo</label>
+                                <select 
+                                    className={stylesAdmin.loginInput} 
+                                    value={movData.motivoId} 
+                                    onChange={e => setMovData({...movData, motivoId: e.target.value})}
+                                    disabled={!tipoSeleccionado}
+                                >
+                                    <option value="">-- Seleccione un motivo --</option>
+                                    {getMotivosPorTipo(tipoSeleccionado).map(m => (
+                                        <option key={m.id} value={m.id}>{m.nombre_motivo}</option>
+                                    ))}
+                                </select>
+                            </div>
 
-      {/* --- MODAL DE PAGO --- */}
-      {modalPago && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modalContent}>
-            <h3>Cobrar Mesa {modalPago.mesa}</h3>
-            <div className={styles.formGroup}>
-              <label>Método de Pago</label>
-              <select 
-                value={datosPago.metodo} 
-                onChange={e => setDatosPago({...datosPago, metodo: e.target.value})}
-              >
-                <option value="efectivo">Efectivo</option>
-                <option value="tarjeta">Tarjeta</option>
-                <option value="transferencia">Transferencia</option>
-              </select>
-            </div>
-            <div className={styles.formGroup}>
-              <label>Propina</label>
-              <input 
-                type="number" 
-                value={datosPago.propina}
-                onChange={e => setDatosPago({...datosPago, propina: parseFloat(e.target.value) || 0})}
-              />
-            </div>
-            <div className={styles.pagoResumen}>
-              <p>Subtotal: {formatCurrency(modalPago.total)}</p>
-              <h4>Total a Cobrar: {formatCurrency(parseFloat(modalPago.total) + parseFloat(datosPago.propina || 0))}</h4>
-            </div>
-            {datosPago.metodo === 'efectivo' && (
-              <div className={styles.formGroup}>
-                <label>Pagó con:</label>
-                <input 
-                  type="number" 
-                  value={datosPago.pagadoCon}
-                  onChange={e => setDatosPago({...datosPago, pagadoCon: parseFloat(e.target.value) || 0})}
-                />
-                <p className={styles.cambio}>
-                  Cambio: {formatCurrency(parseFloat(datosPago.pagadoCon || 0) - (parseFloat(modalPago.total) + parseFloat(datosPago.propina || 0)))}
-                </p>
-              </div>
-            )}
-            <div className={styles.modalButtons}>
-              <button onClick={() => setModalPago(null)}>Cancelar</button>
-              <button className={styles.btnConfirmar} onClick={handleCobrar}>Finalizar Pago</button>
-            </div>
-          </div>
-        </div>
-      )}
+                            <div className={stylesAdmin.formGroup}>
+                                <label className={stylesAdmin.label}>Monto ($)</label>
+                                <input type="number" className={stylesAdmin.loginInput} placeholder="0.00" value={movData.monto} onChange={e => setMovData({...movData, monto: e.target.value})} />
+                            </div>
 
-      {/* --- MODAL MOVIMIENTOS --- */}
-      {modalMovimiento && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modalContent}>
-            <h3>Registrar Movimiento</h3>
-            <select 
-              value={datosMov.tipo} 
-              onChange={e => setDatosMov({...datosMov, tipo: e.target.value})}
-            >
-              <option value="egreso">Salida (Gasto/Pago)</option>
-              <option value="ingreso">Entrada (Refuerzo/Aporte)</option>
-            </select>
-            <input 
-              type="number" 
-              placeholder="Monto" 
-              value={datosMov.monto}
-              onChange={e => setDatosMov({...datosMov, monto: e.target.value})}
-            />
-            <input 
-              type="text" 
-              placeholder="Descripción (ej. Pago de gas)" 
-              value={datosMov.descripcion}
-              onChange={e => setDatosMov({...datosMov, descripcion: e.target.value})}
-            />
-            <div className={styles.modalButtons}>
-              <button onClick={() => setModalMovimiento(false)}>Cancelar</button>
-              <button onClick={async () => {
-                await acciones.registrarMovimientoManual(datosMov.tipo, datosMov.monto, datosMov.descripcion);
-                setModalMovimiento(false);
-                setDatosMov({ tipo: 'egreso', monto: '', descripcion: '' });
-              }}>Guardar</button>
-            </div>
-          </div>
-        </div>
-      )}
+                            <div className={stylesAdmin.formGroup}>
+                                <label className={stylesAdmin.label}>Comentario Adicional</label>
+                                <textarea className={stylesAdmin.loginInput} style={{ minHeight: '60px', resize: 'none', paddingTop: '10px' }} placeholder="Opcional..." value={movData.comentario} onChange={e => setMovData({...movData, comentario: e.target.value})} />
+                            </div>
 
-      {/* --- MODAL CIERRE --- */}
-      {modalCierre && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modalContent}>
-            <h3>Cierre de Caja</h3>
-            <p>Efectivo esperado en caja: <strong>{formatCurrency(resumen.montoEsperado)}</strong></p>
-            <div className={styles.formGroup}>
-              <label>Monto contado físicamente:</label>
-              <input 
-                type="number" 
-                value={montoCierreReal}
-                onChange={e => setMontoCierreReal(e.target.value)}
-                placeholder="0.00"
-              />
+                            <button className={stylesAdmin.loginBtn} onClick={guardarMovimiento}>
+                                REGISTRAR MOVIMIENTO
+                            </button>
+                        </div>
+
+                        {/* Listado de movimientos */}
+                        <div className={stylesAdmin.adminCard}>
+                            <h4 className={stylesAdmin.label}>Bitácora del Turno Actual</h4>
+                            <div style={{ overflowY: 'auto', maxHeight: '500px', marginTop: '15px' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                    <thead>
+                                        <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--color-bg-app)', fontSize: '11px', color: 'var(--color-text-muted)' }}>
+                                            <th style={{ padding: '10px' }}>HORA</th>
+                                            <th style={{ padding: '10px' }}>CONCEPTO</th>
+                                            <th style={{ padding: '10px', textAlign: 'right' }}>MONTO</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {movimientos.map(m => (
+                                            <tr key={m.id} style={{ borderBottom: '1px solid var(--color-bg-app)', fontSize: '13px' }}>
+                                                <td style={{ padding: '12px' }}>{new Date(m.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
+                                                <td style={{ padding: '12px', fontWeight: '600' }}>{m.motivo}</td>
+                                                <td style={{ padding: '12px', textAlign: 'right', fontWeight: '800', color: m.tipo === 'ingreso' ? '#10b981' : '#ef4444' }}>
+                                                    {m.tipo === 'ingreso' ? '+' : '-'}{formatCurrency(m.monto)}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* --- VISTA: TURNO Y ARQUEO --- */}
+                {activeSubTab === 'TURNO Y ARQUEO' && (
+                    <div className={stylesAdmin.adminCard}>
+                        {!sesionActiva ? (
+                            <div style={{ maxWidth: '400px', margin: '40px auto', textAlign: 'center' }}>
+                                <h3 className={stylesAdmin.pageTitle}>Apertura de Caja</h3>
+                                <input type="number" className={stylesAdmin.loginInput} style={{ fontSize: '2.5rem', textAlign: 'center', height: '80px', margin: '20px 0' }} value={montoApertura} onChange={e => setMontoApertura(e.target.value)} placeholder="$0.00" />
+                                <button className={stylesAdmin.loginBtn} onClick={() => abrirTurno(montoApertura)}>INICIAR JORNADA</button>
+                            </div>
+                        ) : (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
+                                <div className={stylesPOS.historyCard}>
+                                    <span className={stylesAdmin.label}>Resumen de Sesión</span>
+                                    <div className={stylesPOS.mesaTotal}>{formatCurrency(sesionActiva.monto_apertura)}</div>
+                                    <p style={{ fontSize: '12px', marginTop: '10px' }}>Apertura: {new Date(sesionActiva.fecha_apertura).toLocaleString()}</p>
+                                </div>
+                                <div style={{ background: 'var(--color-bg-app)', padding: '25px', borderRadius: 'var(--radius-card)' }}>
+                                    <h4 className={stylesAdmin.label}>Finalizar Turno</h4>
+                                    <input type="number" className={stylesAdmin.loginInput} style={{ fontSize: '2rem', height: '70px', marginBottom: '15px' }} value={montoArqueo} onChange={e => setMontoArqueo(e.target.value)} placeholder="Efectivo físico" />
+                                    <button className={`${stylesAdmin.loginBtn} ${stylesPOS.btnDelete}`} onClick={() => cerrarTurno(montoArqueo)}>CERRAR CAJA Y ARQUEAR</button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* --- VISTA: HISTORIAL --- */}
+                {activeSubTab === 'HISTORIAL' && (
+                    <div className={stylesAdmin.adminCard}>
+                        <div className={stylesPOS.historyGrid}>
+                            {historial.map(h => (
+                                <div key={h.id} className={stylesPOS.historyCard}>
+                                    <div>
+                                        <span className={stylesAdmin.label}>ID Sesión: #{h.id.toString().slice(-5)}</span>
+                                        <div style={{ fontWeight: '700' }}>{new Date(h.fecha_apertura).toLocaleDateString()}</div>
+                                    </div>
+                                    <div style={{ textAlign: 'right' }}>
+                                        <div className={stylesPOS.historyCardAmount}>{formatCurrency(h.monto_cierre)}</div>
+                                        <span className={h.diferencia < 0 ? stylesPOS.mesaBadgeCobrar : stylesPOS.mesaBadge}>
+                                            DIF: {formatCurrency(h.diferencia)}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
             </div>
-            {montoCierreReal && (
-              <p className={parseFloat(montoCierreReal) - resumen.montoEsperado < 0 ? styles.faltante : styles.sobrante}>
-                Diferencia: {formatCurrency(parseFloat(montoCierreReal) - resumen.montoEsperado)}
-              </p>
-            )}
-            <div className={styles.modalButtons}>
-              <button onClick={() => setModalCierre(false)}>Volver</button>
-              <button className={styles.btnCerrarFinal} onClick={async () => {
-                const res = await acciones.cerrarCaja(montoCierreReal, "Cierre de turno estándar");
-                if (res.success) setModalCierre(false);
-              }}>Confirmar Cierre de Turno</button>
-            </div>
-          </div>
         </div>
-      )}
-    </div>
-  );
+    );
 };
 
 export default CajeroTab;

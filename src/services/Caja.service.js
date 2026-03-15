@@ -1,31 +1,52 @@
 import { supabase } from '../lib/supabaseClient';
 
-export const cajaService = {
+export const CajaService = {
+  
+  /* ==========================================
+     1. CATÁLOGOS (cat_motivos_inventario)
+     ========================================== */
+
   /**
-   * Verifica si existe una sesión abierta para la sucursal.
+   * Obtiene los motivos configurados en el catálogo de inventario
+   * para alimentar el select de movimientos de caja.
    */
-  async getSesionActiva(sucursalId) {
+  getMotivosInventario: async () => {
     const { data, error } = await supabase
-      .from('caja_sesiones')
+      .from('cat_motivos_inventario')
+      .select('id, nombre_motivo, tipo, descripcion')
+      .eq('activo', true);
+    return { data, error };
+  },
+
+
+  /* ==========================================
+     2. GESTIÓN DE SESIONES (cajas_sesiones)
+     ========================================== */
+
+  /**
+   * Busca si el usuario tiene una sesión abierta actualmente.
+   */
+  getSesionActiva: async (usuarioId) => {
+    const { data, error } = await supabase
+      .from('cajas_sesiones')
       .select('*')
-      .eq('sucursal_id', sucursalId)
-      .eq('estado', 'abierta')
+      .is('fecha_cierre', null)
+      .eq('usuario_id', parseInt(usuarioId)) // Asegura int4 para la comparación
       .maybeSingle();
     return { data, error };
   },
 
   /**
-   * Crea un nuevo registro en caja_sesiones.
+   * Registra la apertura de una nueva caja.
    */
-  async abrirCaja(sucursalId, montoApertura, usuarioId) {
+  abrirCaja: async (datos) => {
     const { data, error } = await supabase
-      .from('caja_sesiones')
-      .insert([{
-        sucursal_id: sucursalId,
-        monto_apertura: parseFloat(montoApertura),
-        usuario_id: usuarioId, // UUID del cajero
+      .from('cajas_sesiones')
+      .insert([{ 
+        usuario_id: parseInt(datos.usuario_id),
+        monto_apertura: parseFloat(datos.monto_apertura),
         estado: 'abierta',
-        fecha_apertura: new Date().toISOString()
+        fecha_apertura: new Date().toISOString() 
       }])
       .select()
       .single();
@@ -33,129 +54,88 @@ export const cajaService = {
   },
 
   /**
-   * Registra entradas o salidas manuales en la tabla caja_movimientos.
+   * Finaliza la sesión de caja con los datos del arqueo.
+   * Actualizado según las columnas reales de la DB: monto_cierre_real, monto_cierre_esperado
    */
-  async registrarMovimiento(idSesion, tipo, monto, descripcion) {
+  cerrarCaja: async (sesionId, datosCierre) => {
+    const { data, error } = await supabase
+      .from('cajas_sesiones')
+      .update({ 
+        monto_cierre_real: parseFloat(datosCierre.monto_cierre_real),
+        monto_cierre_esperado: parseFloat(datosCierre.monto_cierre_esperado),
+        diferencia: parseFloat(datosCierre.diferencia),
+        estado: 'cerrado', 
+        fecha_cierre: new Date().toISOString() 
+      })
+      .eq('id', sesionId)
+      .select();
+    return { data, error };
+  },
+
+
+  /* ==========================================
+     3. MOVIMIENTOS DE CAJA (caja_movimientos)
+     ========================================== */
+
+  /**
+   * Registra un ingreso o egreso vinculado a un turno.
+   */
+  registrarMovimiento: async (movimiento) => {
     const { data, error } = await supabase
       .from('caja_movimientos')
       .insert([{
-        id_sesion: idSesion,
-        tipo, // 'ingreso' o 'egreso'
-        monto: parseFloat(monto),
-        descripcion,
-        fecha: new Date().toISOString()
+        turno_id: movimiento.turno_id,
+        usuario_id: parseInt(movimiento.usuario_id),
+        tipo: movimiento.tipo, // 'ingreso' o 'egreso' validado por el catálogo
+        monto: parseFloat(movimiento.monto),
+        motivo: movimiento.motivo 
       }])
       .select();
     return { data, error };
   },
 
   /**
-   * Recupera los movimientos manuales del turno actual.
+   * Lista todos los movimientos de la sesión actual.
    */
-  async getMovimientos(idSesion) {
+  getMovimientosSesion: async (turnoId) => {
     const { data, error } = await supabase
       .from('caja_movimientos')
       .select('*')
-      .eq('id_sesion', idSesion)
-      .order('fecha', { ascending: false });
+      .eq('turno_id', turnoId)
+      .order('created_at', { ascending: false });
     return { data, error };
   },
 
+
+  /* ==========================================
+     4. CÁLCULOS DE ARQUEO Y VENTAS
+     ========================================== */
+
   /**
-   * LÓGICA DE ARQUEO: Suma ventas y movimientos vinculados al id_sesion_caja.
+   * Suma todas las ventas pagadas en efectivo para el cálculo del balance.
    */
-  async obtenerEstadoArqueo(idSesion) {
-    try {
-      // 1. Obtener monto inicial
-      const { data: sesion } = await supabase
-        .from('caja_sesiones')
-        .select('monto_apertura')
-        .eq('id', idSesion)
-        .single();
-
-      // 2. Obtener todas las ventas pagadas de esta sesión específica
-      const { data: ventas } = await supabase
-        .from('ventas')
-        .select('total, metodo_pago, propina')
-        .eq('id_sesion_caja', idSesion)
-        .eq('estado', 'pagado');
-
-      // 3. Obtener movimientos manuales (gastos/refuerzos)
-      const { data: movimientos } = await supabase
-        .from('caja_movimientos')
-        .select('tipo, monto')
-        .eq('id_sesion', idSesion);
-
-      const apertura = parseFloat(sesion?.monto_apertura || 0);
-
-      // Procesar totales de ventas por método de pago
-      const totalesVentas = ventas?.reduce((acc, v) => {
-        const totalVenta = parseFloat(v.total) || 0;
-        const propina = parseFloat(v.propina) || 0;
-        const neto = totalVenta - propina;
-
-        if (v.metodo_pago === 'efectivo') acc.efectivo += neto;
-        if (v.metodo_pago === 'tarjeta') acc.tarjeta += neto;
-        return acc;
-      }, { efectivo: 0, tarjeta: 0 }) || { efectivo: 0, tarjeta: 0 };
-
-      // Procesar totales de movimientos manuales
-      const movs = movimientos?.reduce((acc, m) => {
-        if (m.tipo === 'ingreso') acc.ingresos += parseFloat(m.monto);
-        if (m.tipo === 'egreso') acc.egresos += parseFloat(m.monto);
-        return acc;
-      }, { ingresos: 0, egresos: 0 }) || { ingresos: 0, egresos: 0 };
-
-      // Cálculo final de lo que debe haber físicamente en efectivo
-      const montoEsperado = apertura + totalesVentas.efectivo + movs.ingresos - movs.egresos;
-
-      return {
-        data: {
-          apertura,
-          ventasEfectivo: totalesVentas.efectivo,
-          ventasTarjeta: totalesVentas.tarjeta,
-          entradasManuales: movs.ingresos,
-          salidasManuales: movs.egresos,
-          montoEsperado
-        },
-        error: null
-      };
-    } catch (error) {
-      return { data: null, error: error.message };
-    }
+  getTotalesEfectivoSesion: async (turnoId) => {
+    const { data, error } = await supabase
+      .from('ventas')
+      .select('total')
+      .eq('turno_id', turnoId)
+      .eq('metodo_pago', 'efectivo')
+      .eq('estado', 'pagado');
+    
+    const totalVentas = data?.reduce((acc, curr) => acc + curr.total, 0) || 0;
+    return { totalVentas, error };
   },
 
   /**
-   * CIERRE DEFINITIVO: Actualiza caja_sesiones con los totales finales y la diferencia.
+   * Obtiene las últimas sesiones para la pestaña de Historial.
    */
-  async cerrarCaja(idSesion, montoCierre, notas = '') {
-    try {
-      const { data: arqueo } = await this.obtenerEstadoArqueo(idSesion);
-      const diferencia = parseFloat(montoCierre) - arqueo.montoEsperado;
-
-      const { data, error } = await supabase
-        .from('caja_sesiones')
-        .update({
-          monto_cierre: parseFloat(montoCierre),
-          diferencia: diferencia,
-          notas: notas,
-          estado: 'cerrada',
-          fecha_cierre: new Date().toISOString(),
-          // Columnas de resumen de tu tabla caja_sesiones
-          total_ventas_efectivo: arqueo.ventasEfectivo,
-          total_ventas_tarjeta: arqueo.ventasTarjeta,
-          total_ingresos: arqueo.entradasManuales,
-          total_egresos: arqueo.salidasManuales
-        })
-        .eq('id', idSesion)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return { success: true, data };
-    } catch (error) {
-      console.error("Error al cerrar caja:", error.message);
-      return { success: false, error: error.message };
-    }
+  getHistorialSesiones: async (limit = 20) => {
+    const { data, error } = await supabase
+      .from('cajas_sesiones')
+      .select('*')
+      .not('fecha_cierre', 'is', null)
+      .order('fecha_apertura', { ascending: false })
+      .limit(limit);
+    return { data, error };
   }
 };
