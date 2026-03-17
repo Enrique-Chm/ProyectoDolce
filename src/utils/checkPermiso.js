@@ -1,46 +1,51 @@
 // Archivo: src/utils/checkPermiso.js
 
 /**
- * MATRIZ DE MÓDULOS (Referencia visual para el desarrollador)
+ * 📋 MATRIZ DE MÓDULOS (CRUD Sincronizado)
+ * El slug base define la familia de permisos.
+ * La tabla visual de 4 columnas usará este slug para buscar automáticamente:
+ * ver_X, crear_X, editar_X y borrar_X.
  */
 export const MATRIZ_MODULOS = [
-  { label: 'Mesero (Ventas)',   slug: 'mesero',      acciones: ['ver'] },
-  { label: 'Caja (Cobros)',    slug: 'caja',        acciones: ['ver'] },
-  { label: 'Catálogo Insumos', slug: 'insumos',     acciones: ['ver', 'editar', 'borrar'] },
-  { label: 'Auditoría Inv.',   slug: 'inventarios', acciones: ['ver', 'borrar'] },
-  { label: 'Proy. Compras',    slug: 'estimaciones',acciones: ['ver'] },
-  { label: 'Recetas',          slug: 'recetas',     acciones: ['ver', 'editar', 'borrar'] },
-  { label: 'Productos',        slug: 'productos',   acciones: ['ver', 'editar', 'borrar'] },
-  { label: 'Proveedores',      slug: 'proveedores', acciones: ['ver', 'borrar'] },
-  { label: 'Empleados',        slug: 'empleados',   acciones: ['ver', 'borrar'] },
-  { label: 'Sucursales',       slug: 'sucursales',  acciones: ['ver', 'borrar'] },
-  { label: 'Impresoras',       slug: 'impresoras',  acciones: ['ver', 'borrar'] },
-  { label: 'Configuración',    slug: 'config',      acciones: ['ver'] },
+  // --- Operación Principal ---
+  { label: 'Ventas, Caja y Tickets',              slug: 'ver_ventas' },
+  { label: 'Inventarios y Mermas',                slug: 'ver_inventario' },
+  
+  // --- Administración ---
+  { label: 'Finanzas: Gastos Operativos',         slug: 'ver_gastos' }, // 👈 ¡NUEVO MÓDULO AGREGADO AQUÍ!
+  { label: 'Equipo, Roles y Permisos',            slug: 'ver_usuarios' },
+  { label: 'Gestión de Sucursales',               slug: 'ver_sucursales' },
+  { label: 'Configuración General e Impresoras',  slug: 'ver_configuracion' },
+  
+  // --- Catálogos Maestros ---
+  { label: 'Catálogo: Insumos (Stock)',           slug: 'ver_insumos' },
+  { label: 'Catálogo: Productos (Menú)',          slug: 'ver_productos' },
+  { label: 'Catálogo: Proveedores',               slug: 'ver_proveedores' },
+  { label: 'Catálogo: Recetas',                   slug: 'ver_recetas' }
 ];
 
+/**
+ * 🛡️ Función principal para validar permisos (El Guardián)
+ * Úsala en cualquier parte de tu app: hasPermission('borrar_ventas')
+ */
 export const hasPermission = (clave) => {
-  // Leemos directamente de localStorage para evitar dependencias circulares con Auth.service
+  if (!clave) return false;
+
   const sessionStr = localStorage.getItem('cloudkitchen_session');
   if (!sessionStr) return false;
 
   try {
     const session = JSON.parse(sessionStr);
-    
     if (!session || !session.user) return false;
 
-    // 1. Verificación de Administrador (ignora mayúsculas/minúsculas)
-    const nombreRol = session.user.roles?.nombre_rol?.toLowerCase();
-    if (nombreRol === 'administrador') return true;
+    // 1. Super Administrador siempre tiene acceso total a todo (Rol ID 1)
+    const esAdmin = session.user.rol === 'Administrador' || session.user.rol_id === 1;
+    if (esAdmin) return true;
 
-    // 2. Verificación de Permiso Específico
-    const tienePermiso = session.permisos?.includes(clave) || false;
-
-    // DEBUG: Descomenta la siguiente línea si quieres ver por qué falla un permiso en consola
-    // console.log(`🔐 [Permisos] Buscando: ${clave} | Resultado: ${tienePermiso} | Mis permisos:`, session.permisos);
-
-    return tienePermiso;
+    // 2. Verificación de Permiso Específico en el array de la sesión
+    return session.permisos?.includes(clave.trim()) || false;
   } catch (error) {
-    console.error("Error al parsear la sesión en hasPermission:", error);
+    console.error("Error en hasPermission:", error);
     return false;
   }
 };

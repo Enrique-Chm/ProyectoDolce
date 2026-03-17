@@ -1,8 +1,18 @@
+// Archivo: src/services/estimaciones.service.js
 import { supabase } from '../lib/supabaseClient';
+import { hasPermission } from '../utils/checkPermiso'; // 🛡️ Importación de seguridad
 
 export const estimacionesService = {
+  /**
+   * Obtiene sugerencias de compra basadas en la vista de proyección.
+   */
   async getSugerenciasCompra() {
     try {
+      // 🛡️ Blindaje: Verificación de lectura de proyecciones
+      if (!hasPermission('ver_inventario')) {
+        return { success: false, error: 'No tienes permisos para ver proyecciones de compra.' };
+      }
+
       const { data, error } = await supabase
         .from('vista_proyeccion_compras') // 👈 Nombre exacto del SQL
         .select('*');
@@ -13,8 +23,16 @@ export const estimacionesService = {
     }
   },
 
+  /**
+   * Obtiene la lista de proveedores activos.
+   */
   async getProveedoresActivos() {
     try {
+      // 🛡️ Blindaje: Verificación de lectura de proveedores
+      if (!hasPermission('ver_proveedores')) {
+        return { success: false, error: 'No tienes permisos para consultar proveedores.' };
+      }
+
       const { data, error } = await supabase
         .from('proveedores')
         .select('id, nombre_empresa')
@@ -26,8 +44,16 @@ export const estimacionesService = {
     }
   },
 
+  /**
+   * Actualiza los parámetros de cobertura y seguridad de un insumo.
+   */
   async actualizarPoliticaCompra(insumoId, diasCobertura, diasSeguridad) {
     try {
+      // 🛡️ Blindaje: Modificar políticas de stock requiere permisos de edición
+      if (!hasPermission('editar_inventario')) {
+        return { success: false, error: 'Acceso denegado: No puedes modificar las políticas de compra.' };
+      }
+
       const { error } = await supabase
         .from('lista_insumo')
         .update({ 
@@ -42,8 +68,16 @@ export const estimacionesService = {
     }
   },
 
+  /**
+   * Registra una compra, crea el movimiento en Kardex y actualiza el stock actual.
+   */
   async registrarCompraRealizada(insumoId, cantidadCajas, costoTotal, usuarioId, sucursalId) {
     try {
+      // 🛡️ Blindaje: Registrar compras es una entrada de stock crítica
+      if (!hasPermission('editar_inventario')) {
+        return { success: false, error: 'Acceso denegado: No tienes facultades para registrar compras.' };
+      }
+
       const { data: stockData } = await supabase
         .from('stock_sucursal')
         .select('cantidad_actual')
@@ -54,6 +88,7 @@ export const estimacionesService = {
       const stockAntes = stockData ? parseFloat(stockData.cantidad_actual) : 0;
       const stockDespues = stockAntes + parseFloat(cantidadCajas);
 
+      // Registro en el Kardex
       const { error: errorMov } = await supabase
         .from('inventario_movimientos')
         .insert([{
@@ -70,6 +105,7 @@ export const estimacionesService = {
 
       if (errorMov) throw errorMov;
 
+      // Actualización de saldo real
       const { error: errorUpsert } = await supabase
         .from('stock_sucursal')
         .upsert({ 

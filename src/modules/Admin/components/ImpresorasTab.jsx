@@ -3,10 +3,15 @@ import React, { useState } from 'react';
 import s from '../AdminPage.module.css'; // Usamos los estilos del Admin homologados
 import { useImpresoras } from '../../../hooks/useImpresoras';
 import { generarHTMLTicket } from '../../../utils/impresion.util';
+import { hasPermission } from '../../../utils/checkPermiso'; // Importamos el sistema de permisos
 
 export const ImpresorasTab = ({ sucursalId }) => {
   const [activeSubTab, setActiveSubTab] = useState('dispositivos'); 
   
+  // 🛡️ SEGURIDAD INTERNA (RBAC)
+  const puedeEditar = hasPermission('editar_configuracion');
+  const puedeBorrar = hasPermission('borrar_impresoras');
+
   const { 
     impresoras, 
     form, 
@@ -62,8 +67,15 @@ export const ImpresorasTab = ({ sucursalId }) => {
       {activeSubTab === 'dispositivos' && (
         <div className="admin-split-layout-sidebar">
           
-          {/* Formulario Lateral (Arriba en Tablet) */}
-          <aside className={s.adminCard} style={{ padding: '20px', border: '2px solid var(--color-primary)' }}>
+          {/* Formulario Lateral: Solo visible o editable si tiene permiso */}
+          <aside 
+            className={s.adminCard} 
+            style={{ 
+              padding: '20px', 
+              border: '2px solid var(--color-primary)',
+              display: puedeEditar ? 'block' : 'none' // Ocultamos el formulario si no puede editar
+            }}
+          >
             <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: 'var(--color-primary)' }}>Vincular Nueva</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div>
@@ -73,6 +85,7 @@ export const ImpresorasTab = ({ sucursalId }) => {
                   style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
                   placeholder="Ej. Barra / Cocina"
                   value={form.nombre} onChange={e => setForm({...form, nombre: e.target.value})}
+                  disabled={!puedeEditar}
                 />
               </div>
 
@@ -81,6 +94,7 @@ export const ImpresorasTab = ({ sucursalId }) => {
                 <select 
                   style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', backgroundColor: 'white' }}
                   value={form.origen} onChange={e => setForm({...form, origen: e.target.value})}
+                  disabled={!puedeEditar}
                 >
                   <option value="caja">💵 Ventas / Caja</option>
                   <option value="cocina">🍳 Cocina / Comandas</option>
@@ -94,6 +108,7 @@ export const ImpresorasTab = ({ sucursalId }) => {
                   <select 
                     style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', backgroundColor: 'white' }}
                     value={form.formato} onChange={e => setForm({...form, formato: e.target.value})}
+                    disabled={!puedeEditar}
                   >
                     <option value="80mm">80mm</option>
                     <option value="58mm">58mm</option>
@@ -106,6 +121,7 @@ export const ImpresorasTab = ({ sucursalId }) => {
                     style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
                     placeholder="192.168.1.100"
                     value={form.ip_address} onChange={e => setForm({...form, ip_address: e.target.value})}
+                    disabled={!puedeEditar}
                   />
                 </div>
               </div>
@@ -114,15 +130,15 @@ export const ImpresorasTab = ({ sucursalId }) => {
                 className={s.btnLogout} 
                 style={{ backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', marginTop: '10px', padding: '12px' }}
                 onClick={guardarImpresora} 
-                disabled={loading}
+                disabled={loading || !puedeEditar}
               >
                 {loading ? 'REGISTRANDO...' : 'GUARDAR DISPOSITIVO'}
               </button>
             </div>
           </aside>
 
-          {/* Tabla de Impresoras (Debajo en Tablet) */}
-          <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto' }}>
+          {/* Tabla de Impresoras */}
+          <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto', flex: 1 }}>
             <div style={{ padding: '20px', borderBottom: '1px solid var(--color-border)' }}>
               <h3 style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0 }}>Impresoras Vinculadas</h3>
             </div>
@@ -155,13 +171,15 @@ export const ImpresorasTab = ({ sucursalId }) => {
                         </span>
                       </td>
                       <td style={{ padding: '15px', textAlign: 'right' }}>
-                        <button 
-                          className={s.btnLogout} 
-                          style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', padding: '5px 10px' }}
-                          onClick={() => eliminarImpresora(imp.id)}
-                        >
-                          ELIMINAR
-                        </button>
+                        {puedeBorrar && (
+                          <button 
+                            className={s.btnLogout} 
+                            style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', padding: '5px 10px' }}
+                            onClick={() => eliminarImpresora(imp.id)}
+                          >
+                            ELIMINAR
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -173,7 +191,7 @@ export const ImpresorasTab = ({ sucursalId }) => {
         </div>
       )}
 
-      {/* --- VISTA 2: DISEÑO DE TICKET (ESTRUCTURA APILADA RESPONSIVA) --- */}
+      {/* --- VISTA 2: DISEÑO DE TICKET --- */}
       {activeSubTab === 'diseno' && (
         <div className="admin-split-layout-sidebar">
           
@@ -192,6 +210,7 @@ export const ImpresorasTab = ({ sucursalId }) => {
                   rows="4"
                   value={configTicket.encabezado}
                   onChange={e => setConfigTicket({...configTicket, encabezado: e.target.value})}
+                  readOnly={!puedeEditar}
                 />
               </div>
 
@@ -202,14 +221,15 @@ export const ImpresorasTab = ({ sucursalId }) => {
                     type="range" min="10" max="18" style={{ width: '100%', accentColor: 'var(--color-primary)' }}
                     value={configTicket.font_size_base}
                     onChange={e => setConfigTicket({...configTicket, font_size_base: parseInt(e.target.value)})}
+                    disabled={!puedeEditar}
                   />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                    <label style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                     <input type="checkbox" checked={configTicket.mostrar_logo} onChange={e => setConfigTicket({...configTicket, mostrar_logo: e.target.checked})} /> Logo
+                     <input type="checkbox" checked={configTicket.mostrar_logo} onChange={e => setConfigTicket({...configTicket, mostrar_logo: e.target.checked})} disabled={!puedeEditar} /> Logo
                    </label>
                    <label style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                     <input type="checkbox" checked={configTicket.mostrar_mesero} onChange={e => setConfigTicket({...configTicket, mostrar_mesero: e.target.checked})} /> Mesero
+                     <input type="checkbox" checked={configTicket.mostrar_mesero} onChange={e => setConfigTicket({...configTicket, mostrar_mesero: e.target.checked})} disabled={!puedeEditar} /> Mesero
                    </label>
                 </div>
               </div>
@@ -221,21 +241,24 @@ export const ImpresorasTab = ({ sucursalId }) => {
                   rows="3"
                   value={configTicket.pie_pagina}
                   onChange={e => setConfigTicket({...configTicket, pie_pagina: e.target.value})}
+                  readOnly={!puedeEditar}
                 />
               </div>
 
-              <button 
-                className={s.btnLogout} 
-                style={{ backgroundColor: 'var(--color-success)', color: 'white', border: 'none', padding: '15px', fontWeight: '800' }}
-                onClick={guardarConfigTicket} 
-                disabled={loading}
-              >
-                {loading ? 'GUARDANDO...' : '💾 GUARDAR DISEÑO'}
-              </button>
+              {puedeEditar && (
+                <button 
+                  className={s.btnLogout} 
+                  style={{ backgroundColor: 'var(--color-success)', color: 'white', border: 'none', padding: '15px', fontWeight: '800' }}
+                  onClick={guardarConfigTicket} 
+                  disabled={loading}
+                >
+                  {loading ? 'GUARDANDO...' : '💾 GUARDAR DISEÑO'}
+                </button>
+              )}
             </div>
           </div>
 
-          {/* SIMULADOR DE TICKET (Pegado en Escritorio, Abajo en Tablet) */}
+          {/* SIMULADOR DE TICKET */}
           <div style={{ position: 'relative' }}>
             <div style={{ position: 'sticky', top: '20px' }}>
                 <h4 style={{ textAlign: 'center', fontSize: '11px', fontWeight: '800', color: 'var(--color-text-muted)', marginBottom: '10px', textTransform: 'uppercase' }}>

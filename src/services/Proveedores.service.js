@@ -1,4 +1,6 @@
+// Archivo: src/services/proveedores.service.js
 import { supabase } from '../lib/supabaseClient';
+import { hasPermission } from '../utils/checkPermiso'; // 🛡️ Importación de seguridad
 
 /**
  * SERVICIO DE PROVEEDORES
@@ -11,6 +13,11 @@ export const proveedoresService = {
    */
   async getAll() {
     try {
+      // 🛡️ Blindaje: Validación de lectura
+      if (!hasPermission('ver_proveedores')) {
+        return [];
+      }
+
       const { data, error } = await supabase
         .from('proveedores')
         .select('*')
@@ -29,6 +36,11 @@ export const proveedoresService = {
    */
   async save(payload, id = null) {
     try {
+      // 🛡️ Blindaje: Validación de edición/creación
+      if (!hasPermission('editar_proveedores')) {
+        return { data: null, error: { message: "Acceso denegado: No tienes facultades para gestionar proveedores." } };
+      }
+
       if (id) {
         // Actualización
         return await supabase
@@ -52,6 +64,11 @@ export const proveedoresService = {
    */
   async delete(id) {
     try {
+      // 🛡️ Blindaje: Validación de borrado crítico
+      if (!hasPermission('borrar_registros')) {
+        return { data: null, error: { message: "Acceso denegado: Se requiere permiso de administrador para eliminar proveedores." } };
+      }
+
       const { data, error } = await supabase
         .from('proveedores')
         .delete()

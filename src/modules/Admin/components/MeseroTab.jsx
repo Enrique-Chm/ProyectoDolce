@@ -1,6 +1,8 @@
+// Archivo: src/modules/Admin/components/MeseroTab.jsx
 import React, { useState } from 'react';
 import s from './MeseroTab.module.css';
 import { useMeseroTab } from '../../../hooks/useMeseroTab';
+import { hasPermission } from '../../../utils/checkPermiso'; // 🛡️ Importamos seguridad
 
 export const MeseroTab = ({ sucursalId, usuarioId }) => {
   const {
@@ -21,6 +23,11 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
     pedirCuenta
   } = useMeseroTab(sucursalId, usuarioId);
 
+  // 🛡️ SEGURIDAD INTERNA (RBAC)
+  const puedeTomarOrdenes = hasPermission('crear_ventas');
+  const puedePedirCuenta = hasPermission('editar_ventas');
+  const puedeVerHistorial = hasPermission('ver_mesero');
+
   // Estado para controlar el carrito en dispositivos móviles/tablets pequeñas
   const [isCartExpanded, setIsCartExpanded] = useState(false);
 
@@ -33,8 +40,14 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
           <div className={s.headerRow} style={{ flexWrap: 'wrap', gap: '15px' }}>
             <h2 className={s.sectionTitle}>Salón</h2>
             <div className={s.flexCenterGap} style={{ flexWrap: 'wrap' }}>
-              <button className={s.btnCancel} style={{ whiteSpace: 'nowrap' }} onClick={() => setView('historial')}>📜 HISTORIAL</button>
-              <button className={s.btnPrimary} style={{ whiteSpace: 'nowrap' }} onClick={() => { setMesaInput(''); setView('mesas'); }}>+ NUEVA MESA</button>
+              {/* Solo mostramos historial si tiene permiso */}
+              {puedeVerHistorial && (
+                <button className={s.btnCancel} style={{ whiteSpace: 'nowrap' }} onClick={() => setView('historial')}>📜 HISTORIAL</button>
+              )}
+              {/* Botón de nueva mesa condicionado por permiso */}
+              {puedeTomarOrdenes && (
+                <button className={s.btnPrimary} style={{ whiteSpace: 'nowrap' }} onClick={() => { setMesaInput(''); setView('mesas'); }}>+ NUEVA MESA</button>
+              )}
             </div>
           </div>
 
@@ -67,7 +80,7 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
       {view === 'mesas' && (
         <div className={s.mesaSelectorManual} style={{ padding: '20px', maxWidth: '400px', margin: '0 auto' }}>
           <h2 style={{ fontSize: '2rem', fontWeight: '900', marginBottom: '30px', textAlign: 'center' }}>¿Qué mesa es?</h2>
-          <form onSubmit={(e) => { e.preventDefault(); if (mesaInput) setView('menu'); }}>
+          <form onSubmit={(e) => { e.preventDefault(); if (mesaInput && puedeTomarOrdenes) setView('menu'); }}>
             <input 
               className={s.mesaInput} 
               style={{ boxSizing: 'border-box', textAlign: 'center' }}
@@ -77,8 +90,13 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
               type="text"
               autoFocus 
               required 
+              readOnly={!puedeTomarOrdenes}
             />
-            <button type="submit" className={s.btnEmpezarOrden} style={{ width: '100%', padding: '20px', fontSize: '1.2rem' }}>Tomar Orden</button>
+            {puedeTomarOrdenes ? (
+              <button type="submit" className={s.btnEmpezarOrden} style={{ width: '100%', padding: '20px', fontSize: '1.2rem' }}>Tomar Orden</button>
+            ) : (
+              <div style={{ color: 'var(--color-danger)', fontWeight: 'bold', textAlign: 'center', marginTop: '10px' }}>No tienes permiso para abrir mesas.</div>
+            )}
             <button type="button" className={s.btnCancel} onClick={() => setView('cuentas')} style={{width: '100%', marginTop: '15px', padding: '15px', fontWeight: '700'}}>
               Cancelar
             </button>
@@ -107,7 +125,7 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
                     <h4 style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '15px' }}>{cat.nombre}</h4>
                     <div className={s.productGrid}>
                       {productosCat.map(p => {
-                        const isLocked = ventaActiva?.estado === 'por_cobrar';
+                        const isLocked = ventaActiva?.estado === 'por_cobrar' || !puedeTomarOrdenes; // Bloqueamos si está por cobrar o si no tiene permiso
                         return (
                           <div 
                             key={p.id} 
@@ -147,7 +165,6 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
                 <div style={{ marginBottom: '20px', background: 'var(--color-bg-muted)', padding: '15px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)' }}>
                   <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--color-text-muted)', marginBottom: '10px', textAlign: 'center', textTransform: 'uppercase' }}>Consumo en Mesa</div>
                   {ventaActiva.ventas_detalle.map((det, idx) => {
-                    // AQUÍ ESTÁ LA SOLUCIÓN AL ERROR: Buscamos el nombre del producto en el menú usando producto_id
                     const nombreProducto = productos.find(p => p.id === det.producto_id)?.nombre || `Prod. #${det.producto_id}`;
                     return (
                       <div key={idx} className={s.flexBetween} style={{ fontSize: '13px', marginBottom: '6px', color: 'var(--color-text-muted)' }}>
@@ -164,7 +181,10 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
                 <div key={item.id} className={s.cartItem} style={{ marginBottom: '15px' }}>
                   <div className={s.flexBetween}>
                     <strong className={s.cartItemName}><span className={s.cartItemQty}>{item.cantidad}x</span> {item.nombre}</strong>
-                    <button onClick={() => eliminarDelCarrito(item.id)} className={s.btnRemoveItem} style={{ padding: '8px' }}>✕</button>
+                    {/* Solo permitir borrar si puede tomar órdenes */}
+                    {puedeTomarOrdenes && (
+                      <button onClick={() => eliminarDelCarrito(item.id)} className={s.btnRemoveItem} style={{ padding: '8px' }}>✕</button>
+                    )}
                   </div>
                   <input 
                     placeholder="+ Notas para cocina..." 
@@ -172,6 +192,7 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
                     style={{ boxSizing: 'border-box', marginTop: '8px', padding: '10px' }}
                     value={item.notas} 
                     onChange={(e) => actualizarNota(item.id, e.target.value)} 
+                    readOnly={!puedeTomarOrdenes}
                   />
                 </div>
               ))}
@@ -196,9 +217,9 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
                   className={s.btnOrder} 
                   style={{ padding: '16px', fontWeight: '800' }}
                   onClick={handleEnviarOrden} 
-                  disabled={loading || carrito.length === 0 || ventaActiva?.estado === 'por_cobrar'}
+                  disabled={loading || carrito.length === 0 || ventaActiva?.estado === 'por_cobrar' || !puedeTomarOrdenes}
                 >
-                  {loading ? 'ENVIANDO...' : 'ENVIAR A COCINA'}
+                  {!puedeTomarOrdenes ? 'SOLO LECTURA' : (loading ? 'ENVIANDO...' : 'ENVIAR A COCINA')}
                 </button>
                 
                 {ventaActiva && (
@@ -215,9 +236,9 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
                       const msg = ventaActiva.estado === 'por_cobrar' ? '¿Deseas reimprimir el ticket de cuenta?' : '¿Enviar esta mesa a caja para cobrar?';
                       if (window.confirm(msg)) pedirCuenta(ventaActiva.id);
                     }}
-                    disabled={loading}
+                    disabled={loading || !puedePedirCuenta} // Bloqueamos por permiso de pedir cuenta
                   >
-                    {ventaActiva.estado === 'por_cobrar' ? '🖨️ REIMPRIMIR TICKET' : '🧾 PEDIR CUENTA'}
+                    {!puedePedirCuenta ? 'BLOQUEADO' : (ventaActiva.estado === 'por_cobrar' ? '🖨️ REIMPRIMIR TICKET' : '🧾 PEDIR CUENTA')}
                   </button>
                 )}
               </div>
@@ -227,7 +248,7 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
       )}
 
       {/* VISTA 3: HISTORIAL DE CUENTAS COBRADAS */}
-      {view === 'historial' && (
+      {view === 'historial' && puedeVerHistorial && (
         <div style={{ animation: 'fadeIn 0.2s ease-out' }}>
           <div className={s.headerRow}>
             <h2 className={s.sectionTitle}>Cuentas de Hoy</h2>

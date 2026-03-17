@@ -1,173 +1,225 @@
-import { useState, useEffect, useCallback } from 'react';
-import { CajaService } from '../services/Caja.service';
-import Swal from 'sweetalert2';
+// Archivo: src/hooks/useCajeroTab.js
+import { useState, useEffect, useCallback } from "react";
+import { CajaService } from "../services/Caja.service";
+import { hasPermission } from "../utils/checkPermiso"; // 🛡️ Importación de seguridad
+import Swal from "sweetalert2";
 
 export const useCajeroTab = (usuarioId) => {
-    const [loading, setLoading] = useState(true);
-    const [sesionActiva, setSesionActiva] = useState(null);
-    const [movimientos, setMovimientos] = useState([]);
-    const [historial, setHistorial] = useState([]);
-    const [motivosCatalogo, setMotivosCatalogo] = useState([]);
-    const [tiposDisponibles, setTiposDisponibles] = useState([]); 
+  const [loading, setLoading] = useState(true);
+  const [sesionActiva, setSesionActiva] = useState(null);
+  const [movimientos, setMovimientos] = useState([]);
+  const [historial, setHistorial] = useState([]);
+  const [motivosCatalogo, setMotivosCatalogo] = useState([]);
+  const [tiposDisponibles, setTiposDisponibles] = useState([]);
 
-    /**
-     * Sincronización global de datos de caja
-     */
-    const cargarDatosCaja = useCallback(async () => {
-        setLoading(true);
-        try {
-            // 1. Cargar catálogo de motivos desde cat_motivos_inventario
-            const { data: catData } = await CajaService.getMotivosInventario();
-            setMotivosCatalogo(catData || []);
+  // 🛡️ DEFINICIÓN DE FACULTADES
+  const puedeVer = hasPermission("ver_ventas");
+  const puedeEditar = hasPermission("editar_ventas");
 
-            // Extraer tipos únicos para alimentar el primer select dinámico
-            if (catData) {
-                const tiposUnicos = [...new Set(catData.map(item => item.tipo))];
-                setTiposDisponibles(tiposUnicos);
-            }
+  /**
+   * Sincronización global de datos de caja
+   */
+  const cargarDatosCaja = useCallback(async () => {
+    // 🛡️ BLINDAJE: Si no puede ver, detenemos la carga
+    if (!puedeVer) {
+      setLoading(false);
+      return;
+    }
 
-            // 2. Obtener sesión activa
-            const { data: sesion } = await CajaService.getSesionActiva(usuarioId);
-            setSesionActiva(sesion);
+    setLoading(true);
+    try {
+      // 1. Cargar catálogo de motivos
+      const { data: catData } = await CajaService.getMotivosInventario();
+      setMotivosCatalogo(catData || []);
 
-            if (sesion) {
-                // 3. Cargar movimientos del turno actual
-                const { data: movs } = await CajaService.getMovimientosSesion(sesion.id);
-                setMovimientos(movs || []);
-            }
+      if (catData) {
+        const tiposLimpios = catData.map((item) => item.tipo?.toString().trim().toLowerCase());
+        const tiposUnicos = [...new Set(tiposLimpios)].filter(Boolean);
+        setTiposDisponibles(tiposUnicos);
+      }
 
-            // 4. Cargar historial de sesiones cerradas
-            const { data: hist } = await CajaService.getHistorialSesiones();
-            setHistorial(hist || []);
+      // 2. Obtener sesión activa
+      const { data: sesion } = await CajaService.getSesionActiva(usuarioId);
+      setSesionActiva(sesion);
 
-        } catch (error) {
-            console.error("Error en sincronización de caja:", error);
-        } finally {
-            setLoading(false);
-        }
-    }, [usuarioId]);
+      if (sesion) {
+        // 3. Cargar movimientos del turno actual
+        const { data: movs } = await CajaService.getMovimientosSesion(sesion.id);
+        setMovimientos(movs || []);
+      } else {
+        setMovimientos([]); 
+      }
 
-    useEffect(() => {
-        cargarDatosCaja();
-    }, [cargarDatosCaja]);
+      // 4. Cargar historial de sesiones cerradas
+      const { data: hist } = await CajaService.getHistorialSesiones();
+      setHistorial(hist || []);
+    } catch (error) {
+      console.error("Error en sincronización de caja:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [usuarioId, puedeVer]); // 🛡️ Dependencia de seguridad agregada
 
-    /**
-     * Filtra los motivos del catálogo según el tipo seleccionado en la UI
-     */
-    const getMotivosPorTipo = (tipo) => {
-        return motivosCatalogo.filter(m => m.tipo === tipo);
-    };
+  useEffect(() => {
+    cargarDatosCaja();
+  }, [cargarDatosCaja]);
 
-    /**
-     * Abre un nuevo turno
-     */
-    const abrirTurno = async (monto) => {
-        const montoNum = parseFloat(monto);
-        if (isNaN(montoNum) || montoNum < 0) {
-            return Swal.fire('Error', 'Ingresa un monto de apertura válido', 'error');
-        }
+  /**
+   * Filtra los motivos del catálogo según el tipo seleccionado
+   */
+  const getMotivosPorTipo = (tipo) => {
+    if (!tipo) return [];
+    return motivosCatalogo.filter(
+      (m) => m.tipo?.toString().trim().toLowerCase() === tipo.toString().trim().toLowerCase()
+    );
+  };
 
-        const { data, error } = await CajaService.abrirCaja({
-            usuario_id: usuarioId,
-            monto_apertura: montoNum
-        });
+  /**
+   * Abre un nuevo turno
+   */
+  const abrirTurno = async (monto) => {
+    // 🛡️ BLINDAJE: Verificación de permiso de edición
+    if (!puedeEditar) {
+      return Swal.fire("Acceso denegado", "No tienes facultades para iniciar turnos de caja.", "error");
+    }
 
-        if (error) {
-            Swal.fire('Error', 'No se pudo abrir la caja', 'error');
-        } else {
-            setSesionActiva(data);
-            await cargarDatosCaja();
-            Swal.fire('Éxito', 'Turno iniciado', 'success');
-        }
-    };
+    if (!usuarioId) {
+      return Swal.fire("Error", "No se detectó el ID del usuario cajero", "error");
+    }
 
-    /**
-     * Registra un ingreso o egreso de dinero (ej. pago a proveedor, retiro)
-     */
-    const registrarMovimientoEfectivo = async (tipo, monto, motivoNombre) => {
-        if (!sesionActiva) return;
+    const montoNum = parseFloat(monto);
+    if (isNaN(montoNum) || montoNum < 0) {
+      return Swal.fire("Error", "Ingresa un monto de apertura válido", "error");
+    }
 
-        const montoNum = parseFloat(monto);
-        if (isNaN(montoNum) || montoNum <= 0 || !motivoNombre) {
-            return Swal.fire('Error', 'Monto y motivo son obligatorios', 'error');
-        }
+    const { data, error } = await CajaService.abrirCaja({
+      usuario_id: usuarioId,
+      monto_apertura: montoNum,
+    });
 
-        const { error } = await CajaService.registrarMovimiento({
-            turno_id: sesionActiva.id,
-            usuario_id: usuarioId,
-            tipo: tipo, 
-            monto: montoNum,
-            motivo: motivoNombre 
-        });
+    if (error) {
+      console.error("Error al abrir caja:", error);
+      Swal.fire("Error", `No se pudo abrir la caja: ${error.message || 'Verifica la conexión'}`, "error");
+    } else {
+      setSesionActiva(data);
+      await cargarDatosCaja();
+      Swal.fire("Éxito", "Turno iniciado", "success");
+    }
+  };
 
-        if (error) {
-            console.error("Error al registrar movimiento:", error);
-            Swal.fire('Error', 'No se pudo guardar el movimiento. Verifique la conexión.', 'error');
-        } else {
-            await cargarDatosCaja();
-            Swal.fire('Registrado', 'Movimiento guardado con éxito', 'success');
-        }
-    };
+  /**
+   * Registra un ingreso o egreso de dinero
+   */
+  const registrarMovimientoEfectivo = async (tipo, monto, motivoNombre) => {
+    // 🛡️ BLINDAJE: Verificación de permiso de edición
+    if (!puedeEditar) {
+      return Swal.fire("Acceso denegado", "No tienes permiso para registrar movimientos de dinero.", "error");
+    }
 
-    /**
-     * Arqueo y cierre de caja usando las columnas correctas de la base de datos
-     */
-    const cerrarTurno = async (montoCierre) => {
-        const montoCierreNum = parseFloat(montoCierre);
-        if (isNaN(montoCierreNum)) {
-            return Swal.fire('Error', 'Ingresa el monto físico contado', 'error');
-        }
+    if (!sesionActiva) {
+      return Swal.fire("Atención", "Debes abrir un turno para registrar movimientos.", "warning");
+    }
 
-        const { totalVentas } = await CajaService.getTotalesEfectivoSesion(sesionActiva.id);
-        const ingresos = movimientos.filter(m => m.tipo === 'ingreso').reduce((a, b) => a + b.monto, 0);
-        const egresos = movimientos.filter(m => m.tipo === 'egreso').reduce((a, b) => a + b.monto, 0);
-        
-        // Fórmula del arqueo
-        const montoEsperado = sesionActiva.monto_apertura + totalVentas + ingresos - egresos;
-        const diferencia = montoCierreNum - montoEsperado;
+    const montoNum = parseFloat(monto);
+    if (isNaN(montoNum) || montoNum <= 0 || !motivoNombre) {
+      return Swal.fire("Error", "Monto y motivo son obligatorios", "error");
+    }
 
-        const confirm = await Swal.fire({
-            title: '¿Confirmar Arqueo?',
-            html: `
-                <div style="text-align: left;">
-                    <p>Monto Esperado: <b>$${montoEsperado.toFixed(2)}</b></p>
-                    <p>Diferencia: <b style="color: ${diferencia < 0 ? '#ef4444' : '#10b981'}">$${diferencia.toFixed(2)}</b></p>
-                </div>
-            `,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Cerrar Turno'
-        });
+    const { error } = await CajaService.registrarMovimiento({
+      turno_id: sesionActiva.id,
+      usuario_id: usuarioId,
+      tipo: tipo?.toLowerCase().trim(),
+      monto: montoNum,
+      motivo: motivoNombre,
+    });
 
-        if (confirm.isConfirmed) {
-            const { error } = await CajaService.cerrarCaja(sesionActiva.id, {
-                monto_cierre_real: montoCierreNum,
-                monto_cierre_esperado: montoEsperado,
-                diferencia: diferencia
-            });
+    if (error) {
+      console.error("Error al registrar movimiento:", error);
+      Swal.fire("Error", `No se pudo guardar el movimiento: ${error.message}`, "error");
+    } else {
+      await cargarDatosCaja();
+      Swal.fire("Registrado", "Movimiento guardado con éxito", "success");
+    }
+  };
 
-            if (error) {
-                console.error("Error al cerrar turno:", error);
-                Swal.fire('Error', 'No se pudo procesar el cierre en la base de datos.', 'error');
-            } else {
-                setSesionActiva(null);
-                await cargarDatosCaja();
-                Swal.fire('Cerrado', 'La caja ha sido cerrada correctamente', 'success');
-            }
-        }
-    };
+  /**
+   * Arqueo adaptado para leer "entrada" y "salida"
+   */
+  const cerrarTurno = async (montoCierre) => {
+    // 🛡️ BLINDAJE: Solo personal autorizado cierra caja
+    if (!puedeEditar) {
+      return Swal.fire("Acceso denegado", "No tienes permiso para realizar el arqueo de cierre.", "error");
+    }
 
-    return {
-        loading,
-        sesionActiva,
-        movimientos,
-        historial,
-        motivosCatalogo,
-        tiposDisponibles,
-        getMotivosPorTipo, 
-        abrirTurno,
-        cerrarTurno,
-        registrarMovimientoEfectivo,
-        refrescarTodo: cargarDatosCaja
-    };
+    const montoCierreNum = parseFloat(montoCierre);
+    if (isNaN(montoCierreNum)) {
+      return Swal.fire("Error", "Ingresa el monto físico contado", "error");
+    }
+
+    const { totalVentas } = await CajaService.getTotalesEfectivoSesion(sesionActiva.fecha_apertura);
+    
+    const ingresos = movimientos
+      .filter((m) => {
+        const t = m.tipo?.toLowerCase().trim();
+        return t === "ingreso" || t === "entrada";
+      })
+      .reduce((a, b) => a + b.monto, 0);
+      
+    const egresos = movimientos
+      .filter((m) => {
+        const t = m.tipo?.toLowerCase().trim();
+        return t === "egreso" || t === "salida";
+      })
+      .reduce((a, b) => a + b.monto, 0);
+
+    const montoEsperado = sesionActiva.monto_apertura + totalVentas + ingresos - egresos;
+    const diferencia = montoCierreNum - montoEsperado;
+
+    const confirm = await Swal.fire({
+      title: "¿Confirmar Arqueo?",
+      html: `
+        <div style="text-align: left;">
+            <p>Monto Esperado: <b>$${montoEsperado.toFixed(2)}</b></p>
+            <p>Diferencia: <b style="color: ${diferencia < 0 ? "#ef4444" : "#10b981"}">$${diferencia.toFixed(2)}</b></p>
+        </div>
+      `,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Cerrar Turno",
+    });
+
+    if (confirm.isConfirmed) {
+      const { error } = await CajaService.cerrarCaja(sesionActiva.id, {
+        monto_cierre_real: montoCierreNum,
+        monto_cierre_esperado: montoEsperado,
+        diferencia: diferencia,
+      });
+
+      if (error) {
+        console.error("Error al cerrar turno:", error);
+        Swal.fire("Error", "No se pudo procesar el cierre en la base de datos.", "error");
+      } else {
+        setSesionActiva(null);
+        await cargarDatosCaja();
+        Swal.fire("Cerrado", "La caja ha sido cerrada correctamente", "success");
+      }
+    }
+  };
+
+  return {
+    loading,
+    sesionActiva: puedeVer ? sesionActiva : null, // 🛡️ Datos ocultos si no hay permiso
+    movimientos: puedeVer ? movimientos : [],
+    historial: puedeVer ? historial : [],
+    motivosCatalogo,
+    tiposDisponibles,
+    getMotivosPorTipo,
+    abrirTurno,
+    cerrarTurno,
+    registrarMovimientoEfectivo,
+    refrescarTodo: cargarDatosCaja,
+    // 🛡️ Banderas de UI para el componente JSX
+    puedeVer,
+    puedeEditar
+  };
 };

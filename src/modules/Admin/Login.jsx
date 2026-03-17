@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+// Archivo: src/modules/Auth/components/Login.jsx
+import React, { useState, useEffect } from 'react';
 import { authService } from '../../services/Auth.service';
 
 export const Login = ({ onLoginSuccess }) => {
@@ -7,22 +8,41 @@ export const Login = ({ onLoginSuccess }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // 🛡️ BLINDAJE: Verificación de sesión persistente
+  // Si el usuario ya tiene una sesión válida en el navegador, 
+  // lo enviamos directo al sistema sin pedir credenciales.
+  useEffect(() => {
+    const activeSession = authService.getCurrentSession();
+    if (activeSession) {
+      onLoginSuccess(activeSession);
+    }
+  }, [onLoginSuccess]);
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
+    
+    // 🛡️ Limpieza de datos (Trimming)
+    const cleanUsername = username.trim();
+    if (!cleanUsername || !password) {
+      return setError('Por favor, completa todos los campos.');
+    }
+
     setLoading(true);
 
     try {
-      const session = await authService.login(username, password);
+      // 🛡️ Llamada al servicio blindado de autenticación
+      const session = await authService.login(cleanUsername, password);
       onLoginSuccess(session);
     } catch (err) {
-      setError(err.message || 'Credenciales inválidas');
+      // Manejo de errores amigable pero seguro
+      setError(err.message || 'Error de conexión con el servidor');
     } finally {
       setLoading(false);
     }
   };
 
-  // Objeto de estilos integrados
+  // Objeto de estilos integrados (Mantenidos al 100%)
   const styles = {
     loginWrapper: {
       display: 'flex',
@@ -136,6 +156,7 @@ export const Login = ({ onLoginSuccess }) => {
               required
               placeholder="nombre.apellido"
               autoFocus
+              autoComplete="username"
             />
           </div>
 
@@ -148,6 +169,7 @@ export const Login = ({ onLoginSuccess }) => {
               onChange={(e) => setPassword(e.target.value)}
               required
               placeholder="••••••••"
+              autoComplete="current-password"
             />
           </div>
 

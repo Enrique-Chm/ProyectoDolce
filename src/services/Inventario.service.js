@@ -1,8 +1,13 @@
+// Archivo: src/services/inventario.service.js
 import { supabase } from '../lib/supabaseClient';
+import { hasPermission } from '../utils/checkPermiso'; // 🛡️ Importación de seguridad
 
 export const inventarioService = {
 
   async getInsumos(sucursalId) {
+    // 🛡️ Blindaje de lectura
+    if (!hasPermission('ver_inventario')) return [];
+
     const { data: catalogo, error: errC } = await supabase
       .from('lista_insumo')
       .select(`id, nombre, cat_unidades_medida!unidad_medida(abreviatura), cat_categoria_insumos(nombre)`);
@@ -27,6 +32,11 @@ export const inventarioService = {
   },
 
   async crearMovimiento(movimiento) {
+    // 🛡️ Blindaje de escritura (Kardex)
+    if (!hasPermission('editar_inventario')) {
+      return { success: false, error: 'Acceso denegado: No tienes facultades para mover inventario.' };
+    }
+
     try {
       const { data: movData, error: errorMov } = await supabase
         .from('inventario_movimientos')
@@ -52,6 +62,11 @@ export const inventarioService = {
   },
 
   async calcularContraste(sucursalId, fechaInicio, fechaFin) {
+    // 🛡️ Blindaje de lectura de reportes
+    if (!hasPermission('ver_inventario')) {
+      return { data: null, error: 'No tienes permiso para ver reportes de contraste.' };
+    }
+
     try {
       const fInicioISO = `${fechaInicio}T00:00:00.000Z`;
       const fFinISO = `${fechaFin}T23:59:59.999Z`;
@@ -115,14 +130,18 @@ export const inventarioService = {
   },
 
   async aplicarAuditoriaInsumo({ sucursal_id, insumo_id, stock_esperado, conteo_fisico, usuario_id }) {
+    // 🛡️ Blindaje crítico: Las auditorías son la base del control
+    if (!hasPermission('editar_inventario')) {
+      return { success: false, error: 'Acceso denegado: Se requiere rol administrativo para auditar insumos.' };
+    }
+
     try {
       const fisico = parseFloat(conteo_fisico); 
       const esperado = parseFloat(stock_esperado);
       const diferenciaTotal = fisico - esperado;
       const timestamp = new Date().toISOString();
 
-      // 1. Si hay una diferencia REAL entre lo que el sistema esperaba y la báscula,
-      // creamos un movimiento en el Kardex para justificar el sobrante/faltante.
+      // 1. Justificación en Kardex si hay diferencia REAL
       if (Math.abs(diferenciaTotal) >= 0.001) {
         const { error: errMov } = await supabase.from('inventario_movimientos').insert([{
           sucursal_id,
@@ -140,8 +159,7 @@ export const inventarioService = {
       }
 
       // 2. MAGIA: ESTO SIEMPRE SE EJECUTA.
-      // Así obligamos a la base de datos a ponerse al corriente con las ventas
-      // sin importar si hubo mermas extra o no.
+      // Sincronización forzada con la base de datos.
       const { error: errUpsert } = await supabase.from('stock_sucursal').upsert({
         sucursal_id,
         insumo_id,
@@ -158,11 +176,15 @@ export const inventarioService = {
   },
 
   async getMotivos() {
+    // No requiere blindaje estricto por ser un catálogo auxiliar, pero validamos
+    if (!hasPermission('ver_inventario')) return [];
     const { data } = await supabase.from('cat_motivos_inventario').select('*').eq('activo', true);
     return data || [];
   },
 
   async getMovimientos(sucursalId) {
+    // 🛡️ Blindaje de lectura de histórico
+    if (!hasPermission('ver_inventario')) return [];
     const { data } = await supabase.from('inventario_movimientos').select('*, insumo:insumo_id(nombre)').eq('sucursal_id', sucursalId).order('created_at', { ascending: false });
     return data || [];
   }

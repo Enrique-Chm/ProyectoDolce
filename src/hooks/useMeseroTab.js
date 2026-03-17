@@ -1,6 +1,8 @@
+// Archivo: src/hooks/useMeseroTab.js
 import { useState, useEffect, useCallback } from 'react';
 import { productosService } from '../services/productos.service';
-import { MeseroService } from '../services/Mesero.service'; // <--- IMPORTACIÓN ACTUALIZADA
+import { MeseroService } from '../services/Mesero.service'; 
+import { hasPermission } from '../utils/checkPermiso'; // 🛡️ Importación de seguridad
 
 export const useMeseroTab = (sucursalId, usuarioId) => {
   // --- ESTADOS ---
@@ -14,13 +16,20 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   const [carrito, setCarrito] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // 🛡️ DEFINICIÓN DE FACULTADES
+  const puedeVerVentas = hasPermission('ver_ventas');
+  const puedeCrearVentas = hasPermission('crear_ventas');
+  const puedeEditarVentas = hasPermission('editar_ventas');
+
   // --- CARGA DE DATOS ---
 
   // Cargar mesas activas (Abiertas y Por Cobrar)
   const cargarCuentas = useCallback(async () => {
+    // 🛡️ Blindaje de lectura
+    if (!puedeVerVentas) return;
+
     setLoading(true);
     try {
-      // USAMOS MeseroService AHORA
       const { data } = await MeseroService.getCuentasAbiertas(sucursalId);
       setCuentasAbiertas(data || []);
       
@@ -39,9 +48,12 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
     } finally {
       setLoading(false);
     }
-  }, [sucursalId, ventaActiva, view]);
+  }, [sucursalId, ventaActiva, view, puedeVerVentas]);
 
   const cargarMenu = useCallback(async () => {
+    // 🛡️ Blindaje de lectura de catálogo
+    if (!puedeVerVentas) return;
+
     try {
       const data = await productosService.getInitialData(sucursalId);
       setProductos(data.productos || []);
@@ -49,12 +61,14 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
     } catch (err) {
       console.error("Error al cargar menú:", err);
     }
-  }, [sucursalId]);
+  }, [sucursalId, puedeVerVentas]);
 
   const cargarHistorial = useCallback(async () => {
+    // 🛡️ Blindaje de lectura de histórico
+    if (!puedeVerVentas) return;
+
     setLoading(true);
     try {
-      // USAMOS MeseroService AHORA
       const { data } = await MeseroService.getHistorialCobradas(sucursalId);
       setCuentasCobradas(data || []);
     } catch (err) {
@@ -62,7 +76,7 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
     } finally {
       setLoading(false);
     }
-  }, [sucursalId]);
+  }, [sucursalId, puedeVerVentas]);
 
   // --- EFECTOS ---
   useEffect(() => { 
@@ -74,6 +88,8 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   // --- LÓGICA DE INTERFAZ Y CARRITO ---
   
   const seleccionarCuenta = (venta) => {
+    // 🛡️ Solo permitimos entrar al menú si puede ver ventas
+    if (!puedeVerVentas) return;
     setVentaActiva(venta);
     setMesaInput(venta.mesa);
     setCarrito([]); 
@@ -81,6 +97,12 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   };
 
   const agregarAlCarrito = (p) => {
+    // 🛡️ Bloqueo si no tiene permiso de creación de órdenes
+    if (!puedeCrearVentas) {
+      alert("No tienes permiso para agregar productos a la orden.");
+      return;
+    }
+
     if (ventaActiva?.estado === 'por_cobrar') {
       alert("⚠️ CUENTA BLOQUEADA: La mesa está en proceso de pago. No puedes agregar más productos.");
       return;
@@ -124,11 +146,16 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   // --- ACCIONES DE BASE DE DATOS ---
 
   const handleEnviarOrden = async () => {
+    // 🛡️ Verificación de permiso de creación
+    if (!puedeCrearVentas) {
+      alert("Acceso denegado: No puedes registrar nuevas órdenes.");
+      return;
+    }
+
     if (carrito.length === 0 || ventaActiva?.estado === 'por_cobrar') return;
     
     setLoading(true);
     try {
-      // USAMOS MeseroService AHORA
       const res = await MeseroService.procesarVenta({
         id: ventaActiva?.id,
         folio: ventaActiva?.folio,
@@ -151,10 +178,15 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   };
 
   const pedirCuenta = async (ventaId) => {
+    // 🛡️ Verificación de permiso de edición (solicitar cuenta)
+    if (!puedeEditarVentas) {
+      alert("No tienes permiso para solicitar tickets de pago.");
+      return;
+    }
+
     if (!ventaId) return;
     setLoading(true);
     try {
-      // USAMOS MeseroService AHORA
       const res = await MeseroService.marcarPorCobrar(ventaId);
       if (res.success) {
         const esReimpresion = ventaActiva?.estado === 'por_cobrar';
@@ -173,12 +205,13 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
 
   return {
     view, setView,
-    cuentasAbiertas,
-    cuentasCobradas,
+    // 🛡️ Datos blindados
+    cuentasAbiertas: puedeVerVentas ? cuentasAbiertas : [],
+    cuentasCobradas: puedeVerVentas ? cuentasCobradas : [],
     ventaActiva,
     mesaInput, setMesaInput,
-    productos,
-    categorias,
+    productos: puedeVerVentas ? productos : [],
+    categorias: puedeVerVentas ? categorias : [],
     carrito, setCarrito,
     loading,
     seleccionarCuenta,
@@ -187,6 +220,10 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
     actualizarNota,
     handleEnviarOrden,
     pedirCuenta,
-    resetTodo
+    resetTodo,
+    // 🛡️ Flags de seguridad para el JSX
+    puedeVerVentas,
+    puedeCrearVentas,
+    puedeEditarVentas
   };
 };

@@ -1,4 +1,6 @@
+// Archivo: src/services/Recetas.service.js
 import { supabase } from '../lib/supabaseClient';
+import { hasPermission } from '../utils/checkPermiso'; // 🛡️ Importación de seguridad
 
 /**
  * SERVICIO DE RECETAS (Multi-Sucursal)
@@ -12,6 +14,11 @@ export const recetasService = {
    */
   async getInitialData(sucursalId) {
     try {
+      // 🛡️ Blindaje: Verificación de lectura
+      if (!hasPermission('ver_recetas')) {
+        return { recetasAgrupadas: [], insumos: [], unidades: [] };
+      }
+
       // Si por alguna razón no llega el ID, usamos el 1 (Matriz) por defecto
       const sId = sucursalId || 1;
 
@@ -56,6 +63,11 @@ export const recetasService = {
    */
   async saveReceta(rows, nombreOriginal, isEditing = false) {
     try {
+      // 🛡️ Blindaje: Verificación de edición/creación
+      if (!hasPermission('editar_recetas')) {
+        return { error: { message: "Acceso Denegado: No tienes permiso para guardar o editar recetas." } };
+      }
+
       // Obtenemos el sucursal_id de la primera fila para asegurar consistencia
       const sucursalId = rows[0]?.sucursal_id;
 
@@ -83,6 +95,11 @@ export const recetasService = {
    */
   async deleteReceta(nombre, sucursalId) {
     try {
+      // 🛡️ Blindaje: Verificación de borrado (Nivel Administrativo)
+      if (!hasPermission('borrar_registros')) {
+        return { error: { message: "Acceso Denegado: Se requieren permisos de borrado para esta acción." } };
+      }
+
       // Es recomendable pasar el sucursalId para no borrar recetas homónimas en otros locales
       const query = supabase.from('recetas').delete().eq('nombre', nombre);
       

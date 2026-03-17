@@ -1,5 +1,7 @@
+// Archivo: src/hooks/useInventarios.js
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { inventarioService } from '../services/Inventario.service';
+import { hasPermission } from '../utils/checkPermiso'; // 🛡️ Blindaje de seguridad
 
 export const useInventarios = (sucursalId) => {
   const [insumos, setInsumos] = useState([]);
@@ -9,6 +11,10 @@ export const useInventarios = (sucursalId) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // 🛡️ DEFINICIÓN DE FACULTADES
+  const puedeVer = hasPermission('ver_inventario');
+  const puedeEditar = hasPermission('editar_inventario');
+
   // --- ESTADOS MOVIDOS DESDE EL JSX ---
   const [searchTerm, setSearchTerm] = useState('');
   const [conteos, setConteos] = useState({}); // Lo que se escribe en los inputs
@@ -17,6 +23,13 @@ export const useInventarios = (sucursalId) => {
 
   const cargarDatos = useCallback(async () => {
     if (!sucursalId) return;
+    
+    // 🛡️ BLINDAJE: Si no tiene permiso de lectura, cancelamos la carga
+    if (!puedeVer) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const hoy = new Date().toISOString().split('T')[0];
@@ -42,43 +55,49 @@ export const useInventarios = (sucursalId) => {
     } finally {
       setLoading(false);
     }
-  }, [sucursalId]);
+  }, [sucursalId, puedeVer]); // 🛡️ Añadida dependencia de seguridad
 
   const cargarMovimientos = useCallback(async () => {
-    if (!sucursalId) return;
+    if (!sucursalId || !puedeVer) return; // 🛡️ Protección de llamada
     try {
       const data = await inventarioService.getMovimientos(sucursalId);
       setMovimientos(data || []);
     } catch (err) {
       console.error(err);
     }
-  }, [sucursalId]);
+  }, [sucursalId, puedeVer]);
 
   // --- FILTROS DE DATOS ---
   const insumosFiltrados = useMemo(() => {
+    // 🛡️ Si no hay permiso, devolvemos lista vacía
+    if (!puedeVer) return [];
+    
     const term = searchTerm.toLowerCase().trim();
     if (!term) return insumos;
     return insumos.filter(i => 
       i.nombre.toLowerCase().includes(term) || 
       i.categoria?.toLowerCase().includes(term)
     );
-  }, [insumos, searchTerm]);
+  }, [insumos, searchTerm, puedeVer]);
 
-  // LA LÓGICA DE FILTRADO AHORA VIVE AQUÍ
   const contrasteDataFiltrado = useMemo(() => {
+    // 🛡️ Si no hay permiso, devolvemos lista vacía
+    if (!puedeVer) return [];
+
     return contrasteData.filter(row => {
       if (filtroAuditoria === 'todos') return true;
       if (filtroAuditoria === 'auditados') return auditados.includes(row.id);
       if (filtroAuditoria === 'pendientes') return !auditados.includes(row.id);
       return true;
     });
-  }, [contrasteData, filtroAuditoria, auditados]);
+  }, [contrasteData, filtroAuditoria, auditados, puedeVer]);
 
   // --- LÓGICA DE NEGOCIO: REGISTRO MANUAL ---
   const procesarNuevoMovimiento = async (nuevoMov, insumoSeleccionado, usuarioId) => {
+    // 🛡️ BLINDAJE: Bloqueo de acción si no tiene facultades
+    if (!puedeEditar) return { success: false, error: "No tienes permiso para registrar movimientos de inventario." };
     if (!insumoSeleccionado) return { success: false, error: "Selecciona un insumo de la lista." };
     
-    // La matemática se hace aquí, no en el JSX
     const stockAntes = Number(insumoSeleccionado.stock_fisico);
     const cantidadAfectada = Number(nuevoMov.cantidad);
     const factor = nuevoMov.tipo === 'ENTRADA' ? 1 : -1;
@@ -114,8 +133,14 @@ export const useInventarios = (sucursalId) => {
 
   const generarContraste = useCallback(async (fechaInicio, fechaFin) => {
     if (!sucursalId || !fechaInicio || !fechaFin) return;
+    
+    // 🛡️ BLINDAJE: Bloqueo de reporte por permisos
+    if (!puedeVer) {
+      setError("No tienes facultades para consultar reportes de auditoría.");
+      return;
+    }
+
     setLoading(true);
-    // Al generar un nuevo balance, limpiamos la memoria de auditoría
     setAuditados([]); 
     setFiltroAuditoria('todos');
     
@@ -128,9 +153,12 @@ export const useInventarios = (sucursalId) => {
     } finally {
       setLoading(false);
     }
-  }, [sucursalId]);
+  }, [sucursalId, puedeVer]);
 
   const guardarConteoFisico = async (filaAuditoria, conteoFisico, usuarioId, fechaInicio, fechaFin) => {
+    // 🛡️ BLINDAJE: Las auditorías son críticas, solo personal con permiso de edición
+    if (!puedeEditar) return { success: false, error: "Acceso denegado: Se requiere nivel administrativo para auditar." };
+
     setLoading(true);
     try {
       const params = {
@@ -144,7 +172,6 @@ export const useInventarios = (sucursalId) => {
       const { success, error: err } = await inventarioService.aplicarAuditoriaInsumo(params);
       if (!success) throw new Error(err);
 
-      // Si tiene éxito, actualizamos los estados de la memoria aquí en el Hook
       setConteos(prev => ({ ...prev, [filaAuditoria.id]: '' }));
       if (!auditados.includes(filaAuditoria.id)) {
         setAuditados(prev => [...prev, filaAuditoria.id]);
@@ -164,7 +191,6 @@ export const useInventarios = (sucursalId) => {
     }
   };
 
-  // Funciones auxiliares para manejar los inputs
   const actualizarConteo = (id, valor) => setConteos(prev => ({ ...prev, [id]: valor }));
 
   useEffect(() => {
@@ -175,20 +201,29 @@ export const useInventarios = (sucursalId) => {
   }, [sucursalId, cargarDatos, cargarMovimientos]);
 
   return {
-    insumos,              
-    insumosFiltrados,     
+    // Datos blindados de salida
+    insumos: puedeVer ? insumos : [],              
+    insumosFiltrados,     
+    movimientos: puedeVer ? movimientos : [],
+    motivosCatalogo: puedeVer ? motivosCatalogo : [],
+    contrasteData: puedeVer ? contrasteData : [],
+    contrasteDataFiltrado,
+    
+    // Estados de UI y control
     searchTerm, setSearchTerm,
-    movimientos,
-    motivosCatalogo,
-    contrasteData,
-    contrasteDataFiltrado, // Exponemos la lista ya filtrada
-    conteos, actualizarConteo, // Exponemos el estado de los inputs
+    conteos, actualizarConteo,
     auditados,
     filtroAuditoria, setFiltroAuditoria,
     loading,
     error,
-    procesarNuevoMovimiento, // La nueva función unificada
+    
+    // Acciones blindadas
+    procesarNuevoMovimiento,
     generarContraste,
-    guardarConteoFisico
+    guardarConteoFisico,
+
+    // 🛡️ Flags de seguridad para el JSX
+    puedeVer,
+    puedeEditar
   };
 };

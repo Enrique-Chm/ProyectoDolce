@@ -17,6 +17,7 @@ export const RecetasTab = ({ sucursalId }) => {
     { insumo_id: "", cantidad: "", unidad_id: "" },
   ]);
 
+  // 🛡️ ESCUDOS DE SEGURIDAD (RBAC)
   const puedeEditar = hasPermission("editar_recetas");
   const puedeBorrar = hasPermission("borrar_registros");
 
@@ -39,7 +40,7 @@ export const RecetasTab = ({ sucursalId }) => {
   };
 
   const removeIngrediente = (index) => {
-    if (!puedeEditar) return;
+    if (!puedeEditar) return; // 🛡️ Bloqueo de acción
     if (ingredientes.length > 1) {
       const newIngs = ingredientes.filter((_, i) => i !== index);
       setIngredientes(newIngs);
@@ -76,9 +77,8 @@ export const RecetasTab = ({ sucursalId }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!puedeEditar) return;
+    if (!puedeEditar) return; // 🛡️ Protección de escritura
     
-    // Validación extra: asegurarse que todos los ingredientes tengan un insumo válido
     const hayIncompletos = ingredientes.some(ing => !ing.insumo_id);
     if (hayIncompletos) {
       return alert("Por favor, selecciona un insumo válido de la lista en todos los ingredientes.");
@@ -110,7 +110,7 @@ export const RecetasTab = ({ sucursalId }) => {
   };
 
   const handleDeleteReceta = async (nombre) => {
-    if (!puedeBorrar) return;
+    if (!puedeBorrar) return; // 🛡️ Protección de borrado
     if (window.confirm(`¿Eliminar receta "${nombre}"?`)) {
       const { error } = await recetasService.deleteReceta(nombre);
       if (error) alert(error.message);
@@ -152,9 +152,7 @@ export const RecetasTab = ({ sucursalId }) => {
         )}
       </header>
 
-      {/* ESTRUCTURA RESPONSIVA: Formulario arriba en tablets, al lado en desktop */}
       <div className="admin-split-layout-sidebar">
-        {/* FORMULARIO DE EDICIÓN */}
         <aside className={s.adminCard} style={{ padding: "20px" }}>
           <h3
             style={{
@@ -164,7 +162,7 @@ export const RecetasTab = ({ sucursalId }) => {
               color: "var(--color-primary)",
             }}
           >
-            {isEditing ? "📝 Editando Receta" : "🍳 Nueva Preparación"}
+            {isEditing ? (puedeEditar ? "📝 Editando Receta" : "🔍 Ver Receta") : "🍳 Nueva Preparación"}
           </h3>
           <form
             onSubmit={handleSubmit}
@@ -189,11 +187,12 @@ export const RecetasTab = ({ sucursalId }) => {
                   borderRadius: "var(--radius-ui)",
                   border: "1px solid var(--color-border)",
                   boxSizing: "border-box",
+                  backgroundColor: (isEditing || !puedeEditar) ? "var(--color-bg-muted)" : "white"
                 }}
                 value={nombreReceta}
                 onChange={(e) => setNombreReceta(e.target.value)}
                 required
-                disabled={isEditing || !puedeEditar}
+                disabled={isEditing || !puedeEditar} // 🛡️ Insumo bloqueado
                 placeholder="Ej. Salsa Roja Especial"
               />
             </div>
@@ -214,7 +213,7 @@ export const RecetasTab = ({ sucursalId }) => {
                 style={{ width: "18px", height: "18px" }}
                 checked={isSubreceta}
                 onChange={(e) => setIsSubreceta(e.target.checked)}
-                disabled={!puedeEditar}
+                disabled={!puedeEditar} // 🛡️ Checkbox bloqueado
               />
               <span>
                 ¿Es Sub-receta?{" "}
@@ -229,7 +228,6 @@ export const RecetasTab = ({ sucursalId }) => {
                 </small>
               </span>
             </label>
-
             <hr
               style={{
                 border: "none",
@@ -313,11 +311,10 @@ export const RecetasTab = ({ sucursalId }) => {
                         SELECCIONAR INSUMO
                       </label>
                       
-                      {/* --- NUEVO COMPONENTE COMBOBOX AUTOFILTRADO --- */}
                       <SearchableSelect 
                         options={insumos}
                         value={ing.insumo_id}
-                        disabled={!puedeEditar}
+                        disabled={!puedeEditar} // 🛡️ Select bloqueado
                         onChange={(selectedId) => {
                           const n = [...ingredientes];
                           const insumoData = insumos.find((i) => i.id === parseInt(selectedId));
@@ -326,7 +323,6 @@ export const RecetasTab = ({ sucursalId }) => {
                           setIngredientes(n);
                         }}
                       />
-                      
                     </div>
 
                     <div
@@ -367,7 +363,7 @@ export const RecetasTab = ({ sucursalId }) => {
                             setIngredientes(n);
                           }}
                           required
-                          readOnly={!puedeEditar}
+                          readOnly={!puedeEditar} // 🛡️ Input bloqueado
                         />
                       </div>
                       <div
@@ -472,17 +468,16 @@ export const RecetasTab = ({ sucursalId }) => {
                   style={{ padding: "14px" }}
                   onClick={resetForm}
                 >
-                  CANCELAR EDICIÓN
+                  {puedeEditar ? "CANCELAR EDICIÓN" : "CERRAR VISTA"}
                 </button>
               )}
             </div>
           </form>
         </aside>
 
-        {/* TABLA DE RECETAS */}
         <div
           className={s.adminCard}
-          style={{ padding: "0", overflowX: "auto" }}
+          style={{ padding: "0", overflowX: "auto", flex: 1 }}
         >
           <table
             style={{
@@ -499,165 +494,54 @@ export const RecetasTab = ({ sucursalId }) => {
               }}
             >
               <tr>
-                <th
-                  style={{
-                    padding: "15px",
-                    fontSize: "12px",
-                    color: "var(--color-text-muted)",
-                  }}
-                >
-                  PREPARACIÓN
-                </th>
-                <th
-                  style={{
-                    padding: "15px",
-                    fontSize: "12px",
-                    color: "var(--color-text-muted)",
-                  }}
-                >
-                  COMPOSICIÓN
-                </th>
-                <th
-                  style={{
-                    padding: "15px",
-                    fontSize: "12px",
-                    color: "var(--color-text-muted)",
-                    textAlign: "right",
-                  }}
-                >
-                  COSTO TOTAL
-                </th>
-                <th
-                  style={{
-                    padding: "15px",
-                    fontSize: "12px",
-                    color: "var(--color-text-muted)",
-                    textAlign: "right",
-                  }}
-                >
-                  ACCIONES
-                </th>
+                <th style={{ padding: "15px", fontSize: "12px", color: "var(--color-text-muted)" }}>PREPARACIÓN</th>
+                <th style={{ padding: "15px", fontSize: "12px", color: "var(--color-text-muted)" }}>COMPOSICIÓN</th>
+                <th style={{ padding: "15px", fontSize: "12px", color: "var(--color-text-muted)", textAlign: "right" }}>COSTO TOTAL</th>
+                <th style={{ padding: "15px", fontSize: "12px", color: "var(--color-text-muted)", textAlign: "right" }}>ACCIONES</th>
               </tr>
             </thead>
             <tbody>
               {recetasAgrupadas.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan="4"
-                    style={{
-                      textAlign: "center",
-                      padding: "40px",
-                      color: "var(--color-text-muted)",
-                    }}
-                  >
+                  <td colSpan="4" style={{ textAlign: "center", padding: "40px", color: "var(--color-text-muted)" }}>
                     No hay recetas registradas.
                   </td>
                 </tr>
               ) : (
                 recetasAgrupadas.map((r, idx) => (
-                  <tr
-                    key={idx}
-                    style={{ borderBottom: "1px solid var(--color-bg-muted)" }}
-                  >
+                  <tr key={idx} style={{ borderBottom: "1px solid var(--color-bg-muted)" }}>
                     <td style={{ padding: "15px" }}>
-                      <div
-                        style={{
-                          fontWeight: "800",
-                          color: "var(--color-text-main)",
-                        }}
-                      >
-                        {r.nombre}
-                      </div>
+                      <div style={{ fontWeight: "800", color: "var(--color-text-main)" }}>{r.nombre}</div>
                       {r.subreceta && (
-                        <span
-                          style={{
-                            fontSize: "9px",
-                            fontWeight: "800",
-                            padding: "2px 6px",
-                            borderRadius: "4px",
-                            backgroundColor: "var(--color-bg-app)",
-                            color: "var(--color-primary)",
-                            marginTop: "4px",
-                            display: "inline-block",
-                          }}
-                        >
+                        <span style={{ fontSize: "9px", fontWeight: "800", padding: "2px 6px", borderRadius: "4px", backgroundColor: "var(--color-bg-app)", color: "var(--color-primary)", marginTop: "4px", display: "inline-block" }}>
                           SUB-RECETA
                         </span>
                       )}
                     </td>
                     <td style={{ padding: "15px" }}>
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: "6px",
-                        }}
-                      >
+                      <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                         {r.detalle_ingredientes.map((ing, iidx) => (
-                          <div
-                            key={iidx}
-                            style={{
-                              fontSize: "11px",
-                              color: "var(--color-text-muted)",
-                              background: "var(--color-bg-app)",
-                              padding: "4px 8px",
-                              borderRadius: "4px",
-                              border: "1px solid var(--color-border)",
-                            }}
-                          >
-                            • {ing.insumo}:{" "}
-                            <strong>
-                              {ing.cantidad} {ing.unidad}
-                            </strong>
-                            <span
-                              style={{
-                                color: "var(--color-primary)",
-                                marginLeft: "5px",
-                                fontWeight: "800",
-                              }}
-                            >
-                              {" "}
-                              (${ing.costo_fila.toFixed(2)})
-                            </span>
+                          <div key={iidx} style={{ fontSize: "11px", color: "var(--color-text-muted)", background: "var(--color-bg-app)", padding: "4px 8px", borderRadius: "4px", border: "1px solid var(--color-border)" }}>
+                            • {ing.insumo}: <strong>{ing.cantidad} {ing.unidad}</strong>
+                            <span style={{ color: "var(--color-primary)", marginLeft: "5px", fontWeight: "800" }}> (${ing.costo_fila.toFixed(2)})</span>
                           </div>
                         ))}
                       </div>
                     </td>
                     <td style={{ padding: "15px", textAlign: "right" }}>
-                      <div
-                        style={{
-                          fontWeight: "900",
-                          color: "var(--color-text-main)",
-                          fontSize: "1.2rem",
-                        }}
-                      >
+                      <div style={{ fontWeight: "900", color: "var(--color-text-main)", fontSize: "1.2rem" }}>
                         ${r.costo_total_receta?.toFixed(2)}
                       </div>
                     </td>
                     <td style={{ padding: "15px", textAlign: "right" }}>
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: "8px",
-                          justifyContent: "flex-end",
-                        }}
-                      >
-                        <button
-                          className={s.btnLogout}
-                          style={{ padding: "8px 12px", fontSize: "11px" }}
-                          onClick={() => handleEdit(r)}
-                        >
+                      <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                        <button className={s.btnLogout} style={{ padding: "8px 12px", fontSize: "11px" }} onClick={() => handleEdit(r)}>
                           {puedeEditar ? "EDITAR" : "VER"}
                         </button>
                         {puedeBorrar && (
                           <button
                             className={s.btnLogout}
-                            style={{
-                              padding: "8px 12px",
-                              fontSize: "11px",
-                              color: "var(--color-danger)",
-                              borderColor: "var(--color-danger)",
-                            }}
+                            style={{ padding: "8px 12px", fontSize: "11px", color: "var(--color-danger)", borderColor: "var(--color-danger)" }}
                             onClick={() => handleDeleteReceta(r.nombre)}
                           >
                             BORRAR
@@ -676,16 +560,10 @@ export const RecetasTab = ({ sucursalId }) => {
   );
 };
 
-
-/**
- * SUB-COMPONENTE: SearchableSelect (Combo Autocompletado)
- * Permite buscar tecleando y seleccionar de una lista flotante.
- */
 const SearchableSelect = ({ options, value, onChange, disabled }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isOpen, setIsOpen] = useState(false);
 
-  // Sincroniza el texto del input si el valor cambia por fuera (ej. al darle a 'Editar' en la tabla)
   useEffect(() => {
     const selected = options.find((opt) => opt.id === parseInt(value));
     if (selected) {
@@ -718,18 +596,15 @@ const SearchableSelect = ({ options, value, onChange, disabled }) => {
         onChange={(e) => {
           setSearchTerm(e.target.value);
           setIsOpen(true);
-          // Si cambian el texto, reseteamos el valor interno para forzarlos a seleccionar de la lista
           if (value) onChange(""); 
         }}
         onFocus={() => setIsOpen(true)}
         onBlur={() => {
-          // Un pequeño retraso para permitir que el clic en la lista (onMouseDown) se procese antes de cerrar
           setTimeout(() => {
             setIsOpen(false);
-            // Si pierden el foco y no seleccionaron nada de la lista, regresamos el texto al seleccionado válido
             const selected = options.find((opt) => opt.id === parseInt(value));
             if (selected) setSearchTerm(selected.nombre);
-            else setSearchTerm(""); // O borramos si no habían seleccionado nada
+            else setSearchTerm("");
           }, 200);
         }}
       />
@@ -755,7 +630,6 @@ const SearchableSelect = ({ options, value, onChange, disabled }) => {
             <li
               key={opt.id}
               style={{ padding: '10px 15px', cursor: 'pointer', borderBottom: '1px solid var(--color-bg-muted)', fontSize: '13px' }}
-              // Usamos onMouseDown en lugar de onClick para que se dispare ANTES que el onBlur del input
               onMouseDown={(e) => {
                 e.preventDefault();
                 onChange(opt.id);

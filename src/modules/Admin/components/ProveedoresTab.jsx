@@ -2,15 +2,18 @@
 import React, { useState, useEffect } from 'react';
 import { proveedoresService } from '../../../services/Proveedores.service';
 import s from '../AdminPage.module.css';
-import { hasPermission } from '../../../utils/checkPermiso';
+import { hasPermission } from '../../../utils/checkPermiso'; // 🛡️ Importamos seguridad
 
 export const ProveedoresTab = () => {
   const [proveedores, setProveedores] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editId, setEditId] = useState(null);
   
-  // Verificación de facultades
-  const puedeEditar = hasPermission('ver_proveedores'); 
+  /**
+   * 🛡️ SEGURIDAD INTERNA (RBAC)
+   * Corregimos 'ver_proveedores' por 'editar_proveedores' para la acción de guardado.
+   */
+  const puedeEditar = hasPermission('editar_configuracion'); 
   const puedeBorrar = hasPermission('borrar_registros');
 
   const [formData, setFormData] = useState({
@@ -62,7 +65,7 @@ export const ProveedoresTab = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!puedeEditar) return; 
+    if (!puedeEditar) return; // 🛡️ Bloqueo de seguridad
 
     setLoading(true);
     try {
@@ -79,7 +82,7 @@ export const ProveedoresTab = () => {
   };
 
   const handleDelete = async (id, nombre) => {
-    if (!puedeBorrar) return; 
+    if (!puedeBorrar) return; // 🛡️ Bloqueo de seguridad
     if (window.confirm(`¿Estás seguro de eliminar al proveedor "${nombre}"?`)) {
       try {
         const { error } = await proveedoresService.delete(id);
@@ -100,13 +103,12 @@ export const ProveedoresTab = () => {
         {loading && <span style={{ fontSize: '12px', color: 'var(--color-primary)', fontWeight: '700' }}>CARGANDO...</span>}
       </header>
 
-      {/* DISEÑO RESPONSIVO: admin-split-layout-sidebar */}
       <div className="admin-split-layout-sidebar">
         
-        {/* PANEL DE REGISTRO / EDICIÓN (ARRIBA EN TABLET) */}
+        {/* PANEL DE REGISTRO / EDICIÓN PROTEGIDO */}
         <aside className={s.adminCard} style={{ padding: '20px' }}>
           <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: 'var(--color-primary)' }}>
-            {editId ? '📝 Editar Proveedor' : '🏢 Nuevo Proveedor'}
+            {editId ? (puedeEditar ? '📝 Editar Proveedor' : '🔍 Ficha Técnica') : '🏢 Nuevo Proveedor'}
           </h3>
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
             <div>
@@ -117,7 +119,7 @@ export const ProveedoresTab = () => {
                 onChange={e => setFormData({...formData, nombre_empresa: e.target.value})} 
                 required 
                 placeholder="Nombre comercial"
-                readOnly={!puedeEditar}
+                readOnly={!puedeEditar} // 🛡️ Bloqueo escritura
               />
             </div>
 
@@ -168,6 +170,7 @@ export const ProveedoresTab = () => {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
+              {/* Solo habilitamos el botón de acción si puede editar */}
               {puedeEditar && (
                 <button 
                   type="submit" 
@@ -193,8 +196,8 @@ export const ProveedoresTab = () => {
           </form>
         </aside>
 
-        {/* TABLA DE PROVEEDORES (DEBAJO EN TABLET) */}
-        <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto' }}>
+        {/* TABLA DE PROVEEDORES */}
+        <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto', flex: 1 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '700px' }}>
             <thead style={{ backgroundColor: 'var(--color-bg-muted)', borderBottom: '1px solid var(--color-border)' }}>
               <tr>
@@ -240,6 +243,7 @@ export const ProveedoresTab = () => {
                         >
                           {puedeEditar ? 'EDITAR' : 'VER'}
                         </button>
+                        {/* Botón de borrado protegido */}
                         {puedeBorrar && (
                           <button 
                             className={s.btnLogout} 

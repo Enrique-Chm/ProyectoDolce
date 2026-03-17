@@ -1,5 +1,7 @@
+// Archivo: src/hooks/useEstimacionesTab.js
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { estimacionesService } from '../services/Estimaciones.service';
+import { hasPermission } from '../utils/checkPermiso'; // 🛡️ Blindaje de seguridad
 
 export const useEstimacionesTab = () => {
   const [sugerencias, setSugerencias] = useState([]);
@@ -8,36 +10,64 @@ export const useEstimacionesTab = () => {
   const [filtroProveedor, setFiltroProveedor] = useState('todos');
   const [compradosIds, setCompradosIds] = useState([]);
 
+  // 🛡️ DEFINICIÓN DE FACULTADES (RBAC)
+  const puedeVerInventario = hasPermission('ver_inventario');
+  const puedeVerProveedores = hasPermission('ver_proveedores');
+  const puedeEditarInventario = hasPermission('editar_inventario');
+
   const cargarDatos = useCallback(async () => {
+    // 🛡️ BLINDAJE: Si no tiene permisos mínimos de lectura, evitamos la carga
+    if (!puedeVerInventario && !puedeVerProveedores) return;
+
     setLoading(true);
+
+    // 🛡️ Solo solicitamos datos de los módulos a los que el usuario tiene acceso
     const [resS, resP] = await Promise.all([
-      estimacionesService.getSugerenciasCompra(),
-      estimacionesService.getProveedoresActivos()
+      puedeVerInventario ? estimacionesService.getSugerenciasCompra() : { success: true, data: [] },
+      puedeVerProveedores ? estimacionesService.getProveedoresActivos() : { success: true, data: [] }
     ]);
+
     if (resS.success) setSugerencias(resS.data || []);
     if (resP.success) setProveedores(resP.data || []);
+    
     setLoading(false);
-  }, []);
+  }, [puedeVerInventario, puedeVerProveedores]);
 
   const sugerenciasFiltradas = useMemo(() => {
+    // 🛡️ Blindaje de salida: Si no puede ver inventario, retornamos vacío
+    if (!puedeVerInventario) return [];
+    
     return sugerencias.filter(item => 
       filtroProveedor === 'todos' || item.proveedor_nombre === filtroProveedor
     );
-  }, [sugerencias, filtroProveedor]);
+  }, [sugerencias, filtroProveedor, puedeVerInventario]);
 
   const presupuestoTotal = useMemo(() => {
+    // 🛡️ Si no puede ver inventario, el presupuesto es 0 por seguridad
+    if (!puedeVerInventario) return 0;
+
     return sugerenciasFiltradas
       .filter(item => !compradosIds.includes(item.insumo_id))
       .reduce((total, item) => total + (parseFloat(item.presupuesto_estimado) || 0), 0);
-  }, [sugerenciasFiltradas, compradosIds]);
+  }, [sugerenciasFiltradas, compradosIds, puedeVerInventario]);
 
   const guardarPolitica = async (id, cob, seg) => {
+    // 🛡️ BLINDAJE: Bloqueo de acción de edición
+    if (!puedeEditarInventario) {
+      return { success: false, error: "No tienes facultades para modificar políticas de compra." };
+    }
+    
     const res = await estimacionesService.actualizarPoliticaCompra(id, cob, seg);
     if (res.success) await cargarDatos();
     return res;
   };
 
   const confirmarCompra = async (insumo, usuarioId, sucursalId) => {
+    // 🛡️ BLINDAJE: Bloqueo de acción de registro
+    if (!puedeEditarInventario) {
+      return { success: false, error: "Acceso denegado: No puedes registrar compras." };
+    }
+
     const res = await estimacionesService.registrarCompraRealizada(
       insumo.insumo_id, insumo.cajas_a_pedir, insumo.presupuesto_estimado, usuarioId, sucursalId
     );
@@ -51,8 +81,25 @@ export const useEstimacionesTab = () => {
   useEffect(() => { cargarDatos(); }, [cargarDatos]);
 
   return {
-    sugerenciasFiltradas, proveedores, filtroProveedor, setFiltroProveedor,
-    presupuestoTotal, loading, recargarDatos: cargarDatos, guardarPolitica,
-    compradosIds, confirmarCompra
+    // 🛡️ Datos blindados
+    sugerenciasFiltradas, 
+    proveedores: puedeVerProveedores ? proveedores : [],
+    presupuestoTotal,
+    
+    // Estados y setters
+    filtroProveedor, 
+    setFiltroProveedor,
+    loading, 
+    compradosIds,
+    
+    // Acciones
+    recargarDatos: cargarDatos, 
+    guardarPolitica,
+    confirmarCompra,
+
+    // 🛡️ Banderas de seguridad para la UI
+    puedeVerInventario,
+    puedeVerProveedores,
+    puedeEditarInventario
   };
 };

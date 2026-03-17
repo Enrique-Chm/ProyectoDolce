@@ -1,5 +1,5 @@
 // Archivo: src/modules/Admin/AdminPage.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import s from "./AdminPage.module.css";
 import { authService } from "../../services/Auth.service";
 import { sucursalesService } from "../../services/Sucursales.service";
@@ -7,7 +7,7 @@ import { useSessionGuard } from "../../hooks/useSessionGuard";
 
 // Componentes de las pestañas
 import { Login } from "./Login";
-import { AnaliticaTab } from "./components/AnaliticaTab"; // Nueva Tab integrada
+import { AnaliticaTab } from "./components/AnaliticaTab";
 import { ConfigTab } from "./components/ConfigTab"; 
 import { ProveedoresTab } from "./components/ProveedoresTab";
 import { InsumosTab } from "./components/InsumosTab";
@@ -19,19 +19,53 @@ import CajeroTab from './components/CajeroTab';
 import { ImpresorasTab } from "./components/ImpresorasTab";
 import InventariosTab from "./components/InventariosTab"; 
 import EstimacionesTab from "./components/EstimacionesTab"; 
+import { GastosTab } from "./components/GastosTab"; // 👈 NUEVA IMPORTACIÓN
 
 const AdminPage = () => {
-  /**
-   * 🛡️ VIGILANCIA DE SESIÓN ACTIVA
-   */
   useSessionGuard();
 
   const [userSession, setUserSession] = useState(authService.getCurrentSession());
-  const [activeTab, setActiveTab] = useState('analitica'); // Analítica como tab inicial
+  
+  // 🛡️ CORRECCIÓN 1: La ruta correcta para saber si es Administrador
+  const isAdmin = userSession?.user?.rol === 'Administrador' || userSession?.user?.rol_id === 1;
+
+  // 🛡️ CORRECCIÓN 2: Mapeo exacto con la nueva base de datos blindada
+  const tabsConfig = useMemo(() => [
+    { id: 'analitica', label: 'Dashboard Analítica', permiso: 'ver_ventas' }, 
+    { id: 'mesero', label: 'Mesero (Ventas)', permiso: 'ver_ventas' },
+    { id: 'cajero', label: 'Caja (Cobros)', permiso: 'ver_ventas' },
+    { id: 'insumos', label: 'Catálogo Insumos', permiso: 'ver_insumos' },
+    { id: 'kardex', label: 'Auditoría Inventarios', permiso: 'ver_inventario' },
+    { id: 'estimaciones', label: 'Proyección Compras', permiso: 'ver_inventario' },
+    { id: 'gastos', label: 'Gastos Operativos', permiso: 'ver_gastos' }, // 👈 NUEVA PESTAÑA
+    { id: 'recetas', label: 'Recetas', permiso: 'ver_recetas' }, 
+    { id: 'productos', label: 'Productos', permiso: 'ver_productos' }, 
+    { id: 'proveedores', label: 'Proveedores', permiso: 'ver_proveedores' },
+    { id: 'empleados', label: 'Empleados', permiso: 'ver_usuarios' }, 
+    { id: 'impresoras', label: 'Impresoras', permiso: 'ver_configuracion' },
+    { id: 'config', label: 'Configuración', permiso: 'ver_configuracion' }
+  ], []);
+
+  // Filtro de pestañas inteligente
+  const visibleTabs = useMemo(() => {
+    if (!userSession) return [];
+    if (isAdmin) return tabsConfig; // El admin tiene paso libre a todo
+    
+    return tabsConfig.filter(tab => userSession.permisos.includes(tab.permiso));
+  }, [userSession, isAdmin, tabsConfig]);
+
+  // Manejo de la pestaña activa de forma segura
+  const [activeTab, setActiveTab] = useState('');
+
+  useEffect(() => {
+    // Si la pestaña actual está vacía, selecciona la primera permitida
+    if (visibleTabs.length > 0 && !activeTab) {
+      setActiveTab(visibleTabs[0].id);
+    }
+  }, [visibleTabs, activeTab]);
+  
   const [filterSucursal, setFilterSucursal] = useState(userSession?.user?.sucursal_id || 1);
   const [listaSucursales, setListaSucursales] = useState([]);
-
-  const isAdmin = userSession?.user?.roles?.nombre_rol === 'Administrador';
 
   useEffect(() => {
     if (userSession) { 
@@ -40,40 +74,12 @@ const AdminPage = () => {
   }, [userSession]);
 
   const cargarSucursales = async () => {
-    const { data } = await sucursalesService.getAll();
-    setListaSucursales(data || []);
-  };
-
-  /**
-   * 📋 CONFIGURACIÓN DE NAVEGACIÓN (RBAC)
-   */
-  const getTabsConfig = () => [
-    { id: 'analitica', label: 'Dashboard Analítica', permiso: 'ver_config' }, // Permiso de nivel admin
-    { id: 'mesero', label: 'Mesero (Ventas)', permiso: 'ver_ventas' },
-    { id: 'cajero', label: 'Caja (Cobros)', permiso: 'ver_ventas' },
-    { id: 'insumos', label: 'Catálogo Insumos', permiso: 'ver_insumos' },
-    { id: 'kardex', label: 'Auditoría Inventarios', permiso: 'ver_insumos' }, 
-    { id: 'estimaciones', label: 'Proyección Compras', permiso: 'ver_insumos' },
-    { id: 'recetas', label: 'Recetas', permiso: 'ver_recetas' },
-    { id: 'productos', label: 'Productos', permiso: 'ver_productos' },
-    { id: 'proveedores', label: 'Proveedores', permiso: 'ver_proveedores' },
-    { id: 'empleados', label: 'Empleados', permiso: 'ver_empleados' },
-    { id: 'impresoras', label: 'Impresoras', permiso: 'ver_config' }, 
-    { id: 'config', label: 'Configuración', permiso: 'ver_config' } 
-  ];
-
-  const visibleTabs = getTabsConfig().filter(tab => {
-    if (!userSession) return false;
-    if (isAdmin) return true;
-    
-    // Casos especiales para configuración
-    if (tab.id === 'config' || tab.id === 'impresoras' || tab.id === 'analitica') {
-      return userSession.permisos.includes('ver_unidades') || 
-             userSession.permisos.includes('ver_categorias') || 
-             userSession.permisos.includes('ver_config');
+    // 🛡️ Pequeño blindaje: Solo carga sucursales si tiene permiso o es admin
+    if (isAdmin || userSession?.permisos?.includes('ver_sucursales')) {
+      const { data } = await sucursalesService.getAll();
+      setListaSucursales(data || []);
     }
-    return userSession.permisos.includes(tab.permiso);
-  });
+  };
 
   const handleLogout = () => {
     authService.logout();
@@ -87,7 +93,7 @@ const AdminPage = () => {
   return (
     <div className={s.adminContainer}>
       
-      {/* BARRA LATERAL (SIDEBAR FIJO) */}
+      {/* BARRA LATERAL / NAVEGACIÓN */}
       <aside className={s.sidebar}>
         <div className={s.sidebarHeader}>
           <h2>CloudKitchen <span style={{ color: 'var(--color-primary)' }}>Admin</span></h2>
@@ -155,6 +161,7 @@ const AdminPage = () => {
            {activeTab === 'insumos' && <InsumosTab sucursalId={filterSucursal} />}
            {activeTab === 'kardex' && <InventariosTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
            {activeTab === 'estimaciones' && <EstimacionesTab sucursalId={filterSucursal} />}
+           {activeTab === 'gastos' && <GastosTab />} {/* 👈 NUEVO RENDERIZADO */}
            {activeTab === 'recetas' && <RecetasTab sucursalId={filterSucursal} />}
            {activeTab === 'productos' && <ProductosTab sucursalId={filterSucursal} />}
            {activeTab === 'proveedores' && <ProveedoresTab sucursalId={filterSucursal} />}

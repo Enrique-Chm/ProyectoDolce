@@ -6,6 +6,10 @@ import { hasPermission } from '../utils/checkPermiso';
 export const useConfigTab = (subTab) => {
   const [loading, setLoading] = useState(false);
 
+  // 🛡️ DEFINICIÓN DE FACULTADES (Blindaje de nivel Configuración)
+  const puedeVerConfig = hasPermission('ver_configuracion');
+  const puedeEditarConfig = hasPermission('editar_configuracion');
+
   // --- ESTADOS: UNIDADES ---
   const [unidades, setUnidades] = useState([]);
   const [uNombre, setUNombre] = useState('');
@@ -27,13 +31,17 @@ export const useConfigTab = (subTab) => {
   const [mTipo, setMTipo] = useState('ENTRADA');
   const [mEditId, setMEditId] = useState(null);
 
-  // Lógica de Permisos
-  const puedeEditarU = hasPermission('ver_unidades');
-  const puedeEditarC = hasPermission('ver_categorias');
-  const puedeEditarM = hasPermission('ver_insumos'); 
+  // Lógica de Permisos Original (Mantenida al 100%)
+  // 🛡️ Nota: Se mantienen los nombres de variables del usuario pero se asegura la protección
+  const puedeEditarU = puedeEditarConfig && hasPermission('ver_unidades');
+  const puedeEditarC = puedeEditarConfig && hasPermission('ver_categorias');
+  const puedeEditarM = puedeEditarConfig && hasPermission('ver_insumos'); 
   const puedeBorrar = hasPermission('borrar_registros');
 
   const fetchData = useCallback(async () => {
+    // 🛡️ BLINDAJE: Si no tiene permiso general de ver configuración, no hacemos nada
+    if (!puedeVerConfig) return;
+
     setLoading(true);
     try {
       if (subTab === 'unidades') {
@@ -60,23 +68,23 @@ export const useConfigTab = (subTab) => {
     } finally {
       setLoading(false);
     }
-  }, [subTab]);
+  }, [subTab, puedeVerConfig]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // --- HANDLERS ---
+  // --- HANDLERS BLINDADOS ---
   const handleSubmitUnidad = async (e) => {
     e.preventDefault();
-    if (!puedeEditarU) return;
+    if (!puedeEditarU) return; // 🛡️ Protección de ejecución
     const { error } = await configService.saveUnidad({ nombre: uNombre, abreviatura: uAbrev }, uEditId);
     if (!error) { resetUnidad(); fetchData(); }
   };
 
   const handleSubmitCatMenu = async (e) => {
     e.preventDefault();
-    if (!puedeEditarC) return;
+    if (!puedeEditarC) return; // 🛡️ Protección de ejecución
     const { error } = await configService.saveMenu({ nombre: cMenuNombre, color_etiqueta: cMenuColor }, cMenuEditId);
     if (!error) { resetCatMenu(); fetchData(); }
     else alert("Error al guardar: " + error.message);
@@ -84,7 +92,7 @@ export const useConfigTab = (subTab) => {
 
   const handleSubmitCatInsumo = async (e) => {
     e.preventDefault();
-    if (!puedeEditarC) return;
+    if (!puedeEditarC) return; // 🛡️ Protección de ejecución
     const { error } = await configService.saveInsumo({ nombre: cInsumoNombre }, cInsumoEditId);
     if (!error) { resetCatInsumo(); fetchData(); }
     else alert("Error al guardar: " + error.message);
@@ -92,12 +100,12 @@ export const useConfigTab = (subTab) => {
 
   const handleSubmitMotivo = async (e) => {
     e.preventDefault();
-    if (!puedeEditarM) return;
+    if (!puedeEditarM) return; // 🛡️ Protección de ejecución
     const { error } = await configService.saveMotivoInventario({ nombre_motivo: mNombre, tipo: mTipo }, mEditId);
     if (!error) { resetMotivo(); fetchData(); }
   };
 
-  // Resets auxiliares
+  // Resets auxiliares (Mantenidos intactos)
   const resetUnidad = () => { setUEditId(null); setUNombre(''); setUAbrev(''); };
   const resetCatMenu = () => { setCMenuEditId(null); setCMenuNombre(''); setCMenuColor('#005696'); };
   const resetCatInsumo = () => { setCInsumoEditId(null); setCInsumoNombre(''); };
@@ -105,11 +113,20 @@ export const useConfigTab = (subTab) => {
 
   return {
     loading, 
-    puedeEditarU, puedeEditarC, puedeEditarM, puedeBorrar,
-    unidades, uNombre, setUNombre, uAbrev, setUAbrev, uEditId, setUEditId, handleSubmitUnidad,
-    catMenu, catInsumos, cMenuNombre, setCMenuNombre, cMenuColor, setCMenuColor, cInsumoNombre, setCInsumoNombre, 
+    // 🛡️ Exportamos facultades para que el JSX oculte botones
+    puedeEditarU, puedeEditarC, puedeEditarM, puedeBorrar, puedeVerConfig,
+    
+    // 🛡️ Datos blindados: Si no puede ver configuración, devolvemos vacíos
+    unidades: puedeVerConfig ? unidades : [], 
+    catMenu: puedeVerConfig ? catMenu : [], 
+    catInsumos: puedeVerConfig ? catInsumos : [],
+    motivosInventario: puedeVerConfig ? motivosInventario : [],
+
+    // Resto de estados y setters (Sin cambios)
+    uNombre, setUNombre, uAbrev, setUAbrev, uEditId, setUEditId, handleSubmitUnidad,
+    cMenuNombre, setCMenuNombre, cMenuColor, setCMenuColor, cInsumoNombre, setCInsumoNombre, 
     cMenuEditId, setCMenuEditId, cInsumoEditId, setCInsumoEditId, handleSubmitCatMenu, handleSubmitCatInsumo,
-    motivosInventario, mNombre, setMNombre, mTipo, setMTipo, mEditId, setMEditId, handleSubmitMotivo,
+    mNombre, setMNombre, mTipo, setMTipo, mEditId, setMEditId, handleSubmitMotivo,
     refresh: fetchData 
   };
 };

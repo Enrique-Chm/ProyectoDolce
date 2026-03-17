@@ -1,8 +1,15 @@
+// Archivo: src/services/Mesero.service.js
 import { supabase } from '../lib/supabaseClient';
+import { hasPermission } from '../utils/checkPermiso'; // 🛡️ Importación de seguridad
 
 export const MeseroService = {
   
   getCuentasAbiertas: async (sucursalId) => {
+    // 🛡️ Blindaje: Solo personal con permiso de lectura de ventas
+    if (!hasPermission('ver_ventas')) {
+      return { data: [], error: { message: 'No tienes permisos para ver cuentas abiertas.' } };
+    }
+
     const { data, error } = await supabase
       .from('ventas')
       .select(`
@@ -16,6 +23,11 @@ export const MeseroService = {
   },
 
   getHistorialCobradas: async (sucursalId) => {
+    // 🛡️ Blindaje: Permiso para ver historial
+    if (!hasPermission('ver_ventas')) {
+      return { data: [], error: { message: 'No tienes permisos para ver el historial.' } };
+    }
+
     const { data, error } = await supabase
       .from('ventas')
       .select('*')
@@ -26,6 +38,11 @@ export const MeseroService = {
   },
 
   marcarPorCobrar: async (ventaId) => {
+    // 🛡️ Blindaje: Permiso para editar estados de venta
+    if (!hasPermission('editar_ventas')) {
+      return { success: false, error: 'No tienes facultades para solicitar la cuenta.' };
+    }
+
     const { error } = await supabase
       .from('ventas')
       .update({ estado: 'por_cobrar' })
@@ -34,6 +51,11 @@ export const MeseroService = {
   },
 
   procesarVenta: async (ventaData, carrito) => {
+    // 🛡️ Blindaje: Crear ventas es una acción crítica
+    if (!hasPermission('crear_ventas')) {
+      return { success: false, error: 'Acceso denegado: No puedes registrar nuevas órdenes.' };
+    }
+
     try {
       let ventaId = ventaData.id;
       

@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabaseClient';
 
 export const CajaService = {
-  
+
   /* ==========================================
      1. CATÁLOGOS (cat_motivos_inventario)
      ========================================== */
@@ -9,8 +9,10 @@ export const CajaService = {
   getMotivosInventario: async () => {
     const { data, error } = await supabase
       .from('cat_motivos_inventario')
-      .select('id, nombre_motivo, tipo, descripcion')
-      .eq('activo', true);
+      .select('id, nombre_motivo, tipo, descripcion, origen')
+      .eq('activo', true)
+      .eq('origen', 'Caja');
+      
     return { data, error };
   },
 
@@ -23,7 +25,7 @@ export const CajaService = {
       .from('cajas_sesiones')
       .select('*')
       .is('fecha_cierre', null)
-      .eq('usuario_id', parseInt(usuarioId)) 
+      .eq('usuario_id', usuarioId)
       .maybeSingle();
     return { data, error };
   },
@@ -32,7 +34,7 @@ export const CajaService = {
     const { data, error } = await supabase
       .from('cajas_sesiones')
       .insert([{ 
-        usuario_id: parseInt(datos.usuario_id),
+        usuario_id: datos.usuario_id,
         monto_apertura: parseFloat(datos.monto_apertura),
         estado: 'abierto',
         fecha_apertura: new Date().toISOString() 
@@ -66,7 +68,7 @@ export const CajaService = {
       .from('caja_movimientos')
       .insert([{
         turno_id: movimiento.turno_id,
-        usuario_id: parseInt(movimiento.usuario_id),
+        usuario_id: movimiento.usuario_id,
         tipo: movimiento.tipo, 
         monto: parseFloat(movimiento.monto),
         motivo: movimiento.motivo 
@@ -88,11 +90,11 @@ export const CajaService = {
      4. CÁLCULOS DE ARQUEO Y VENTAS
      ========================================== */
 
-  getTotalesEfectivoSesion: async (turnoId) => {
+  getTotalesEfectivoSesion: async (fechaApertura) => {
     const { data, error } = await supabase
       .from('ventas')
       .select('total')
-      // .eq('turno_id', turnoId) <--- ATENCIÓN: Lo comenté porque borraste la columna en tu BD
+      .gte('hora_cierre', fechaApertura) 
       .eq('metodo_pago', 'efectivo')
       .eq('estado', 'pagado');
     
@@ -118,7 +120,7 @@ export const CajaService = {
     const { data, error } = await supabase
       .from('ventas')
       .select('*')
-      .in('estado', ['pendiente', 'por_cobrar'])
+      .in('estado', ['abierta', 'pendiente', 'por_cobrar'])
       .order('created_at', { ascending: false });
     return { data, error };
   },
@@ -129,7 +131,6 @@ export const CajaService = {
       .update({
         estado: datos.estado || 'pagado',
         metodo_pago: datos.metodo_pago,
-        // SE ELIMINÓ cajero_id y turno_id PORQUE LOS BORRASTE DE TU BASE DE DATOS
         hora_cierre: new Date().toISOString()
       })
       .eq('id', idVenta)

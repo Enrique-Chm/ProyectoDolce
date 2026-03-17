@@ -3,6 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { useEstimacionesTab } from "../../../hooks/useEstimacionesTab"; 
 import s from "../AdminPage.module.css"; 
 import { formatCurrency } from "../../../utils/formatCurrency"; 
+import { hasPermission } from '../../../utils/checkPermiso'; // Importamos seguridad
 
 const EstimacionesTab = ({ sucursalId, usuarioId }) => {
   const { 
@@ -10,6 +11,11 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
     presupuestoTotal, loading, recargarDatos, guardarPolitica,
     compradosIds, confirmarCompra
   } = useEstimacionesTab();
+
+  /**
+   * 🛡️ SEGURIDAD INTERNA (RBAC)
+   */
+  const puedeEditar = hasPermission('editar_estimaciones');
 
   const [subTab, setSubTab] = useState('config');
   const [editandoId, setEditandoId] = useState(null);
@@ -22,6 +28,8 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
   }, [sugerenciasFiltradas, compradosIds]);
 
   const handleSavePolicy = async (id) => {
+    // Bloqueo de seguridad en función
+    if (!puedeEditar) return;
     const res = await guardarPolitica(id, tempPolitica.cobertura, tempPolitica.seguridad);
     if (res.success) setEditandoId(null);
   };
@@ -112,7 +120,7 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
                   <td style={{ padding: '15px', fontWeight: '700', color: 'var(--color-text-main)' }}>{item.insumo_nombre}</td>
                   <td style={{ padding: '15px' }}>{parseFloat(item.consumo_diario_real || 0).toFixed(2)}</td>
                   <td style={{ padding: '15px' }}>
-                    {editandoId === item.insumo_id ? (
+                    {editandoId === item.insumo_id && puedeEditar ? (
                       <input 
                         type="number" 
                         style={{ width: '60px', padding: '5px', borderRadius: '4px', border: '1px solid var(--color-primary)', boxSizing: 'border-box' }}
@@ -136,16 +144,19 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
                   </td>
                   <td style={{ padding: '15px', fontWeight: '600' }}>{formatCurrency(item.presupuesto_estimado)}</td>
                   <td style={{ padding: '15px', textAlign: 'right' }}>
-                    <button 
-                      className={s.btnLogout} 
-                      style={{ padding: '5px 10px', fontSize: '12px' }}
-                      onClick={() => { 
-                        setEditandoId(item.insumo_id); 
-                        setTempPolitica({cobertura: item.dias_cobertura_objetivo, seguridad: item.dias_stock_seguridad}) 
-                      }}
-                    >
-                      EDITAR
-                    </button>
+                    {/* El botón de editar solo se muestra si tiene permisos */}
+                    {puedeEditar && (
+                      <button 
+                        className={s.btnLogout} 
+                        style={{ padding: '5px 10px', fontSize: '12px' }}
+                        onClick={() => { 
+                          setEditandoId(item.insumo_id); 
+                          setTempPolitica({cobertura: item.dias_cobertura_objetivo, seguridad: item.dias_stock_seguridad}) 
+                        }}
+                      >
+                        EDITAR
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -154,7 +165,7 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
         </div>
       )}
 
-      {/* --- VISTA 2: LISTA DE MANDADO (TARJETAS FLEXIBLES) --- */}
+      {/* --- VISTA 2: LISTA DE MANDADO --- */}
       {subTab === 'compras' && (
         <div style={{ 
           display: 'grid', 
@@ -175,20 +186,28 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
                   PROVEEDOR: {ins.proveedor_nombre}
                 </p>
               </div>
-              <button 
-                className={s.btnLogout} 
-                style={{ 
-                  backgroundColor: 'var(--color-success)', 
-                  color: 'white', 
-                  border: 'none', 
-                  padding: '12px 15px',
-                  fontWeight: '800',
-                  width: '100%'
-                }} 
-                onClick={() => confirmarCompra(ins, usuarioId, sucursalId)}
-              >
-                ✓ RECIBIR {ins.cajas_a_pedir} CAJAS
-              </button>
+              
+              {/* Solo mostramos el botón de compra si tiene permiso de edición/compra */}
+              {puedeEditar ? (
+                <button 
+                  className={s.btnLogout} 
+                  style={{ 
+                    backgroundColor: 'var(--color-success)', 
+                    color: 'white', 
+                    border: 'none', 
+                    padding: '12px 15px',
+                    fontWeight: '800',
+                    width: '100%'
+                  }} 
+                  onClick={() => confirmarCompra(ins, usuarioId, sucursalId)}
+                >
+                  ✓ RECIBIR {ins.cajas_a_pedir} CAJAS
+                </button>
+              ) : (
+                <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--color-text-muted)', fontStyle: 'italic', padding: '10px', backgroundColor: 'var(--color-bg-muted)', borderRadius: 'var(--radius-ui)' }}>
+                  Solo lectura (Requiere permiso de gestión)
+                </div>
+              )}
             </div>
           ))}
           {listaParaComprar.length === 0 && (

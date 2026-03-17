@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import s from '../AdminPage.module.css'; 
 import { useConfigTab } from '../../../hooks/useConfigTab';
+import { MATRIZ_MODULOS, hasPermission } from '../../../utils/checkPermiso'; // Importamos seguridad
 
 export const ConfigTab = () => {
   const [subTab, setSubTab] = useState('unidades');
@@ -49,37 +50,43 @@ export const ConfigTab = () => {
         Configuración del Sistema
       </h2>
 
-      {/* Navegación de Sub-pestañas */}
+      {/* Navegación de Sub-pestañas con Protección de Acceso */}
       <nav style={{ display: 'flex', gap: '10px', borderBottom: '1px solid var(--color-border)', paddingBottom: '15px', overflowX: 'auto' }}>
-        <button
-          className={`${s.navItem} ${subTab === 'unidades' ? s.activeNavItem : ''}`}
-          style={{ width: 'auto', padding: '8px 20px', whiteSpace: 'nowrap' }}
-          onClick={() => handleTabChange('unidades')}
-        >
-          Unidades
-        </button>
-        <button
-          className={`${s.navItem} ${subTab === 'categorias' ? s.activeNavItem : ''}`}
-          style={{ width: 'auto', padding: '8px 20px', whiteSpace: 'nowrap' }}
-          onClick={() => handleTabChange('categorias')}
-        >
-          Categorías
-        </button>
-        <button
-          className={`${s.navItem} ${subTab === 'motivos' ? s.activeNavItem : ''}`}
-          style={{ width: 'auto', padding: '8px 20px', whiteSpace: 'nowrap' }}
-          onClick={() => handleTabChange('motivos')}
-        >
-          Motivos Inventario
-        </button>
+        {hasPermission('ver_unidades') && (
+          <button
+            className={`${s.navItem} ${subTab === 'unidades' ? s.activeNavItem : ''}`}
+            style={{ width: 'auto', padding: '8px 20px', whiteSpace: 'nowrap' }}
+            onClick={() => handleTabChange('unidades')}
+          >
+            Unidades
+          </button>
+        )}
+        {hasPermission('ver_categorias') && (
+          <button
+            className={`${s.navItem} ${subTab === 'categorias' ? s.activeNavItem : ''}`}
+            style={{ width: 'auto', padding: '8px 20px', whiteSpace: 'nowrap' }}
+            onClick={() => handleTabChange('categorias')}
+          >
+            Categorías
+          </button>
+        )}
+        {hasPermission('ver_configuracion') && (
+          <button
+            className={`${s.navItem} ${subTab === 'motivos' ? s.activeNavItem : ''}`}
+            style={{ width: 'auto', padding: '8px 20px', whiteSpace: 'nowrap' }}
+            onClick={() => handleTabChange('motivos')}
+          >
+            Motivos Inventario
+          </button>
+        )}
       </nav>
 
       {/* --- SECCIÓN UNIDADES --- */}
-      {subTab === 'unidades' && (
+      {subTab === 'unidades' && hasPermission('ver_unidades') && (
         <div className="admin-split-layout-sidebar">
-          <aside className={s.adminCard} style={{ padding: '20px' }}>
+          <aside className={s.adminCard} style={{ padding: '20px', display: puedeEditarU || uEditId ? 'block' : 'none' }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: 'var(--color-primary)' }}>
-              {uEditId ? 'Editar' : 'Nueva'} Unidad
+              {uEditId ? (puedeEditarU ? 'Editar' : 'Ver') : 'Nueva'} Unidad
             </h3>
             <form onSubmit={handleSubmitUnidad} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div>
@@ -98,12 +105,12 @@ export const ConfigTab = () => {
               </div>
               <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                 {puedeEditarU && <button type="submit" className={s.btnLogout} style={{ backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', flex: 1, padding: '15px' }}>GUARDAR</button>}
-                {uEditId && <button type="button" className={s.btnLogout} onClick={() => { setUEditId(null); setUNombre(''); setUAbrev(''); }}>CANCELAR</button>}
+                {uEditId && <button type="button" className={s.btnLogout} onClick={() => { setUEditId(null); setUNombre(''); setUAbrev(''); }}>{puedeEditarU ? 'CANCELAR' : 'CERRAR'}</button>}
               </div>
             </form>
           </aside>
 
-          <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto' }}>
+          <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto', flex: 1 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '500px' }}>
               <thead style={{ backgroundColor: 'var(--color-bg-muted)', borderBottom: '1px solid var(--color-border)' }}>
                 <tr>
@@ -130,14 +137,16 @@ export const ConfigTab = () => {
         </div>
       )}
 
-      {/* --- SECCIÓN CATEGORÍAS (LA QUE FALTABA) --- */}
-      {subTab === 'categorias' && (
+      {/* --- SECCIÓN CATEGORÍAS --- */}
+      {subTab === 'categorias' && hasPermission('ver_categorias') && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
           
           {/* Bloque 1: Categorías de Menú */}
           <div className="admin-split-layout-sidebar">
-            <aside className={s.adminCard} style={{ padding: '20px' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: 'var(--color-primary)' }}>Menú (Ventas)</h3>
+            <aside className={s.adminCard} style={{ padding: '20px', display: puedeEditarC || cMenuEditId ? 'block' : 'none' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: 'var(--color-primary)' }}>
+                {cMenuEditId ? (puedeEditarC ? 'Editar Categoría Menú' : 'Detalle Categoría Menú') : 'Nueva Categoría Menú'}
+              </h3>
               <form onSubmit={handleSubmitCatMenu} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>NOMBRE CATEGORÍA</label>
@@ -154,12 +163,21 @@ export const ConfigTab = () => {
                     value={cMenuColor} onChange={e => setCMenuColor(e.target.value)} disabled={!puedeEditarC} 
                   />
                 </div>
-                <button type="submit" className={s.btnLogout} style={{ backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', padding: '15px', fontWeight: '700' }} disabled={!puedeEditarC}>
-                  {cMenuEditId ? 'ACTUALIZAR MENÚ' : 'GUARDAR MENÚ'}
-                </button>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  {puedeEditarC && (
+                    <button type="submit" className={s.btnLogout} style={{ backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', padding: '15px', fontWeight: '700', flex: 1 }}>
+                      {cMenuEditId ? 'ACTUALIZAR' : 'GUARDAR'}
+                    </button>
+                  )}
+                  {cMenuEditId && (
+                    <button type="button" className={s.btnLogout} onClick={() => { setCMenuEditId(null); setCMenuNombre(''); setCMenuColor('#005696'); }}>
+                      {puedeEditarC ? 'CANCELAR' : 'CERRAR'}
+                    </button>
+                  )}
+                </div>
               </form>
             </aside>
-            <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto' }}>
+            <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto', flex: 1 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                 <thead style={{ backgroundColor: 'var(--color-bg-muted)', borderBottom: '1px solid var(--color-border)' }}>
                   <tr>
@@ -174,7 +192,9 @@ export const ConfigTab = () => {
                       <td style={{ padding: '15px' }}><div style={{ width: '25px', height: '25px', borderRadius: '50%', backgroundColor: c.color_etiqueta }}></div></td>
                       <td style={{ padding: '15px' }}><strong>{c.nombre}</strong></td>
                       <td style={{ padding: '15px', textAlign: 'right' }}>
-                        <button className={s.btnLogout} onClick={() => { setCMenuEditId(c.id); setCMenuNombre(c.nombre); setCMenuColor(c.color_etiqueta); }}>EDITAR</button>
+                        <button className={s.btnLogout} onClick={() => { setCMenuEditId(c.id); setCMenuNombre(c.nombre); setCMenuColor(c.color_etiqueta); }}>
+                          {puedeEditarC ? 'EDITAR' : 'VER'}
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -185,8 +205,10 @@ export const ConfigTab = () => {
 
           {/* Bloque 2: Categorías de Insumos */}
           <div className="admin-split-layout-sidebar">
-            <aside className={s.adminCard} style={{ padding: '20px' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: 'var(--color-primary)' }}>Insumos (Almacén)</h3>
+            <aside className={s.adminCard} style={{ padding: '20px', display: puedeEditarC || cInsumoEditId ? 'block' : 'none' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: 'var(--color-primary)' }}>
+                {cInsumoEditId ? (puedeEditarC ? 'Editar Almacén' : 'Detalle Almacén') : 'Nueva Categoría Almacén'}
+              </h3>
               <form onSubmit={handleSubmitCatInsumo} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>NOMBRE CATEGORÍA</label>
@@ -195,12 +217,21 @@ export const ConfigTab = () => {
                     value={cInsumoNombre} onChange={e => setCInsumoNombre(e.target.value)} placeholder="Ej: Proteínas" required readOnly={!puedeEditarC} 
                   />
                 </div>
-                <button type="submit" className={s.btnLogout} style={{ backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', padding: '15px', fontWeight: '700' }} disabled={!puedeEditarC}>
-                  {cInsumoEditId ? 'ACTUALIZAR ALMACÉN' : 'GUARDAR ALMACÉN'}
-                </button>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  {puedeEditarC && (
+                    <button type="submit" className={s.btnLogout} style={{ backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', padding: '15px', fontWeight: '700', flex: 1 }}>
+                      {cInsumoEditId ? 'ACTUALIZAR' : 'GUARDAR'}
+                    </button>
+                  )}
+                  {cInsumoEditId && (
+                    <button type="button" className={s.btnLogout} onClick={() => { setCInsumoEditId(null); setCInsumoNombre(''); }}>
+                      {puedeEditarC ? 'CANCELAR' : 'CERRAR'}
+                    </button>
+                  )}
+                </div>
               </form>
             </aside>
-            <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto' }}>
+            <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto', flex: 1 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                 <thead style={{ backgroundColor: 'var(--color-bg-muted)', borderBottom: '1px solid var(--color-border)' }}>
                   <tr>
@@ -215,7 +246,9 @@ export const ConfigTab = () => {
                       <td style={{ padding: '15px' }}>#{c.id}</td>
                       <td style={{ padding: '15px' }}><strong>{c.nombre}</strong></td>
                       <td style={{ padding: '15px', textAlign: 'right' }}>
-                        <button className={s.btnLogout} onClick={() => { setCInsumoEditId(c.id); setCInsumoNombre(c.nombre); }}>EDITAR</button>
+                        <button className={s.btnLogout} onClick={() => { setCInsumoEditId(c.id); setCInsumoNombre(c.nombre); }}>
+                          {puedeEditarC ? 'EDITAR' : 'VER'}
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -227,11 +260,11 @@ export const ConfigTab = () => {
       )}
 
       {/* --- SECCIÓN MOTIVOS INVENTARIO --- */}
-      {subTab === 'motivos' && (
+      {subTab === 'motivos' && hasPermission('ver_configuracion') && (
         <div className="admin-split-layout-sidebar">
-          <aside className={s.adminCard} style={{ padding: '20px' }}>
+          <aside className={s.adminCard} style={{ padding: '20px', display: puedeEditarM || mEditId ? 'block' : 'none' }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: 'var(--color-primary)' }}>
-              {mEditId ? 'Editar' : 'Nuevo'} Motivo
+              {mEditId ? (puedeEditarM ? 'Editar Motivo' : 'Detalle Motivo') : 'Nuevo Motivo'}
             </h3>
             <form onSubmit={handleSubmitMotivo} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div>
@@ -255,12 +288,12 @@ export const ConfigTab = () => {
               </div>
               <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                 {puedeEditarM && <button type="submit" className={s.btnLogout} style={{ backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', flex: 1, padding: '15px' }}>GUARDAR</button>}
-                {mEditId && <button type="button" className={s.btnLogout} onClick={() => { setMEditId(null); setMNombre(''); setMTipo('ENTRADA'); }}>CANCELAR</button>}
+                {mEditId && <button type="button" className={s.btnLogout} onClick={() => { setMEditId(null); setMNombre(''); setMTipo('ENTRADA'); }}>{puedeEditarM ? 'CANCELAR' : 'CERRAR'}</button>}
               </div>
             </form>
           </aside>
 
-          <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto' }}>
+          <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto', flex: 1 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '500px' }}>
               <thead style={{ backgroundColor: 'var(--color-bg-muted)', borderBottom: '1px solid var(--color-border)' }}>
                 <tr>

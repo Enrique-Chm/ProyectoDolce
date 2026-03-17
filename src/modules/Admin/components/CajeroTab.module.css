@@ -1,0 +1,336 @@
+/* =========================================
+   NAVEGACIÓN SUPERIOR
+   ========================================= */
+.navContainer {
+  display: flex;
+  gap: 20px;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 30px;
+  padding-bottom: 10px;
+}
+
+.navButton {
+  background: transparent;
+  color: var(--color-text-muted);
+  border: none;
+  padding: 8px 18px;
+  border-radius: var(--radius-ui, 8px);
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+
+.navButtonActive {
+  background: var(--color-primary);
+  color: white;
+}
+
+/* =========================================
+   VISTA: COBRAR
+   ========================================= */
+.mesaCardCustom {
+  border-left: 5px solid var(--color-primary);
+}
+
+.btnCobrar {
+  margin-top: 10px;
+}
+
+/* =========================================
+   VISTA: MOVIMIENTOS
+   ========================================= */
+.movimientosGrid {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 25px;
+}
+
+.formCard {
+  height: fit-content;
+}
+
+.formLabelTitle {
+  margin-bottom: 15px;
+}
+
+.textareaCustom {
+  min-height: 60px;
+  resize: none;
+  padding-top: 10px;
+}
+
+.tableContainer {
+  overflow-y: auto;
+  max-height: 500px;
+  margin-top: 15px;
+}
+
+.tableFull {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tableHeaderRow {
+  text-align: left;
+  border-bottom: 2px solid var(--color-bg-app);
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.thCell {
+  padding: 10px;
+}
+
+.thCellRight {
+  padding: 10px;
+  text-align: right;
+}
+
+.trBody {
+  border-bottom: 1px solid var(--color-bg-app);
+  font-size: 13px;
+}
+
+.tdCell {
+  padding: 12px;
+}
+
+.tdCellBold {
+  padding: 12px;
+  font-weight: 600;
+}
+
+.tdMonto {
+  padding: 12px;
+  text-align: right;
+  font-weight: 800;
+}
+
+.textGreen {
+  color: #10b981;
+}
+
+.textRed {
+  color: #ef4444;
+}
+
+/* =========================================
+   VISTA: TURNO Y ARQUEO
+   ========================================= */
+.fadeIn {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.cajaCerradaCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.cashIcon {
+  background: var(--color-bg-app);
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+}
+
+.cajaCerradaTitle {
+  font-size: 1.8rem;
+  font-weight: 900;
+  margin-bottom: 10px;
+  color: var(--color-text);
+}
+
+.cajaCerradaDesc {
+  color: var(--color-text-muted);
+  margin-bottom: 30px;
+  max-width: 350px;
+}
+
+.cajaCerradaFormWrapper {
+  width: 100%;
+  max-width: 350px;
+}
+
+.cajaCerradaLabel {
+  display: block;
+  text-align: left;
+  margin-bottom: 8px;
+}
+
+.cajaCerradaInput {
+  font-size: 2rem;
+  text-align: center;
+  height: 70px;
+  margin-bottom: 20px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.cajaCerradaBtn {
+  padding: 18px;
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.turnoAbiertoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 25px;
+}
+
+.turnoActivoCard {
+  border-top: 4px solid var(--color-primary);
+}
+
+.turnoHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 25px;
+}
+
+.turnoTitle {
+  font-size: 1.2rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.turnoSubtitle {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.badgeAbierta {
+  background: #d1fae5;
+  color: #059669;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.dataList {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.dataRow {
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.dataLabel {
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.dataValue {
+  font-weight: 700;
+}
+
+.fondoRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.fondoValue {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: var(--color-primary);
+}
+
+.arqueoCard {
+  border-top: 4px solid #ef4444;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.arqueoTitle {
+  font-size: 1.2rem;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+
+.arqueoDesc {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+}
+
+.arqueoLabel {
+  margin-bottom: 8px;
+}
+
+.arqueoInput {
+  font-size: 2rem;
+  height: 70px;
+  margin-bottom: 20px;
+  font-weight: 800;
+  text-align: right;
+}
+
+.arqueoBtn {
+  background: #ef4444 !important;
+  padding: 18px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  margin-top: auto;
+  color: white;
+}
+
+/* =========================================
+   VISTA: HISTORIAL
+   ========================================= */
+.historyCardRelative {
+  position: relative;
+}
+
+.printBtn {
+  position: absolute;
+  top: 1px;
+  right: 2px;
+  background: white;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 1px 2px;
+  cursor: pointer;
+  font-size: 12px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  transition: all 0.2s;
+}
+
+.printBtn:hover {
+  transform: scale(1.05);
+}
+
+.historyDate {
+  font-weight: 700;
+}
+
+.historyRightBox {
+  text-align: right;
+  margin-top: 10px;
+}

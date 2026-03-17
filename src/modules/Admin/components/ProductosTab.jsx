@@ -13,6 +13,7 @@ export const ProductosTab = ({ sucursalId }) => {
   const [loading, setLoading] = useState(false);
   const [editId, setEditId] = useState(null);
 
+  // 🛡️ SEGURIDAD INTERNA (RBAC)
   const puedeEditar = hasPermission('editar_productos');
   const puedeBorrar = hasPermission('borrar_registros');
 
@@ -106,7 +107,6 @@ export const ProductosTab = ({ sucursalId }) => {
     e.preventDefault();
     if (!puedeEditar) return;
 
-    // Validación extra para evitar selects vacíos
     if (!formData.nombre) return alert("Por favor selecciona una Receta Principal.");
     if (!formData.categoria) return alert("Por favor selecciona una Categoría.");
     const extrasIncompletos = formData.extras.some(ex => !ex.nombre_subreceta);
@@ -164,16 +164,16 @@ export const ProductosTab = ({ sucursalId }) => {
 
       <div className="admin-split-layout-sidebar">
         
+        {/* LADO IZQUIERDO: FORMULARIO PROTEGIDO */}
         <aside className={s.adminCard} style={{ padding: '20px' }}>
           <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: 'var(--color-primary)' }}>
-            {editId ? '📝 Ajustar Producto' : '🍴 Nuevo Producto'}
+            {editId ? (puedeEditar ? '📝 Ajustar Producto' : '🔍 Consulta de Producto') : '🍴 Nuevo Producto'}
           </h3>
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
             
             <div>
               <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>RECETA PRINCIPAL</label>
               
-              {/* --- COMBOBOX PARA RECETA --- */}
               <SearchableSelect 
                 options={recetasCosteadas}
                 value={formData.nombre}
@@ -181,13 +181,12 @@ export const ProductosTab = ({ sucursalId }) => {
                 labelKey="nombre"
                 placeholder="Buscar receta..."
                 formatLabel={(opt) => `${opt.nombre} ($${opt.costo_final.toFixed(2)})`}
-                disabled={!puedeEditar}
+                disabled={!puedeEditar} // 🛡️ Bloqueo visual
                 onChange={(selectedValue) => {
                   const rec = recetasCosteadas.find(r => r.nombre === selectedValue);
                   setFormData({...formData, nombre: selectedValue, costo_referencia: rec ? rec.costo_final : 0});
                 }}
               />
-
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
@@ -198,7 +197,7 @@ export const ProductosTab = ({ sucursalId }) => {
                   style={{ width: '100%', padding: '12px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box', fontWeight: '800' }}
                   value={formData.precio_venta} 
                   onChange={e => setFormData({...formData, precio_venta: e.target.value})} 
-                  required readOnly={!puedeEditar} 
+                  required readOnly={!puedeEditar} // 🛡️ Bloqueo escritura
                 />
               </div>
               <div>
@@ -236,7 +235,6 @@ export const ProductosTab = ({ sucursalId }) => {
                       >✕</button>
                     )}
                     
-                    {/* --- COMBOBOX PARA SUB-RECETA (EXTRAS) --- */}
                     <div style={{ marginBottom: '10px' }}>
                       <SearchableSelect 
                         options={subrecetasDisponibles}
@@ -270,8 +268,6 @@ export const ProductosTab = ({ sucursalId }) => {
 
             <div>
               <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>CATEGORÍA EN MENÚ</label>
-              
-              {/* --- COMBOBOX PARA CATEGORÍA --- */}
               <SearchableSelect 
                 options={categorias}
                 value={formData.categoria}
@@ -281,21 +277,27 @@ export const ProductosTab = ({ sucursalId }) => {
                 disabled={!puedeEditar}
                 onChange={(val) => setFormData({...formData, categoria: val})}
               />
-
             </div>
 
-            <button 
-              type="submit" 
-              className={s.btnLogout} 
-              style={{ backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', padding: '16px', fontWeight: '800', marginTop: '10px' }} 
-              disabled={loading || !puedeEditar}
-            >
-              {loading ? '...' : (editId ? 'ACTUALIZAR ESTRATEGIA' : 'GUARDAR EN MENÚ')}
-            </button>
+            {puedeEditar && (
+              <button 
+                type="submit" 
+                className={s.btnLogout} 
+                style={{ backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', padding: '16px', fontWeight: '800', marginTop: '10px' }} 
+                disabled={loading}
+              >
+                {loading ? '...' : (editId ? 'ACTUALIZAR ESTRATEGIA' : 'GUARDAR EN MENÚ')}
+              </button>
+            )}
+            
+            {!puedeEditar && editId && (
+              <button type="button" onClick={resetForm} className={s.btnLogout} style={{ width: '100%', padding: '12px' }}>CERRAR DETALLE</button>
+            )}
           </form>
         </aside>
 
-        <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto' }}>
+        {/* TABLA DE PRODUCTOS */}
+        <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto', flex: 1 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '750px' }}>
             <thead style={{ backgroundColor: 'var(--color-bg-muted)', borderBottom: '1px solid var(--color-border)' }}>
               <tr>
@@ -309,8 +311,6 @@ export const ProductosTab = ({ sucursalId }) => {
               {productos.map(p => {
                 const costoBase = p.costo_actual || 0;
                 const ventaBase = p.precio_venta || 0;
-                
-                // CÁLCULO DE MARGEN PARA TABLA (POST-IVA)
                 const netoBase = ventaBase / IVA_FACTOR;
                 const margenBase = netoBase > 0 ? (((netoBase - costoBase) / netoBase) * 100).toFixed(1) : 0;
 
@@ -333,8 +333,14 @@ export const ProductosTab = ({ sucursalId }) => {
                     </td>
                     <td style={{ padding: '15px', textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                        <button className={s.btnLogout} style={{ padding: '8px 12px' }} onClick={() => handleEdit(p)}>EDITAR</button>
-                        {puedeBorrar && <button className={s.btnLogout} style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', padding: '8px 12px' }} onClick={() => handleDelete(p.id)}>BORRAR</button>}
+                        <button className={s.btnLogout} style={{ padding: '8px 12px' }} onClick={() => handleEdit(p)}>
+                          {puedeEditar ? 'EDITAR' : 'VER'}
+                        </button>
+                        {puedeBorrar && (
+                          <button className={s.btnLogout} style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', padding: '8px 12px' }} onClick={() => handleDelete(p.id)}>
+                            BORRAR
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -348,33 +354,17 @@ export const ProductosTab = ({ sucursalId }) => {
   );
 };
 
-
 /**
- * SUB-COMPONENTE MEJORADO: SearchableSelect 
- * Ahora es dinámico: soporta diferentes llaves para value (valueKey) y label (labelKey).
+ * SUB-COMPONENTE: SearchableSelect (Sin cambios lógicos, solo integración con disabled)
  */
-const SearchableSelect = ({ 
-  options, 
-  value, 
-  onChange, 
-  disabled, 
-  placeholder = "Buscar y seleccionar...",
-  valueKey = "id", 
-  labelKey = "nombre",
-  formatLabel
-}) => {
+const SearchableSelect = ({ options, value, onChange, disabled, placeholder = "Buscar...", valueKey = "id", labelKey = "nombre", formatLabel }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isOpen, setIsOpen] = useState(false);
 
-  // Sincroniza el texto inicial si se edita el formulario desde afuera
   useEffect(() => {
-    // Comparamos convirtiendo a String para evitar errores si uno es Integer y otro String
     const selected = options.find((opt) => String(opt[valueKey]) === String(value));
-    if (selected) {
-      setSearchTerm(selected[labelKey]);
-    } else {
-      setSearchTerm("");
-    }
+    if (selected) setSearchTerm(selected[labelKey]);
+    else setSearchTerm("");
   }, [value, options, valueKey, labelKey]);
 
   const filteredOptions = options.filter(opt =>
@@ -388,23 +378,14 @@ const SearchableSelect = ({
         value={searchTerm}
         disabled={disabled}
         placeholder={placeholder}
-        style={{
-          width: "100%",
-          padding: "12px",
-          borderRadius: "var(--radius-ui)",
-          border: "1px solid var(--color-border)",
-          fontSize: "14px",
-          boxSizing: "border-box",
-          backgroundColor: disabled ? "var(--color-bg-app)" : "white"
-        }}
+        style={{ width: "100%", padding: "12px", borderRadius: "var(--radius-ui)", border: "1px solid var(--color-border)", fontSize: "14px", boxSizing: "border-box", backgroundColor: disabled ? "var(--color-bg-app)" : "white" }}
         onChange={(e) => {
           setSearchTerm(e.target.value);
           setIsOpen(true);
-          if (value) onChange(""); // Si el usuario borra/edita, limpiamos el valor interno para forzar selección
+          if (value) onChange(""); 
         }}
         onFocus={() => setIsOpen(true)}
         onBlur={() => {
-          // Delay sutil para que el onMouseDown de la lista se ejecute antes de cerrar
           setTimeout(() => {
             setIsOpen(false);
             const selected = options.find((opt) => String(opt[valueKey]) === String(value));
@@ -413,44 +394,13 @@ const SearchableSelect = ({
           }, 200);
         }}
       />
-      
       {isOpen && !disabled && (
-        <ul style={{
-          position: 'absolute',
-          top: '100%',
-          left: 0,
-          right: 0,
-          maxHeight: '200px',
-          overflowY: 'auto',
-          background: 'white',
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-ui)',
-          zIndex: 1000,
-          margin: '4px 0 0 0',
-          padding: 0,
-          listStyle: 'none',
-          boxShadow: 'var(--shadow-ui)'
-        }}>
+        <ul style={{ position: 'absolute', top: '100%', left: 0, right: 0, maxHeight: '200px', overflowY: 'auto', background: 'white', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-ui)', zIndex: 1000, margin: '4px 0 0 0', padding: 0, listStyle: 'none', boxShadow: 'var(--shadow-ui)' }}>
           {filteredOptions.length > 0 ? filteredOptions.map((opt, index) => (
-            <li
-              key={index}
-              style={{ padding: '10px 15px', cursor: 'pointer', borderBottom: '1px solid var(--color-bg-muted)', fontSize: '13px' }}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                onChange(opt[valueKey]);
-                setSearchTerm(opt[labelKey]);
-                setIsOpen(false);
-              }}
-              onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--color-bg-app)'}
-              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
-            >
+            <li key={index} style={{ padding: '10px 15px', cursor: 'pointer', borderBottom: '1px solid var(--color-bg-muted)', fontSize: '13px' }} onMouseDown={(e) => { e.preventDefault(); onChange(opt[valueKey]); setSearchTerm(opt[labelKey]); setIsOpen(false); }} onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--color-bg-app)'} onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}>
               {formatLabel ? formatLabel(opt) : opt[labelKey]}
             </li>
-          )) : (
-            <li style={{ padding: '10px 15px', color: 'var(--color-text-muted)', fontSize: '13px' }}>
-              No se encontraron coincidencias...
-            </li>
-          )}
+          )) : <li style={{ padding: '10px 15px', color: 'var(--color-text-muted)', fontSize: '13px' }}>Sin resultados...</li>}
         </ul>
       )}
     </div>

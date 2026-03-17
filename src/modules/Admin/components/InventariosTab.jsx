@@ -2,10 +2,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useInventarios } from "../../../hooks/useInventariosTab"; 
 import s from "../AdminPage.module.css"; 
+import { hasPermission } from "../../../utils/checkPermiso"; // 🛡️ Importamos seguridad
 
 const InventariosTab = ({ sucursalId, usuarioId }) => {
   const { 
-    insumos,               
+    insumos,              
     insumosFiltrados,     
     searchTerm, setSearchTerm,          
     movimientos, 
@@ -20,6 +21,9 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
     generarContraste,
     guardarConteoFisico 
   } = useInventarios(sucursalId);
+
+  // 🛡️ SEGURIDAD INTERNA (RBAC)
+  const puedeEditar = hasPermission('editar_inventario');
 
   // --- ESTADOS VISUALES ---
   const [activeSubTab, setActiveSubTab] = useState('stock'); 
@@ -36,6 +40,7 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
   // --- HANDLERS ---
   const handleSubmitMovimiento = async (e) => {
     e.preventDefault();
+    if (!puedeEditar) return; // Bloqueo de seguridad
     if (!nuevoMov.insumo_id) return alert("Por favor selecciona un insumo de la lista.");
 
     const res = await procesarNuevoMovimiento(nuevoMov, insumoSeleccionado, usuarioId);
@@ -49,6 +54,7 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
   };
 
   const handleGuardarConteo = async (row) => {
+    if (!puedeEditar) return; // Bloqueo de seguridad
     const valorFisico = conteos[row.id];
     if (valorFisico === undefined || valorFisico === '') {
       return alert("Por favor ingresa el peso/conteo que marca la báscula.");
@@ -66,7 +72,7 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
         Control de Inventarios
       </h2>
 
-      {/* Navegación de Sub-pestañas Homologada con scroll lateral */}
+      {/* Navegación de Sub-pestañas */}
       <nav style={{ display: 'flex', gap: '10px', borderBottom: '1px solid var(--color-border)', paddingBottom: '15px', overflowX: 'auto' }}>
         <button 
           className={`${s.navItem} ${activeSubTab === 'stock' ? s.activeNavItem : ''}`} 
@@ -91,19 +97,18 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
         </button>
       </nav>
 
-      {/* Aplicación de admin-split-layout-sidebar condicional */}
       <div className={activeSubTab === 'contraste' ? "" : "admin-split-layout-sidebar"}>
         
-        {/* PANEL DE MOVIMIENTO MANUAL (SIDEBAR) - Arriba en tablet */}
+        {/* PANEL DE MOVIMIENTO MANUAL (SIDEBAR) - Solo editable si tiene permiso */}
         {activeSubTab !== 'contraste' && (
           <aside className={s.adminCard} style={{ padding: '20px' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: 'var(--color-primary)' }}>Nuevo Movimiento</h3>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: 'var(--color-primary)' }}>
+              {puedeEditar ? 'Nuevo Movimiento' : 'Consulta de Insumo'}
+            </h3>
             <form onSubmit={handleSubmitMovimiento} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               
               <div>
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>INSUMO</label>
-                
-                {/* --- NUEVO COMBOBOX AUTOFILTRADO --- */}
                 <SearchableSelect 
                   options={insumos || []}
                   value={nuevoMov.insumo_id}
@@ -111,10 +116,9 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                   labelKey="nombre"
                   placeholder="🔍 Buscar producto..."
                   formatLabel={(opt) => `${opt.nombre} (Stock: ${opt.stock_fisico} ${opt.unidad})`}
-                  disabled={loading}
+                  disabled={loading} // Se mantiene deshabilitado si carga, pero el onChange se bloquea por permisos si es necesario
                   onChange={(val) => setNuevoMov({...nuevoMov, insumo_id: val})}
                 />
-
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '10px' }}>
@@ -122,7 +126,9 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>OPERACIÓN</label>
                   <select 
                     style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', backgroundColor: 'white' }}
-                    value={nuevoMov.tipo} onChange={(e) => setNuevoMov({...nuevoMov, tipo: e.target.value, motivo: ''})}
+                    value={nuevoMov.tipo} 
+                    disabled={!puedeEditar}
+                    onChange={(e) => setNuevoMov({...nuevoMov, tipo: e.target.value, motivo: ''})}
                   >
                     <option value="ENTRADA">Entrada (+)</option>
                     <option value="MERMA">Merma (-)</option>
@@ -134,7 +140,10 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                   <input 
                     type="number" step="0.01"
                     style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
-                    value={nuevoMov.cantidad} onChange={(e) => setNuevoMov({...nuevoMov, cantidad: e.target.value})} required 
+                    value={nuevoMov.cantidad} 
+                    onChange={(e) => setNuevoMov({...nuevoMov, cantidad: e.target.value})} 
+                    required 
+                    readOnly={!puedeEditar}
                   />
                 </div>
               </div>
@@ -143,7 +152,10 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>MOTIVO</label>
                 <select 
                   style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', backgroundColor: 'white' }}
-                  value={nuevoMov.motivo} onChange={(e) => setNuevoMov({...nuevoMov, motivo: e.target.value})} required
+                  value={nuevoMov.motivo} 
+                  disabled={!puedeEditar}
+                  onChange={(e) => setNuevoMov({...nuevoMov, motivo: e.target.value})} 
+                  required
                 >
                   <option value="">-- Selecciona Motivo --</option>
                   {motivosDisponibles.map(m => <option key={m.id} value={m.nombre_motivo}>{m.nombre_motivo}</option>)}
@@ -153,20 +165,21 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                 </small>
               </div>
 
-              <button 
-                type="submit" 
-                className={s.btnLogout} 
-                style={{ backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', width: '100%', marginTop: '10px', padding: '12px' }}
-                disabled={loading}
-              >
-                {loading ? 'GUARDANDO...' : 'CONFIRMAR MOVIMIENTO'}
-              </button>
+              {puedeEditar && (
+                <button 
+                  type="submit" 
+                  className={s.btnLogout} 
+                  style={{ backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', width: '100%', marginTop: '10px', padding: '12px' }}
+                  disabled={loading}
+                >
+                  {loading ? 'GUARDANDO...' : 'CONFIRMAR MOVIMIENTO'}
+                </button>
+              )}
             </form>
           </aside>
         )}
 
-        {/* ÁREA DE TABLAS - Debajo en tablet */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', flex: 1 }}>
           
           {/* VISTA: EXISTENCIAS */}
           {activeSubTab === 'stock' && (
@@ -276,6 +289,7 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                             style={{ width: '80px', padding: '8px', borderRadius: '4px', border: '1px solid var(--color-border)', textAlign: 'center', fontWeight: '800' }}
                             placeholder="0.00"
                             value={conteos[row.id] || ''}
+                            readOnly={!puedeEditar || yaAuditado}
                             onChange={(e) => actualizarConteo(row.id, e.target.value)} 
                           />
                         </td>
@@ -287,7 +301,7 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                             className={s.btnLogout} 
                             style={{ backgroundColor: yaAuditado ? 'var(--color-success)' : 'var(--color-primary)', color: 'white', border: 'none', fontSize: '11px', padding: '8px 12px' }}
                             onClick={() => handleGuardarConteo(row)}
-                            disabled={loading || !tieneConteo}
+                            disabled={loading || !tieneConteo || !puedeEditar || yaAuditado}
                           >
                             {yaAuditado ? '✅ OK' : 'GUARDAR'}
                           </button>
@@ -337,7 +351,6 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
 };
 
 export default InventariosTab;
-
 
 /**
  * SUB-COMPONENTE: SearchableSelect 

@@ -1,6 +1,8 @@
+// Archivo: src/hooks/useImpresoras.js
 import { useState, useEffect, useCallback } from 'react';
 import { impresorasService } from '../services/Impresoras.service';
 import { CajaService } from '../services/Caja.service';
+import { hasPermission } from '../utils/checkPermiso'; // 🛡️ Blindaje de seguridad
 
 /**
  * Hook integral para gestionar hardware de impresión y diseño de tickets
@@ -8,9 +10,13 @@ import { CajaService } from '../services/Caja.service';
 export const useImpresoras = (sucursalId) => {
   const [impresoras, setImpresoras] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  // 🛡️ DEFINICIÓN DE FACULTADES (Hardware y Configuración)
+  const puedeVer = hasPermission('ver_configuracion');
+  const puedeEditar = hasPermission('editar_configuracion');
+  const puedeBorrar = hasPermission('borrar_registros');
   
   // --- ESTADO INICIAL DEL FORMULARIO DE HARDWARE ---
-  // Incluye los nuevos campos de IP y Puerto para conexión por red
   const initialFormState = {
     nombre: '',
     origen: 'caja',      // caja | cocina | barra
@@ -34,6 +40,10 @@ export const useImpresoras = (sucursalId) => {
   // 1. CARGA DE DATOS SINCRONIZADA
   const cargarDatosSincronizados = useCallback(async () => {
     if (!sucursalId) return;
+    
+    // 🛡️ BLINDAJE: Si no puede ver configuración, ni siquiera preguntamos a la base de datos
+    if (!puedeVer) return;
+
     setLoading(true);
 
     try {
@@ -50,7 +60,7 @@ export const useImpresoras = (sucursalId) => {
     } finally {
       setLoading(false);
     }
-  }, [sucursalId]);
+  }, [sucursalId, puedeVer]); // 🛡️ Añadida dependencia de seguridad
 
   useEffect(() => {
     cargarDatosSincronizados();
@@ -58,7 +68,12 @@ export const useImpresoras = (sucursalId) => {
 
   // 2. LÓGICA DE GESTIÓN DE IMPRESORAS (HARDWARE)
   const guardarImpresora = async () => {
-    // Validación básica antes de enviar a Supabase
+    // 🛡️ BLINDAJE: Bloqueo de acción de edición
+    if (!puedeEditar) {
+      alert("Acceso denegado: No tienes permiso para configurar hardware.");
+      return;
+    }
+
     if (!form.nombre.trim()) {
       alert("Debes asignar un nombre a la impresora.");
       return;
@@ -75,7 +90,6 @@ export const useImpresoras = (sucursalId) => {
       
       if (error) throw error;
 
-      // Si todo sale bien, limpiamos y refrescamos
       setForm(initialFormState);
       await cargarDatosSincronizados();
       alert("Dispositivo vinculado correctamente.");
@@ -87,6 +101,12 @@ export const useImpresoras = (sucursalId) => {
   };
 
   const eliminarImpresora = async (id) => {
+    // 🛡️ BLINDAJE: Bloqueo de acción de borrado
+    if (!puedeBorrar) {
+      alert("Acceso denegado: Se requiere nivel administrador para eliminar dispositivos.");
+      return;
+    }
+
     if (!window.confirm("¿Estás seguro de eliminar este dispositivo?")) return;
     
     setLoading(true);
@@ -103,6 +123,12 @@ export const useImpresoras = (sucursalId) => {
 
   // 3. LÓGICA DE DISEÑO (ESTÉTICA DEL TICKET)
   const guardarConfigTicket = async () => {
+    // 🛡️ BLINDAJE: Bloqueo de acción de edición
+    if (!puedeEditar) {
+      alert("Acceso denegado: No tienes facultades para modificar el diseño del ticket.");
+      return;
+    }
+
     setLoading(true);
     try {
       const { error } = await CajaService.guardarConfigTicket({
@@ -120,17 +146,27 @@ export const useImpresoras = (sucursalId) => {
   };
 
   return {
-    impresoras,
+    // Datos blindados de salida
+    impresoras: puedeVer ? impresoras : [], 
+    configTicket: puedeVer ? configTicket : null,
     loading,
+
     // Gestión de Hardware
     form,
     setForm,
     guardarImpresora,
     eliminarImpresora,
+
     // Gestión de Diseño
     configTicket,
     setConfigTicket,
     guardarConfigTicket,
+
+    // 🛡️ Banderas de seguridad para la UI
+    puedeVer,
+    puedeEditar,
+    puedeBorrar,
+
     // Utilidades
     refrescar: cargarDatosSincronizados
   };

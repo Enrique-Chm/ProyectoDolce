@@ -12,8 +12,12 @@ export const InsumosTab = ({ sucursalId }) => {
   const [editId, setEditId] = useState(null);
   const [loading, setLoading] = useState(false);
   
+  /**
+   * 🛡️ SEGURIDAD INTERNA (RBAC)
+   * Alineamos las claves con el sistema robusto de la DB
+   */
   const puedeEditar = hasPermission('editar_insumos');
-  const puedeBorrar = hasPermission('borrar_registros');
+  const puedeBorrar = hasPermission('borrar_insumos'); // Actualizado para ser específico del módulo
 
   const [formData, setFormData] = useState({
     nombre: '',
@@ -54,6 +58,8 @@ export const InsumosTab = ({ sucursalId }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Bloqueo de seguridad en la función
     if (!puedeEditar) return; 
 
     // Validación para evitar combos vacíos
@@ -114,20 +120,22 @@ export const InsumosTab = ({ sucursalId }) => {
         {loading && <span style={{ fontSize: '12px', color: 'var(--color-primary)', fontWeight: '700' }}>ACTUALIZANDO...</span>}
       </header>
 
-      {/* DISEÑO RESPONSIVO: Formulario arriba y Tabla abajo en Tablets */}
       <div className="admin-split-layout-sidebar">
         
-        {/* FORMULARIO LATERAL */}
+        {/* FORMULARIO LATERAL: Se protege la edición */}
         <aside className={s.adminCard} style={{ padding: '20px' }}>
           <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: 'var(--color-primary)' }}>
-            {editId ? '📝 Editar Insumo' : '📦 Nuevo Insumo'}
+            {editId ? (puedeEditar ? '📝 Editar Insumo' : '👁️ Ver Insumo') : '📦 Nuevo Insumo'}
           </h3>
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
             <div>
               <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>NOMBRE COMERCIAL</label>
               <input 
                 style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
-                value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} required readOnly={!puedeEditar} 
+                value={formData.nombre} 
+                onChange={e => setFormData({...formData, nombre: e.target.value})} 
+                required 
+                readOnly={!puedeEditar} 
               />
             </div>
 
@@ -135,14 +143,16 @@ export const InsumosTab = ({ sucursalId }) => {
               <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>MODELO / VARIANTE</label>
               <input 
                 style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
-                value={formData.modelo} onChange={e => setFormData({...formData, modelo: e.target.value})} required readOnly={!puedeEditar} 
+                value={formData.modelo} 
+                onChange={e => setFormData({...formData, modelo: e.target.value})} 
+                required 
+                readOnly={!puedeEditar} 
               />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>CATEGORÍA</label>
-                {/* --- COMBOBOX PARA CATEGORÍA --- */}
                 <SearchableSelect 
                   options={categorias}
                   value={formData.categoria}
@@ -155,7 +165,6 @@ export const InsumosTab = ({ sucursalId }) => {
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>PROVEEDOR</label>
-                {/* --- COMBOBOX PARA PROVEEDOR --- */}
                 <SearchableSelect 
                   options={proveedores}
                   value={formData.proveedor}
@@ -174,7 +183,10 @@ export const InsumosTab = ({ sucursalId }) => {
                 <input 
                   type="number" step="0.01" 
                   style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
-                  value={formData.costo_por_caja} onChange={e => setFormData({...formData, costo_por_caja: e.target.value})} required readOnly={!puedeEditar} 
+                  value={formData.costo_por_caja} 
+                  onChange={e => setFormData({...formData, costo_por_caja: e.target.value})} 
+                  required 
+                  readOnly={!puedeEditar} 
                 />
               </div>
               <div>
@@ -182,14 +194,16 @@ export const InsumosTab = ({ sucursalId }) => {
                 <input 
                   type="number" step="0.01" 
                   style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
-                  value={formData.contenido_neto} onChange={e => setFormData({...formData, contenido_neto: e.target.value})} required readOnly={!puedeEditar} 
+                  value={formData.contenido_neto} 
+                  onChange={e => setFormData({...formData, contenido_neto: e.target.value})} 
+                  required 
+                  readOnly={!puedeEditar} 
                 />
               </div>
             </div>
 
             <div>
               <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>UNIDAD DE MEDIDA</label>
-              {/* --- COMBOBOX PARA UNIDAD DE MEDIDA --- */}
               <SearchableSelect 
                 options={unidades}
                 value={formData.unidad_medida}
@@ -208,7 +222,9 @@ export const InsumosTab = ({ sucursalId }) => {
                 <input 
                   type="number" step="0.01" 
                   style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
-                  value={formData.factor_rendimiento} onChange={e => setFormData({...formData, factor_rendimiento: e.target.value})} readOnly={!puedeEditar} 
+                  value={formData.factor_rendimiento} 
+                  onChange={e => setFormData({...formData, factor_rendimiento: e.target.value})} 
+                  readOnly={!puedeEditar} 
                 />
               </div>
               <div>
@@ -216,12 +232,15 @@ export const InsumosTab = ({ sucursalId }) => {
                 <input 
                   type="number" 
                   style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
-                  value={formData.dias_reabastecimiento} onChange={e => setFormData({...formData, dias_reabastecimiento: e.target.value})} readOnly={!puedeEditar} 
+                  value={formData.dias_reabastecimiento} 
+                  onChange={e => setFormData({...formData, dias_reabastecimiento: e.target.value})} 
+                  readOnly={!puedeEditar} 
                 />
               </div>
             </div>
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+              {/* Solo mostramos el botón de acción si tiene permiso de editar */}
               {puedeEditar && (
                 <button 
                   type="submit" 
@@ -234,7 +253,7 @@ export const InsumosTab = ({ sucursalId }) => {
               )}
               {editId && (
                 <button type="button" onClick={resetForm} className={s.btnLogout} style={{ padding: '12px' }}>
-                  CANCELAR
+                  {puedeEditar ? 'CANCELAR' : 'VOLVER'}
                 </button>
               )}
             </div>
@@ -285,6 +304,8 @@ export const InsumosTab = ({ sucursalId }) => {
                         >
                           {puedeEditar ? 'EDITAR' : 'VER'}
                         </button>
+                        
+                        {/* Botón de Borrar protegido específicamente */}
                         {puedeBorrar && (
                           <button 
                             className={s.btnLogout} 
@@ -307,7 +328,6 @@ export const InsumosTab = ({ sucursalId }) => {
   );
 };
 
-
 /**
  * SUB-COMPONENTE MEJORADO: SearchableSelect 
  * Soporta diferentes llaves para value (valueKey) y label (labelKey).
@@ -325,7 +345,6 @@ const SearchableSelect = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [isOpen, setIsOpen] = useState(false);
 
-  // Sincroniza el texto inicial si se edita el formulario desde afuera
   useEffect(() => {
     const selected = options.find((opt) => String(opt[valueKey]) === String(value));
     if (selected) {
@@ -358,7 +377,7 @@ const SearchableSelect = ({
         onChange={(e) => {
           setSearchTerm(e.target.value);
           setIsOpen(true);
-          if (value) onChange(""); // Forzar a elegir uno de la lista si cambian el texto
+          if (value) onChange(""); 
         }}
         onFocus={() => setIsOpen(true)}
         onBlur={() => {
