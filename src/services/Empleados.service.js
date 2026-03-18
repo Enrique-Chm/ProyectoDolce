@@ -87,27 +87,20 @@ export const empleadosService = {
     return data.map(item => item.permiso_id);
   },
 
-  // 🛠️ MEJORA: Try/Catch añadido para soportar el botón de "Guardar" de forma segura
   async actualizarPermisosRol(rolId, listaPermisosIds) {
     // 🛡️ BLINDAJE MÁXIMO: Esta función define quién manda en el sistema
     if (!hasPermission('editar_configuracion')) {
-      return { success: false, error: "ALERTA DE SEGURIDAD: No tienes permiso para reconfigurar la matriz de acceso." };
+      throw new Error("ALERTA DE SEGURIDAD: No tienes permiso para reconfigurar la matriz de acceso.");
     }
 
-    try {
-      // Proceso de sincronización original (Borrar e Insertar de golpe)
-      const { error: deleteError } = await supabase.from('rol_permisos').delete().eq('rol_id', rolId);
-      if (deleteError) throw deleteError;
-      
-      if (listaPermisosIds.length > 0) {
-        const payload = listaPermisosIds.map(pId => ({ rol_id: rolId, permiso_id: pId }));
-        const { error: insertError } = await supabase.from('rol_permisos').insert(payload);
-        if (insertError) throw insertError;
-      }
-      return { success: true };
-    } catch (err) {
-      console.error("Error al sincronizar matriz:", err);
-      return { success: false, error: err.message };
+    // Proceso de sincronización original
+    await supabase.from('rol_permisos').delete().eq('rol_id', rolId);
+    
+    if (listaPermisosIds.length > 0) {
+      const payload = listaPermisosIds.map(pId => ({ rol_id: rolId, permiso_id: pId }));
+      const { error } = await supabase.from('rol_permisos').insert(payload);
+      if (error) throw error;
     }
+    return { success: true };
   }
 };
