@@ -19,17 +19,17 @@ import CajeroTab from './components/CajeroTab';
 import { ImpresorasTab } from "./components/ImpresorasTab";
 import InventariosTab from "./components/InventariosTab"; 
 import EstimacionesTab from "./components/EstimacionesTab"; 
-import { GastosTab } from "./components/GastosTab"; // 👈 NUEVA IMPORTACIÓN
+import { GastosTab } from "./components/GastosTab";
 
 const AdminPage = () => {
   useSessionGuard();
 
   const [userSession, setUserSession] = useState(authService.getCurrentSession());
   
-  // 🛡️ CORRECCIÓN 1: La ruta correcta para saber si es Administrador
+  // 🛡️ Identificación de Rol
   const isAdmin = userSession?.user?.rol === 'Administrador' || userSession?.user?.rol_id === 1;
 
-  // 🛡️ CORRECCIÓN 2: Mapeo exacto con la nueva base de datos blindada
+  // 🛡️ Configuración de Pestañas
   const tabsConfig = useMemo(() => [
     { id: 'analitica', label: 'Dashboard Analítica', permiso: 'ver_ventas' }, 
     { id: 'mesero', label: 'Mesero (Ventas)', permiso: 'ver_ventas' },
@@ -37,7 +37,7 @@ const AdminPage = () => {
     { id: 'insumos', label: 'Catálogo Insumos', permiso: 'ver_insumos' },
     { id: 'kardex', label: 'Auditoría Inventarios', permiso: 'ver_inventario' },
     { id: 'estimaciones', label: 'Proyección Compras', permiso: 'ver_inventario' },
-    { id: 'gastos', label: 'Gastos Operativos', permiso: 'ver_gastos' }, // 👈 NUEVA PESTAÑA
+    { id: 'gastos', label: 'Gastos Operativos', permiso: 'ver_gastos' }, 
     { id: 'recetas', label: 'Recetas', permiso: 'ver_recetas' }, 
     { id: 'productos', label: 'Productos', permiso: 'ver_productos' }, 
     { id: 'proveedores', label: 'Proveedores', permiso: 'ver_proveedores' },
@@ -49,16 +49,13 @@ const AdminPage = () => {
   // Filtro de pestañas inteligente
   const visibleTabs = useMemo(() => {
     if (!userSession) return [];
-    if (isAdmin) return tabsConfig; // El admin tiene paso libre a todo
-    
+    if (isAdmin) return tabsConfig;
     return tabsConfig.filter(tab => userSession.permisos.includes(tab.permiso));
   }, [userSession, isAdmin, tabsConfig]);
 
-  // Manejo de la pestaña activa de forma segura
   const [activeTab, setActiveTab] = useState('');
 
   useEffect(() => {
-    // Si la pestaña actual está vacía, selecciona la primera permitida
     if (visibleTabs.length > 0 && !activeTab) {
       setActiveTab(visibleTabs[0].id);
     }
@@ -74,7 +71,6 @@ const AdminPage = () => {
   }, [userSession]);
 
   const cargarSucursales = async () => {
-    // 🛡️ Pequeño blindaje: Solo carga sucursales si tiene permiso o es admin
     if (isAdmin || userSession?.permisos?.includes('ver_sucursales')) {
       const { data } = await sucursalesService.getAll();
       setListaSucursales(data || []);
@@ -93,7 +89,7 @@ const AdminPage = () => {
   return (
     <div className={s.adminContainer}>
       
-      {/* BARRA LATERAL / NAVEGACIÓN */}
+      {/* BARRA LATERAL */}
       <aside className={s.sidebar}>
         <div className={s.sidebarHeader}>
           <h2>CloudKitchen <span style={{ color: 'var(--color-primary)' }}>Admin</span></h2>
@@ -118,17 +114,10 @@ const AdminPage = () => {
           <div className={s.userInfo}>
             {isAdmin && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <label style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--color-text-muted)' }}>
-                  SUCURSAL:
-                </label>
+                <label className={s.label} style={{ marginBottom: 0 }}>SUCURSAL:</label>
                 <select 
-                  style={{ 
-                    padding: '8px 12px', 
-                    borderRadius: 'var(--radius-ui)', 
-                    border: '1px solid var(--color-border)',
-                    fontSize: '0.9rem',
-                    background: 'white'
-                  }}
+                  className={s.inputField}
+                  style={{ width: 'auto', padding: '6px 12px', height: '38px' }}
                   value={filterSucursal} 
                   onChange={(e) => setFilterSucursal(parseInt(e.target.value))}
                 >
@@ -141,19 +130,19 @@ const AdminPage = () => {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <span className={s.userName}>
+            <div className={s.label}>
               {userSession.user.nombre} 
-              <small style={{ display: 'block', fontSize: '10px', color: 'var(--color-text-muted)', textAlign: 'right' }}>
+              <small className={s.label}>
                 {!isAdmin ? `Sucursal: ${userSession.user.sucursal_id}` : 'Administrador Global'}
               </small>
-            </span>
-            <button onClick={handleLogout} className={s.btnLogout}>
+            </div>
+            <button onClick={handleLogout} className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`}>
               SALIR ✕
             </button>
           </div>
         </header>
 
-        {/* CONTENIDO DE TABS DINÁMICO */}
+        {/* CONTENIDO DINÁMICO */}
         <section className={s.tabContent}>
            {activeTab === 'analitica' && <AnaliticaTab sucursalId={filterSucursal} />}
            {activeTab === 'mesero' && <MeseroTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
@@ -161,7 +150,7 @@ const AdminPage = () => {
            {activeTab === 'insumos' && <InsumosTab sucursalId={filterSucursal} />}
            {activeTab === 'kardex' && <InventariosTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
            {activeTab === 'estimaciones' && <EstimacionesTab sucursalId={filterSucursal} />}
-           {activeTab === 'gastos' && <GastosTab />} {/* 👈 NUEVO RENDERIZADO */}
+           {activeTab === 'gastos' && <GastosTab />}
            {activeTab === 'recetas' && <RecetasTab sucursalId={filterSucursal} />}
            {activeTab === 'productos' && <ProductosTab sucursalId={filterSucursal} />}
            {activeTab === 'proveedores' && <ProveedoresTab sucursalId={filterSucursal} />}

@@ -1,6 +1,7 @@
 // Archivo: src/modules/Admin/components/MeseroTab.jsx
 import React, { useState } from 'react';
 import s from './MeseroTab.module.css';
+import stylesAdmin from '../AdminPage.module.css'; // 🛡️ Importamos el sistema de botones unificado
 import { useMeseroTab } from '../../../hooks/useMeseroTab';
 import { hasPermission } from '../../../utils/checkPermiso'; // 🛡️ Importamos seguridad
 
@@ -42,11 +43,11 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
             <div className={s.flexCenterGap} style={{ flexWrap: 'wrap' }}>
               {/* Solo mostramos historial si tiene permiso */}
               {puedeVerHistorial && (
-                <button className={s.btnCancel} style={{ whiteSpace: 'nowrap' }} onClick={() => setView('historial')}>📜 HISTORIAL</button>
+                <button className={`${stylesAdmin.btn} ${stylesAdmin.btnOutlineDanger}`} style={{ whiteSpace: 'nowrap' }} onClick={() => setView('historial')}>📜 HISTORIAL</button>
               )}
               {/* Botón de nueva mesa condicionado por permiso */}
               {puedeTomarOrdenes && (
-                <button className={s.btnPrimary} style={{ whiteSpace: 'nowrap' }} onClick={() => { setMesaInput(''); setView('mesas'); }}>+ NUEVA MESA</button>
+                <button className={`${stylesAdmin.btn} ${stylesAdmin.btnPrimary}`} style={{ whiteSpace: 'nowrap' }} onClick={() => { setMesaInput(''); setView('mesas'); }}>+ NUEVA MESA</button>
               )}
             </div>
           </div>
@@ -93,11 +94,11 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
               readOnly={!puedeTomarOrdenes}
             />
             {puedeTomarOrdenes ? (
-              <button type="submit" className={s.btnEmpezarOrden} style={{ width: '100%', padding: '20px', fontSize: '1.2rem' }}>Tomar Orden</button>
+              <button type="submit" className={`${stylesAdmin.btn} ${stylesAdmin.btnPrimary} ${stylesAdmin.btnFull}`} style={{ padding: '20px', fontSize: '1.2rem', marginTop: '15px' }}>Tomar Orden</button>
             ) : (
               <div style={{ color: 'var(--color-danger)', fontWeight: 'bold', textAlign: 'center', marginTop: '10px' }}>No tienes permiso para abrir mesas.</div>
             )}
-            <button type="button" className={s.btnCancel} onClick={() => setView('cuentas')} style={{width: '100%', marginTop: '15px', padding: '15px', fontWeight: '700'}}>
+            <button type="button" className={`${stylesAdmin.btn} ${stylesAdmin.btnOutlineDanger} ${stylesAdmin.btnFull}`} onClick={() => setView('cuentas')} style={{marginTop: '15px', padding: '15px', fontWeight: '700'}}>
               Cancelar
             </button>
           </form>
@@ -110,7 +111,7 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
           {/* LADO IZQUIERDO: CATEGORÍAS Y PRODUCTOS */}
           <div className={s.menuArea}>
             <div className={s.headerRow} style={{ marginBottom: '20px' }}>
-              <button className={`${s.btnCancel} ${s.btnBackNav}`} onClick={() => { setView('cuentas'); setIsCartExpanded(false); }}>← VOLVER</button>
+              <button className={`${stylesAdmin.btn} ${stylesAdmin.btnOutlineDanger} ${s.btnBackNav}`} onClick={() => { setView('cuentas'); setIsCartExpanded(false); }}>← VOLVER</button>
               <div style={{ textAlign: 'right' }}>
                 <h3 style={{ margin: 0, fontWeight: '900', color: 'var(--color-primary)' }}>MESA {mesaInput.toUpperCase()}</h3>
               </div>
@@ -183,7 +184,7 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
                     <strong className={s.cartItemName}><span className={s.cartItemQty}>{item.cantidad}x</span> {item.nombre}</strong>
                     {/* Solo permitir borrar si puede tomar órdenes */}
                     {puedeTomarOrdenes && (
-                      <button onClick={() => eliminarDelCarrito(item.id)} className={s.btnRemoveItem} style={{ padding: '8px' }}>✕</button>
+                      <button onClick={() => eliminarDelCarrito(item.id)} className={`${stylesAdmin.btn} ${stylesAdmin.btnOutlineDanger} ${stylesAdmin.btnSmall}`} style={{ padding: '4px 8px' }}>✕</button>
                     )}
                   </div>
                   <input 
@@ -214,7 +215,7 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <button 
-                  className={s.btnOrder} 
+                  className={`${stylesAdmin.btn} ${stylesAdmin.btnPrimary} ${stylesAdmin.btnFull}`} 
                   style={{ padding: '16px', fontWeight: '800' }}
                   onClick={handleEnviarOrden} 
                   disabled={loading || carrito.length === 0 || ventaActiva?.estado === 'por_cobrar' || !puedeTomarOrdenes}
@@ -224,7 +225,7 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
                 
                 {ventaActiva && (
                   <button 
-                    className={`${s.btnOrder}`} 
+                    className={`${stylesAdmin.btn} ${stylesAdmin.btnFull}`} 
                     style={{ 
                         background: ventaActiva.estado === 'por_cobrar' ? 'var(--color-warning)' : 'var(--color-danger)',
                         color: 'white',
@@ -252,7 +253,7 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
         <div style={{ animation: 'fadeIn 0.2s ease-out' }}>
           <div className={s.headerRow}>
             <h2 className={s.sectionTitle}>Cuentas de Hoy</h2>
-            <button className={s.btnCancel} onClick={() => setView('cuentas')}>← VOLVER</button>
+            <button className={`${stylesAdmin.btn} ${stylesAdmin.btnOutlineDanger}`} onClick={() => setView('cuentas')}>← VOLVER</button>
           </div>
           <div className={s.historyGrid}>
             {cuentasCobradas.map(v => (

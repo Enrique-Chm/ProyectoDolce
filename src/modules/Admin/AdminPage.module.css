@@ -105,17 +105,6 @@
   color: var(--color-text-main);
 }
 
-.btnLogout {
-  background-color: transparent;
-  border: 1px solid var(--color-danger);
-  color: var(--color-danger);
-  padding: 6px 12px;
-  border-radius: var(--radius-ui);
-  font-size: 0.85rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s;
-}
 
 .btnLogout:hover {
   background-color: var(--color-danger);
@@ -247,7 +236,7 @@
 }
 
 .formGroup {
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 }
 
 .label {
@@ -260,16 +249,6 @@
   letter-spacing: 0.05em;
 }
 
-.loginInput {
-  width: 100%;
-  padding: 12px 16px;
-  font-size: 15px;
-  border-radius: var(--radius-ui);
-  border: 1px solid var(--color-border);
-  background-color: #ffffff;
-  box-sizing: border-box; /* Crucial para un ancho limpio */
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
 
 .loginInput:focus {
   outline: none;
@@ -277,19 +256,6 @@
   box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.1);
 }
 
-.loginBtn {
-  width: 100%;
-  padding: 14px;
-  background-color: var(--color-primary);
-  color: white;
-  border: none;
-  border-radius: var(--radius-button);
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: filter 0.2s;
-  margin-top: 10px;
-}
 
 .loginBtn:hover:not(:disabled) {
   filter: brightness(1.1);
@@ -298,4 +264,752 @@
 .loginBtn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+/* --- ELEMENTOS FALTANTES AÑADIDOS PARA TABS Y COMPONENTES --- */
+
+/* Navegación horizontal de Tabs */
+.tabNav {
+  display: flex;
+  gap: 10px;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 15px;
+  overflow-x: auto;
+  margin-bottom: 24px;
+}
+
+.tabButton {
+  padding: 8px 20px;
+  white-space: nowrap;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  border-radius: var(--radius-ui);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.95rem;
+}
+
+.tabButton:hover {
+  background-color: var(--color-bg-app);
+  color: var(--color-primary);
+}
+
+.activeTabButton {
+  background-color: var(--color-primary) !important;
+  color: var(--color-text-white) !important;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Layout dividido (Formulario a un lado, Tabla al otro) */
+.splitLayout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+/* Formularios genéricos (reutilizando la base de tu login) */
+.cardTitle {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: var(--color-primary);
+  margin-top: 0;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  align-items: flex-end;
+  margin-top: 15px;
+}
+
+.formActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.inputField {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 14px;
+  border-radius: var(--radius-ui);
+  border: 1px solid var(--color-border);
+  background-color: #ffffff;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+}
+
+.inputField:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.1);
+}
+
+
+
+.btnPrimary:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.btnPrimary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.btnSuccess:disabled {
+  background-color: var(--color-bg-muted);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+/* Tablas */
+.tableContainer {
+  padding: 0;
+  overflow-x: auto;
+  flex: 1;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  min-width: 600px;
+}
+
+.thead {
+  background-color: var(--color-bg-muted, #f8fafc);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.th {
+  padding: 15px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-weight: 700;
+}
+
+.td {
+  padding: 15px;
+  border-bottom: 1px solid var(--color-bg-muted, #f8fafc);
+  vertical-align: middle;
+}
+
+.badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background-color: var(--color-bg-app);
+  color: var(--color-primary);
+}
+
+.emptyState {
+  text-align: center;
+  padding: 60px;
+  color: var(--color-text-muted);
+}
+
+.checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.checkbox:disabled {
+  cursor: not-allowed;
+}
+
+/* Componente Select Dropdown */
+.dropdownList {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  z-index: 1000;
+  margin: 4px 0 0 0;
+  padding: 0;
+  list-style: none;
+  box-shadow: var(--shadow-md);
+}
+
+.dropdownItem {
+  padding: 10px 15px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-bg-muted);
+  font-size: 13px;
+}
+
+.dropdownItem:hover {
+  background-color: var(--color-bg-app);
+}
+
+/* Responsividad para Split Layout */
+@media (max-width: 1024px) {
+  .splitLayout {
+    grid-template-columns: 1fr;
+  }
+}
+/* --- CLASES AÑADIDAS PARA CONFIG TAB --- */
+
+/* Círculo de color para la tabla de categorías */
+.colorCircle {
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-border);
+}
+
+/* Selector de color nativo */
+.colorPicker {
+  height: 45px;
+  padding: 5px;
+  cursor: pointer;
+}
+
+/* Badges específicos para los estados de inventario */
+.badgeSuccess {
+  background-color: #dcfce7;
+  color: #166534;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.badgeDanger {
+  background-color: #fee2e2;
+  color: #991b1b;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+/* Contenedor apilado para secciones múltiples (Categorías) */
+.configLayoutWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+/* --- CLASES AÑADIDAS PARA ANALITICA TAB --- */
+
+.analyticsWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Encabezado Principal */
+.analyticsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+  border-bottom: 2px solid var(--color-bg-muted);
+  padding-bottom: 20px;
+}
+
+.analyticsTitle {
+  font-size: 1.6rem;
+  font-weight: 900;
+  margin: 0;
+  color: var(--color-text-main);
+}
+
+.analyticsSubtitle {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin: 5px 0 0 0;
+}
+
+/* Selector de Fechas */
+.dateFilters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--color-bg-muted);
+  padding: 8px 15px;
+  border-radius: var(--radius-ui);
+  border: 1px solid var(--color-border);
+}
+
+.dateCol {
+  display: flex;
+  flex-direction: column;
+}
+
+.dateLabel {
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--color-text-muted);
+}
+
+.dateInput {
+  border: none;
+  background: transparent;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--color-text-main);
+  outline: none;
+}
+
+.dateDivider {
+  width: 1px;
+  height: 25px;
+  background: var(--color-border);
+  margin: 0 5px;
+}
+
+/* Grid de Métricas (Tarjetas KPI) */
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.metricCard {
+  padding: 22px;
+  background: white;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+}
+
+.metricCardHighlight {
+  background: var(--color-bg-app);
+  box-shadow: var(--shadow-md);
+}
+
+.metricLabel {
+  font-size: 9px;
+  font-weight: 900;
+  color: var(--color-text-muted);
+  letter-spacing: 0.5px;
+}
+
+.metricValue {
+  font-size: 1.6rem;
+  font-weight: 900;
+  margin-top: 8px;
+  letter-spacing: -1px;
+}
+
+.metricSubtext {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  margin: 4px 0 0 0;
+  font-weight: 600;
+}
+
+/* Elementos de Listas (Ranking y Staff) */
+.listContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rankingItem {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 15px;
+  background: var(--color-bg-app);
+  border-radius: var(--radius-ui);
+  border-left: 1px solid var(--color-border);
+}
+
+.rankingItemFirst {
+  border-left: 4px solid var(--color-primary);
+}
+
+.staffItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--color-border);
+}
+
+.staffAvatar {
+  width: 28px;
+  height: 28px;
+  background: var(--color-text-main);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+/* Pantallas de Carga y Restricción */
+.messageState {
+  text-align: center;
+  padding: 100px;
+}
+
+.messageStateDanger {
+  font-weight: 800;
+  color: var(--color-danger);
+  font-size: 1.2rem;
+}
+
+.messageStatePrimary {
+  font-weight: 800;
+  color: var(--color-primary);
+  font-size: 1.2rem;
+}
+/* --- CLASES AÑADIDAS PARA INVENTARIOS TAB --- */
+
+/* Grid asimétrico para inputs en la misma línea */
+.formGridAsym {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 10px;
+}
+
+/* Texto de ayuda debajo de los inputs */
+.helperText {
+  font-size: 10px;
+  color: var(--color-primary);
+  display: block;
+  margin-top: 5px;
+  font-weight: 700;
+}
+
+/* Contenedor flexible para apilar tablas */
+.flexColumnGap20 {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  flex: 1;
+}
+
+/* Encabezado superior de las tablas con buscador/filtros */
+.tableHeader {
+  padding: 15px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.auditHeader {
+  padding: 20px;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--color-bg-muted);
+  gap: 15px;
+}
+
+.auditFilters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Inputs pequeños para filtros en cabeceras */
+.inputSmall {
+  padding: 8px;
+  border-radius: var(--radius-ui);
+  border: 1px solid var(--color-border);
+  font-size: 12px;
+  background-color: white;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.inputSmall:focus {
+  border-color: var(--color-primary);
+}
+
+/* Inputs específicos dentro de las celdas de la tabla (Centrados) */
+.tableInputCenter {
+  width: 80px;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid var(--color-border);
+  text-align: center;
+  font-weight: 800;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.tableInputCenter:focus {
+  border-color: var(--color-primary);
+}
+
+.btnDark:hover:not(:disabled) {
+  filter: brightness(1.2);
+}
+
+.btnDark:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.btnPrimarySmall {
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  font-size: 11px;
+  padding: 8px 12px;
+  border-radius: var(--radius-button);
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.btnPrimarySmall:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.btnSuccessSmall:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Estado de fila en la tabla cuando ya está auditada */
+.rowAudited {
+  background-color: var(--color-bg-app);
+  opacity: 0.7;
+}
+
+/* Textos de colores utilitarios */
+.textSuccess {
+  color: #10b981;
+}
+
+.textDanger {
+  color: var(--color-danger);
+}
+
+.textPrimary {
+  color: var(--color-primary);
+}
+
+.textMuted {
+  color: var(--color-text-muted);
+}
+
+/* =========================================
+   SISTEMA DE BOTONES UNIFICADO
+   ========================================= */
+
+/* 1. CLASE BASE (La estructura que todos comparten) */
+.btn {
+  border: none;
+  border-radius: var(--radius-button, 6px);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 12px 16px;
+  font-size: 0.95rem;
+  text-align: center;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px; /* Por si le pones un icono al lado del texto */
+  box-sizing: border-box;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 2. MODIFICADORES DE COLOR (El "tema" del botón) */
+.btnPrimary { background-color: var(--color-primary); color: white; }
+.btnPrimary:hover:not(:disabled) { filter: brightness(1.1); box-shadow: var(--shadow-sm); }
+
+.btnSec { background-color: #10b981; color: white; }
+.btnSuccess { background-color: #10b981; color: white; }
+.btnSuccess:hover:not(:disabled) { filter: brightness(1.1); box-shadow: var(--shadow-sm); }
+
+.btnDark { background-color: var(--color-secondary); color: white; }
+.btnDark:hover:not(:disabled) { filter: brightness(1.2); box-shadow: var(--shadow-sm); }
+
+/* Para Logout o Cancelar (borde rojo, fondo transparente) */
+.btnOutlineDanger { background-color: transparent; border: 1px solid var(--color-danger); color: var(--color-danger); }
+.btnOutlineDanger:hover:not(:disabled) { background-color: var(--color-danger); color: white; }
+
+/* Para Editar  (borde y fondo transparente) */
+.btnOutlineEditar { background-color: transparent; border: 1px solid var(--color-warning); color: var(--color-warning); }
+.btnOutlineEditar:hover:not(:disabled) { background-color: var(--color-warning); color: white; }
+/* 3. MODIFICADORES DE TAMAÑO/ANCHO (Ajustes específicos) */
+.btnSmall { padding: 6px 8px; font-size: 13px; }
+.btnEditar { padding: 3px 3px; font-size: 18px; }
+.btnFull { width: 100%; }
+/* --- ESTADOS Y BADGES --- */
+.syncBadge {
+  font-size: 12px;
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.badge {
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: var(--color-bg-app);
+  color: var(--color-primary);
+  margin-top: 4px;
+  display: inline-block;
+  text-transform: uppercase;
+}
+
+.miniBadge {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  background: var(--color-bg-app);
+  padding: 4px 4px;
+  border-radius: 4px;
+  border: 1px solid var(--color-border);
+}
+
+/* --- FORMULARIOS Y ELEMENTOS ESPECÍFICOS --- */
+.cardTitle {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: var(--color-primary);
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 0;
+}
+
+.hr {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 10px 0;
+}
+
+/* --- DISEÑO DE INGREDIENTES (ITEM CARDS) --- */
+.itemCardRelative {
+  padding: 15px;
+  background: var(--color-bg-muted);
+  border-radius: var(--radius-ui);
+  border: 1px solid var(--color-border);
+  position: relative;
+}
+
+.btnRemoveCircle {
+  position: absolute;
+  top: -1px;
+  right: 0px;
+  width: 5px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: rgb(from var(--color-danger) r g b / 0.85);
+  color: rgb(255, 255, 255);
+  border: 1px solid rgb(255, 0, 0);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.unitDisplayBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px; 
+  width: 55px;
+  background-color: #f9fafb;
+  border: 1px solid #d1d5db; 
+  border-radius: var(--radius-ui);
+  font-weight: 600;
+  color: var(--color-text-main);
+  box-sizing: border-box;
+}
+
+.costHint {
+  /* 1. Quitamos el float y el inline-block */
+  display: block;
+  width: fit-content;
+  margin-left: auto; /* Esto lo empuja a la derecha de forma limpia */
+  margin-top: 15px; 
+  background-color: white;
+  color: var(--color-primary);
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: var(--shadow-sm); /* Un toque de profundidad */
+}
+
+/* --- TABLAS ESTÁNDAR --- */
+.tableContainer {
+  padding: 0;
+  overflow-x: auto;
+  flex: 1;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.thead {
+  background-color: var(--color-bg-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.th {
+  padding: 15px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+}
+
+.td {
+  padding: 15px;
+  border-bottom: 1px solid var(--color-bg-muted);
+}
+
+.totalAmount {
+  font-weight: 600;
+  color: var(--color-text-main);
+  font-size: 1.2rem;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 40px;
+  color: var(--color-text-muted);
 }

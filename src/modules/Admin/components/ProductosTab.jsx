@@ -110,7 +110,7 @@ export const ProductosTab = ({ sucursalId }) => {
     if (!formData.nombre) return alert("Por favor selecciona una Receta Principal.");
     if (!formData.categoria) return alert("Por favor selecciona una Categoría.");
     const extrasIncompletos = formData.extras.some(ex => !ex.nombre_subreceta);
-    if (extrasIncompletos) return alert("Por favor selecciona la sub-receta en todos los extras agregados.");
+    if (extrasIncompletos) return alert("Por favor selecciona la sub-receta en todos los extras.");
 
     setLoading(true);
 
@@ -155,25 +155,22 @@ export const ProductosTab = ({ sucursalId }) => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--color-text-main)', margin: 0 }}>
-          Estrategia de Precios (Menú)
-        </h2>
-        {loading && <span style={{ fontSize: '12px', color: 'var(--color-primary)', fontWeight: '700' }}>ACTUALIZANDO...</span>}
+      <header className={s.pageHeader}>
+        <h2 className={s.pageTitle}>Estrategia de Precios (Menú)</h2>
+        {loading && <span className={s.syncBadge}>ACTUALIZANDO...</span>}
       </header>
 
-      <div className="admin-split-layout-sidebar">
+      <div className={s.splitLayout}>
         
-        {/* LADO IZQUIERDO: FORMULARIO PROTEGIDO */}
-        <aside className={s.adminCard} style={{ padding: '20px' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: 'var(--color-primary)' }}>
-            {editId ? (puedeEditar ? '📝 Ajustar Producto' : '🔍 Consulta de Producto') : '🍴 Nuevo Producto'}
+        {/* LADO IZQUIERDO: FORMULARIO */}
+        <aside className={s.adminCard}>
+          <h3 className={s.cardTitle}>
+            {editId ? (puedeEditar ? 'Ajustar Producto' : 'Consulta de Producto') : 'Nuevo Producto'}
           </h3>
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
             
-            <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>RECETA PRINCIPAL</label>
-              
+            <div className={s.formGroup}>
+              <label className={s.label}>RECETA PRINCIPAL</label>
               <SearchableSelect 
                 options={recetasCosteadas}
                 value={formData.nombre}
@@ -181,7 +178,7 @@ export const ProductosTab = ({ sucursalId }) => {
                 labelKey="nombre"
                 placeholder="Buscar receta..."
                 formatLabel={(opt) => `${opt.nombre} ($${opt.costo_final.toFixed(2)})`}
-                disabled={!puedeEditar} // 🛡️ Bloqueo visual
+                disabled={!puedeEditar}
                 onChange={(selectedValue) => {
                   const rec = recetasCosteadas.find(r => r.nombre === selectedValue);
                   setFormData({...formData, nombre: selectedValue, costo_referencia: rec ? rec.costo_final : 0});
@@ -189,50 +186,42 @@ export const ProductosTab = ({ sucursalId }) => {
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>PRECIO PÚBLICO ($)</label>
+            <div className={s.formGrid}>
+              <div className={s.formGroup}>
+                <label className={s.label}>PRECIO PÚBLICO ($)</label>
                 <input 
                   type="number" step="0.01" 
-                  style={{ width: '100%', padding: '12px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box', fontWeight: '800' }}
+                  className={s.inputField}
+                  style={{ fontWeight: '600' }}
                   value={formData.precio_venta} 
                   onChange={e => setFormData({...formData, precio_venta: e.target.value})} 
-                  required readOnly={!puedeEditar} // 🛡️ Bloqueo escritura
+                  required readOnly={!puedeEditar} 
                 />
               </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>MARGEN NETO %</label>
-                <div style={{ 
-                  padding: '12px', 
-                  borderRadius: 'var(--radius-ui)', 
-                  background: 'var(--color-bg-app)', 
+              <div className={s.formGroup}>
+                <label className={s.label}>MARGEN NETO %</label>
+                <div className={s.unitDisplayBox} style={{ 
                   fontWeight: '900', 
-                  textAlign: 'center',
                   color: formData.margen_en_vivo > 55 ? 'var(--color-success)' : 'var(--color-danger)',
-                  border: '1px solid var(--color-border)'
                 }}>
                   {formData.margen_en_vivo}%
                 </div>
               </div>
             </div>
 
-            <div style={{ marginTop: '10px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <label style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)' }}>EXTRAS / COMPLEMENTOS</label>
+            <div className={s.flexColumnGap10}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label className={s.label}>EXTRAS / COMPLEMENTOS</label>
                 {puedeEditar && (
-                  <button type="button" onClick={addExtraField} className={s.btnLogout} style={{ padding: '6px 15px', fontSize: '10px' }}>+ AGREGAR</button>
+                  <button type="button" onClick={addExtraField} className={`${s.btn} ${s.btnSec} ${s.btnSmall}`}>AGREGAR</button>
                 )}
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <div className={s.flexColumnGap15}>
                 {formData.extras.map((ex, idx) => (
-                  <div key={idx} style={{ padding: '15px', background: 'var(--color-bg-muted)', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', position: 'relative' }}>
+                  <div key={idx} className={s.itemCardRelative}>
                     {puedeEditar && (
-                      <button 
-                        type="button" 
-                        style={{ position: 'absolute', top: '-10px', right: '-10px', border: 'none', background: 'var(--color-danger)', color: 'white', borderRadius: '50%', width: '26px', height: '26px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
-                        onClick={() => removeExtraField(idx)}
-                      >✕</button>
+                      <button type="button" className={s.btnRemoveCircle} onClick={() => removeExtraField(idx)}>✕</button>
                     )}
                     
                     <div style={{ marginBottom: '10px' }}>
@@ -248,16 +237,16 @@ export const ProductosTab = ({ sucursalId }) => {
                       />
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div className={s.formGrid}>
                       <input 
                         type="number" step="0.01" 
-                        style={{ padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
+                        className={s.inputField}
                         placeholder="Precio Venta" 
                         value={ex.precio_venta_subreceta} 
                         onChange={e => updateExtraField(idx, 'precio_venta_subreceta', e.target.value)} 
                         required readOnly={!puedeEditar} 
                       />
-                      <div style={{ fontSize: '10px', fontWeight: '800', display: 'flex', alignItems: 'center', justifyContent: 'center', color: ex.margen_subreceta > 50 ? 'var(--color-success)' : 'var(--color-danger)', background: 'white', borderRadius: '4px', border: '1px solid var(--color-border)' }}>
+                      <div className={s.unitDisplayBox} style={{ fontSize: '10px', color: ex.margen_subreceta > 50 ? 'var(--color-success)' : 'var(--color-danger)' }}>
                         {ex.margen_subreceta}% NETO
                       </div>
                     </div>
@@ -266,8 +255,8 @@ export const ProductosTab = ({ sucursalId }) => {
               </div>
             </div>
 
-            <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>CATEGORÍA EN MENÚ</label>
+            <div className={s.formGroup}>
+              <label className={s.label}>CATEGORÍA EN MENÚ</label>
               <SearchableSelect 
                 options={categorias}
                 value={formData.categoria}
@@ -279,32 +268,31 @@ export const ProductosTab = ({ sucursalId }) => {
               />
             </div>
 
-            {puedeEditar && (
-              <button 
-                type="submit" 
-                className={s.btnLogout} 
-                style={{ backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', padding: '16px', fontWeight: '800', marginTop: '10px' }} 
-                disabled={loading}
-              >
-                {loading ? '...' : (editId ? 'ACTUALIZAR ESTRATEGIA' : 'GUARDAR EN MENÚ')}
-              </button>
-            )}
-            
-            {!puedeEditar && editId && (
-              <button type="button" onClick={resetForm} className={s.btnLogout} style={{ width: '100%', padding: '12px' }}>CERRAR DETALLE</button>
-            )}
+            <div className={s.flexColumnGap10} style={{ marginTop: '10px' }}>
+              {puedeEditar && (
+                <button type="submit" className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`} disabled={loading}>
+                  {loading ? '...' : (editId ? 'ACTUALIZAR ESTRATEGIA' : 'GUARDAR EN MENÚ')}
+                </button>
+              )}
+              
+              {editId && (
+                <button type="button" className={`${s.btn} ${s.btnDark} ${s.btnFull}`} onClick={resetForm}>
+                  {puedeEditar ? 'CANCELAR EDICIÓN' : 'CERRAR DETALLE'}
+                </button>
+              )}
+            </div>
           </form>
         </aside>
 
         {/* TABLA DE PRODUCTOS */}
-        <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto', flex: 1 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '750px' }}>
-            <thead style={{ backgroundColor: 'var(--color-bg-muted)', borderBottom: '1px solid var(--color-border)' }}>
+        <div className={`${s.adminCard} ${s.tableContainer}`}>
+          <table className={s.table} style={{ minWidth: '600px' }}>
+            <thead className={s.thead}>
               <tr>
-                <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>PRODUCTO</th>
-                <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>COSTO</th>
-                <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>VENTA (CON IVA)</th>
-                <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)', textAlign: 'right' }}>ACCIONES</th>
+                <th className={s.th}>PRODUCTO</th>
+                <th className={s.th}>COSTO</th>
+                <th className={s.th}>VENTA (CON IVA)</th>
+                <th className={s.th} style={{ textAlign: 'right' }}>ACCIONES</th>
               </tr>
             </thead>
             <tbody>
@@ -315,30 +303,30 @@ export const ProductosTab = ({ sucursalId }) => {
                 const margenBase = netoBase > 0 ? (((netoBase - costoBase) / netoBase) * 100).toFixed(1) : 0;
 
                 return (
-                  <tr key={p.id} style={{ borderBottom: '1px solid var(--color-bg-muted)', backgroundColor: editId === p.id ? 'var(--color-bg-app)' : 'transparent' }}>
-                    <td style={{ padding: '15px' }}>
-                      <div style={{ fontWeight: '800' }}>{p.nombre}</div>
+                  <tr key={p.id} style={{ backgroundColor: editId === p.id ? 'var(--color-bg-app)' : 'transparent' }}>
+                    <td className={s.td}>
+                      <div style={{ fontWeight: '600' }}>{p.nombre}</div>
                       {p.extras?.map((ex, i) => (
-                        <div key={i} style={{ fontSize: '10px', color: 'var(--color-text-muted)', marginTop: '4px' }}>
+                        <div key={i} className={s.miniBadge} style={{ marginTop: '4px', display: 'inline-block', marginRight: '5px' }}>
                           + {ex.nombre_subreceta}: ${parseFloat(ex.precio_venta_subreceta).toFixed(2)} ({ex.margen_subreceta}%)
                         </div>
                       ))}
                     </td>
-                    <td style={{ padding: '15px' }}>${costoBase.toFixed(2)}</td>
-                    <td style={{ padding: '15px' }}>
-                      <div style={{ fontWeight: '900', color: 'var(--color-primary)' }}>${ventaBase.toFixed(2)}</div>
-                      <div style={{ fontSize: '11px', fontWeight: '800', color: margenBase > 55 ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                    <td className={s.td}>${costoBase.toFixed(2)}</td>
+                    <td className={s.td}>
+                      <div className={s.totalAmount} style={{ color: 'var(--color-primary)' }}>${ventaBase.toFixed(2)}</div>
+                      <div style={{ fontSize: '11px', fontWeight: '600', color: margenBase > 55 ? 'var(--color-success)' : 'var(--color-danger)' }}>
                         {margenBase}% Margen Real
                       </div>
                     </td>
-                    <td style={{ padding: '15px', textAlign: 'right' }}>
+                    <td className={s.td} style={{ textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                        <button className={s.btnLogout} style={{ padding: '8px 12px' }} onClick={() => handleEdit(p)}>
-                          {puedeEditar ? 'EDITAR' : 'VER'}
+                        <button className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`} onClick={() => handleEdit(p)}>
+                          {puedeEditar ? '📝' : 'VER'}
                         </button>
                         {puedeBorrar && (
-                          <button className={s.btnLogout} style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', padding: '8px 12px' }} onClick={() => handleDelete(p.id)}>
-                            BORRAR
+                          <button className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`} onClick={() => handleDelete(p.id)}>
+                            ❌
                           </button>
                         )}
                       </div>
@@ -355,7 +343,7 @@ export const ProductosTab = ({ sucursalId }) => {
 };
 
 /**
- * SUB-COMPONENTE: SearchableSelect (Sin cambios lógicos, solo integración con disabled)
+ * SearchableSelect Homologado
  */
 const SearchableSelect = ({ options, value, onChange, disabled, placeholder = "Buscar...", valueKey = "id", labelKey = "nombre", formatLabel }) => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -363,8 +351,7 @@ const SearchableSelect = ({ options, value, onChange, disabled, placeholder = "B
 
   useEffect(() => {
     const selected = options.find((opt) => String(opt[valueKey]) === String(value));
-    if (selected) setSearchTerm(selected[labelKey]);
-    else setSearchTerm("");
+    setSearchTerm(selected ? selected[labelKey] : "");
   }, [value, options, valueKey, labelKey]);
 
   const filteredOptions = options.filter(opt =>
@@ -375,10 +362,10 @@ const SearchableSelect = ({ options, value, onChange, disabled, placeholder = "B
     <div style={{ position: 'relative' }}>
       <input
         type="text"
+        className={s.inputField}
         value={searchTerm}
         disabled={disabled}
         placeholder={placeholder}
-        style={{ width: "100%", padding: "12px", borderRadius: "var(--radius-ui)", border: "1px solid var(--color-border)", fontSize: "14px", boxSizing: "border-box", backgroundColor: disabled ? "var(--color-bg-app)" : "white" }}
         onChange={(e) => {
           setSearchTerm(e.target.value);
           setIsOpen(true);
@@ -389,18 +376,21 @@ const SearchableSelect = ({ options, value, onChange, disabled, placeholder = "B
           setTimeout(() => {
             setIsOpen(false);
             const selected = options.find((opt) => String(opt[valueKey]) === String(value));
-            if (selected) setSearchTerm(selected[labelKey]);
-            else setSearchTerm("");
+            setSearchTerm(selected ? selected[labelKey] : "");
           }, 200);
         }}
       />
       {isOpen && !disabled && (
-        <ul style={{ position: 'absolute', top: '100%', left: 0, right: 0, maxHeight: '200px', overflowY: 'auto', background: 'white', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-ui)', zIndex: 1000, margin: '4px 0 0 0', padding: 0, listStyle: 'none', boxShadow: 'var(--shadow-ui)' }}>
+        <ul className={s.dropdownList}>
           {filteredOptions.length > 0 ? filteredOptions.map((opt, index) => (
-            <li key={index} style={{ padding: '10px 15px', cursor: 'pointer', borderBottom: '1px solid var(--color-bg-muted)', fontSize: '13px' }} onMouseDown={(e) => { e.preventDefault(); onChange(opt[valueKey]); setSearchTerm(opt[labelKey]); setIsOpen(false); }} onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--color-bg-app)'} onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}>
+            <li 
+              key={index} 
+              className={s.dropdownItem} 
+              onMouseDown={(e) => { e.preventDefault(); onChange(opt[valueKey]); setSearchTerm(opt[labelKey]); setIsOpen(false); }}
+            >
               {formatLabel ? formatLabel(opt) : opt[labelKey]}
             </li>
-          )) : <li style={{ padding: '10px 15px', color: 'var(--color-text-muted)', fontSize: '13px' }}>Sin resultados...</li>}
+          )) : <li className={s.dropdownItem} style={{ color: 'var(--color-text-muted)' }}>Sin resultados...</li>}
         </ul>
       )}
     </div>

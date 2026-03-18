@@ -67,65 +67,62 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--color-text-main)', margin: 0 }}>
+    <div className={s.tabWrapper}>
+      <h2 className={s.pageTitle}>
         Control de Inventarios
       </h2>
 
       {/* Navegación de Sub-pestañas */}
-      <nav style={{ display: 'flex', gap: '10px', borderBottom: '1px solid var(--color-border)', paddingBottom: '15px', overflowX: 'auto' }}>
+      <nav className={s.tabNav}>
         <button 
-          className={`${s.navItem} ${activeSubTab === 'stock' ? s.activeNavItem : ''}`} 
-          style={{ width: 'auto', padding: '8px 20px', whiteSpace: 'nowrap' }}
+          className={`${s.tabButton} ${activeSubTab === 'stock' ? s.activeTabButton : ''}`} 
           onClick={() => setActiveSubTab('stock')}
         >
-          📦 EXISTENCIAS
+           EXISTENCIAS
         </button>
         <button 
-          className={`${s.navItem} ${activeSubTab === 'movimientos' ? s.activeNavItem : ''}`} 
-          style={{ width: 'auto', padding: '8px 20px', whiteSpace: 'nowrap' }}
+          className={`${s.tabButton} ${activeSubTab === 'movimientos' ? s.activeTabButton : ''}`} 
           onClick={() => setActiveSubTab('movimientos')}
         >
-          📜 HISTORIAL
+           HISTORIAL
         </button>
         <button 
-          className={`${s.navItem} ${activeSubTab === 'contraste' ? s.activeNavItem : ''}`} 
-          style={{ width: 'auto', padding: '8px 20px', whiteSpace: 'nowrap' }}
+          className={`${s.tabButton} ${activeSubTab === 'contraste' ? s.activeTabButton : ''}`} 
           onClick={() => setActiveSubTab('contraste')}
         >
-          ⚖️ CIERRE DE TURNO
+           CIERRE DE TURNO
         </button>
       </nav>
 
-      <div className={activeSubTab === 'contraste' ? "" : "admin-split-layout-sidebar"}>
+      <div className={activeSubTab === 'contraste' ? "" : s.splitLayout}>
         
         {/* PANEL DE MOVIMIENTO MANUAL (SIDEBAR) - Solo editable si tiene permiso */}
         {activeSubTab !== 'contraste' && (
-          <aside className={s.adminCard} style={{ padding: '20px' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: 'var(--color-primary)' }}>
+          <aside className={s.adminCard}>
+            <h3 className={s.cardTitle}>
               {puedeEditar ? 'Nuevo Movimiento' : 'Consulta de Insumo'}
             </h3>
-            <form onSubmit={handleSubmitMovimiento} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <form onSubmit={handleSubmitMovimiento} className={s.loginForm}>
               
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>INSUMO</label>
+              <div className={s.formGroup}>
+                <label className={s.label}>INSUMO</label>
                 <SearchableSelect 
                   options={insumos || []}
                   value={nuevoMov.insumo_id}
                   valueKey="id"
                   labelKey="nombre"
-                  placeholder="🔍 Buscar producto..."
+                  placeholder=" Buscar producto..."
                   formatLabel={(opt) => `${opt.nombre} (Stock: ${opt.stock_fisico} ${opt.unidad})`}
-                  disabled={loading} // Se mantiene deshabilitado si carga, pero el onChange se bloquea por permisos si es necesario
+                  disabled={loading}
                   onChange={(val) => setNuevoMov({...nuevoMov, insumo_id: val})}
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '10px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>OPERACIÓN</label>
+              <div className={s.formGridAsym}>
+                <div className={s.formGroup}>
+                  <label className={s.label}>OPERACIÓN</label>
                   <select 
-                    style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', backgroundColor: 'white' }}
+                    className={s.inputField}
                     value={nuevoMov.tipo} 
                     disabled={!puedeEditar}
                     onChange={(e) => setNuevoMov({...nuevoMov, tipo: e.target.value, motivo: ''})}
@@ -135,11 +132,11 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                     <option value="SALIDA">Salida (-)</option>
                   </select>
                 </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>CANTIDAD</label>
+                <div className={s.formGroup}>
+                  <label className={s.label}>CANTIDAD</label>
                   <input 
                     type="number" step="0.01"
-                    style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
+                    className={s.inputField}
                     value={nuevoMov.cantidad} 
                     onChange={(e) => setNuevoMov({...nuevoMov, cantidad: e.target.value})} 
                     required 
@@ -148,10 +145,10 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                 </div>
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>MOTIVO</label>
+              <div className={s.formGroup}>
+                <label className={s.label}>MOTIVO</label>
                 <select 
-                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', backgroundColor: 'white' }}
+                  className={s.inputField}
                   value={nuevoMov.motivo} 
                   disabled={!puedeEditar}
                   onChange={(e) => setNuevoMov({...nuevoMov, motivo: e.target.value})} 
@@ -160,7 +157,7 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                   <option value="">-- Selecciona Motivo --</option>
                   {motivosDisponibles.map(m => <option key={m.id} value={m.nombre_motivo}>{m.nombre_motivo}</option>)}
                 </select>
-                <small style={{ fontSize: '10px', color: 'var(--color-primary)', display: 'block', marginTop: '5px', fontWeight: '700' }}>
+                <small className={s.helperText}>
                    {insumoSeleccionado ? `UNIDAD: ${insumoSeleccionado.unidad}` : 'Selecciona un insumo para ver la U.M.'}
                 </small>
               </div>
@@ -168,8 +165,8 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
               {puedeEditar && (
                 <button 
                   type="submit" 
-                  className={s.btnLogout} 
-                  style={{ backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', width: '100%', marginTop: '10px', padding: '12px' }}
+                  className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`} 
+                  style={{ marginTop: '10px' }}
                   disabled={loading}
                 >
                   {loading ? 'GUARDANDO...' : 'CONFIRMAR MOVIMIENTO'}
@@ -179,38 +176,38 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
           </aside>
         )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', flex: 1 }}>
+        <div className={s.flexColumnGap20}>
           
           {/* VISTA: EXISTENCIAS */}
           {activeSubTab === 'stock' && (
-            <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto' }}>
-              <div style={{ padding: '15px', borderBottom: '1px solid var(--color-border)' }}>
+            <div className={`${s.adminCard} ${s.tableContainer}`}>
+              <div className={s.tableHeader}>
                 <input 
                   type="text" 
-                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)' }}
-                  placeholder="🔍 Filtrar existencias..." 
+                  className={s.inputField}
+                  placeholder=" Filtrar existencias..." 
                   value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} 
                 />
               </div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '700px' }}>
-                <thead style={{ backgroundColor: 'var(--color-bg-muted)', borderBottom: '1px solid var(--color-border)' }}>
+              <table className={s.table} style={{ minWidth: '700px' }}>
+                <thead className={s.thead}>
                   <tr>
-                    <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>INSUMO</th>
-                    <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>STOCK FÍSICO 🔒</th>
-                    <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-primary)' }}>ESTIMADO ⚡</th>
-                    <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>U.M.</th>
-                    <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>CATEGORÍA</th>
+                    <th className={s.th}>INSUMO</th>
+                    <th className={s.th}>STOCK FÍSICO</th>
+                    <th className={s.th} style={{ color: 'var(--color-primary)' }}>ESTIMADO</th>
+                    <th className={s.th}>U.M.</th>
+                    <th className={s.th}>CATEGORÍA</th>
                   </tr>
                 </thead>
                 <tbody>
                   {insumosFiltrados.map(insumo => (
-                    <tr key={insumo.id} style={{ borderBottom: '1px solid var(--color-bg-muted)' }}>
-                      <td style={{ padding: '15px', fontWeight: '700' }}>{insumo.nombre}</td>
-                      <td style={{ padding: '15px', fontWeight: '700', color: 'var(--color-text-muted)' }}>{insumo.stock_fisico}</td>
-                      <td style={{ padding: '15px', fontWeight: '800', color: 'var(--color-primary)' }}>{insumo.stock_estimado}</td>
-                      <td style={{ padding: '15px', color: 'var(--color-text-muted)' }}>{insumo.unidad}</td>
-                      <td style={{ padding: '15px' }}>
-                        <span style={{ fontSize: '10px', fontWeight: '800', padding: '4px 8px', borderRadius: '4px', backgroundColor: 'var(--color-bg-app)', color: 'var(--color-text-main)' }}>
+                    <tr key={insumo.id}>
+                      <td className={s.td} style={{ fontWeight: '700' }}>{insumo.nombre}</td>
+                      <td className={`${s.td} ${s.textMuted}`} style={{ fontWeight: '700' }}>{insumo.stock_fisico}</td>
+                      <td className={`${s.td} ${s.textPrimary}`} style={{ fontWeight: '800' }}>{insumo.stock_estimado}</td>
+                      <td className={`${s.td} ${s.textMuted}`}>{insumo.unidad}</td>
+                      <td className={s.td}>
+                        <span className={s.badge}>
                           {insumo.categoria?.toUpperCase()}
                         </span>
                       </td>
@@ -223,52 +220,43 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
 
           {/* VISTA: CIERRE DE TURNO (AUDITORÍA) */}
           {activeSubTab === 'contraste' && (
-            <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto' }}>
-              <div style={{ 
-                padding: '20px', 
-                borderBottom: '1px solid var(--color-border)', 
-                display: 'flex', 
-                flexWrap: 'wrap',
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
-                backgroundColor: 'var(--color-bg-muted)',
-                gap: '15px'
-              }}>
+            <div className={`${s.adminCard} ${s.tableContainer}`}>
+              <div className={s.auditHeader}>
                 <div>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: '800', margin: 0 }}>Auditoría y Cierre</h3>
+                  <h3 className={s.cardTitle} style={{ margin: 0 }}>Auditoría y Cierre</h3>
                   {contrasteData.length > 0 && (
-                    <div style={{ fontSize: '12px', marginTop: '5px', fontWeight: '700', color: auditados.length === contrasteData.length ? 'var(--color-success)' : 'var(--color-primary)' }}>
+                    <div style={{ fontSize: '12px', marginTop: '5px', fontWeight: '700' }} className={auditados.length === contrasteData.length ? s.textSuccess : s.textPrimary}>
                       Progreso: {auditados.length} de {contrasteData.length}
                     </div>
                   )}
                 </div>
 
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <div className={s.auditFilters}>
                   <select 
-                    style={{ padding: '8px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', fontSize: '12px' }}
+                    className={s.inputSmall}
                     value={filtroAuditoria} 
                     onChange={(e) => setFiltroAuditoria(e.target.value)}
                   >
-                    <option value="todos">📋 Todos</option>
-                    <option value="pendientes">⏳ Pendientes</option>
+                    <option value="todos"> Todos</option>
+                    <option value="pendientes"> Pendientes</option>
                   </select>
-                  <input type="date" style={{ padding: '8px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', fontSize: '12px' }} value={filtroFechas.inicio} onChange={(e) => setFiltroFechas({...filtroFechas, inicio: e.target.value})} />
-                  <input type="date" style={{ padding: '8px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', fontSize: '12px' }} value={filtroFechas.fin} onChange={(e) => setFiltroFechas({...filtroFechas, fin: e.target.value})} />
-                  <button className={s.btnLogout} style={{ backgroundColor: 'var(--color-text-main)', color: 'white', border: 'none', padding: '8px 15px' }} onClick={() => generarContraste(filtroFechas.inicio, filtroFechas.fin)} disabled={loading}>
+                  <input type="date" className={s.inputSmall} value={filtroFechas.inicio} onChange={(e) => setFiltroFechas({...filtroFechas, inicio: e.target.value})} />
+                  <input type="date" className={s.inputSmall} value={filtroFechas.fin} onChange={(e) => setFiltroFechas({...filtroFechas, fin: e.target.value})} />
+                  <button className={`${s.btn} ${s.btnDark}`} onClick={() => generarContraste(filtroFechas.inicio, filtroFechas.fin)} disabled={loading}>
                     {loading ? '...' : 'BALANCE'}
                   </button>
                 </div>
               </div>
 
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '850px' }}>
-                <thead style={{ backgroundColor: 'var(--color-bg-muted)', borderBottom: '1px solid var(--color-border)' }}>
+              <table className={s.table} style={{ minWidth: '850px' }}>
+                <thead className={s.thead}>
                   <tr>
-                    <th style={{ padding: '15px', fontSize: '12px' }}>INSUMO</th>
-                    <th style={{ padding: '15px', fontSize: '12px' }}>ESPERADO</th>
-                    <th style={{ padding: '15px', fontSize: '12px' }}>VENTAS (-)</th>
-                    <th style={{ padding: '15px', fontSize: '12px', backgroundColor: '#fff7ed' }}>FÍSICO</th>
-                    <th style={{ padding: '15px', fontSize: '12px' }}>DIFERENCIA</th>
-                    <th style={{ padding: '15px', fontSize: '12px', textAlign: 'right' }}>ACCIÓN</th>
+                    <th className={s.th}>INSUMO</th>
+                    <th className={s.th}>ESPERADO</th>
+                    <th className={s.th}>VENTAS (-)</th>
+                    <th className={s.th} style={{ backgroundColor: '#fff7ed' }}>FÍSICO</th>
+                    <th className={s.th}>DIFERENCIA</th>
+                    <th className={s.th} style={{ textAlign: 'right' }}>ACCIÓN</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -277,33 +265,39 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                     const tieneConteo = inputVal !== undefined && inputVal !== '';
                     const diferenciaReal = tieneConteo ? (parseFloat(inputVal) - parseFloat(row.stock_esperado)).toFixed(2) : '-';
                     const yaAuditado = auditados.includes(row.id);
+                    
+                    // Clase de color para la diferencia
+                    let difColorClass = '';
+                    if (tieneConteo) {
+                      if (parseFloat(diferenciaReal) < 0) difColorClass = s.textDanger;
+                      else if (parseFloat(diferenciaReal) > 0) difColorClass = s.textSuccess;
+                    }
 
                     return (
-                      <tr key={row.id} style={{ borderBottom: '1px solid var(--color-bg-muted)', backgroundColor: yaAuditado ? 'var(--color-bg-app)' : 'transparent', opacity: yaAuditado ? 0.7 : 1 }}>
-                        <td style={{ padding: '15px', fontWeight: '700' }}>{row.insumo}</td>
-                        <td style={{ padding: '15px', fontWeight: '700' }}>{row.stock_esperado} <small>{row.unidad}</small></td>
-                        <td style={{ padding: '15px', color: 'var(--color-danger)', fontWeight: '700' }}>{row.vendido !== '0.00' ? `-${row.vendido}` : '0.00'}</td>
-                        <td style={{ padding: '15px', backgroundColor: yaAuditado ? 'transparent' : '#fff7ed' }}>
+                      <tr key={row.id} className={yaAuditado ? s.rowAudited : ''}>
+                        <td className={s.td} style={{ fontWeight: '700' }}>{row.insumo}</td>
+                        <td className={s.td} style={{ fontWeight: '700' }}>{row.stock_esperado} <small>{row.unidad}</small></td>
+                        <td className={`${s.td} ${s.textDanger}`} style={{ fontWeight: '700' }}>{row.vendido !== '0.00' ? `-${row.vendido}` : '0.00'}</td>
+                        <td className={s.td} style={{ backgroundColor: yaAuditado ? 'transparent' : '#fff7ed', padding: '15px' }}>
                           <input 
                             type="number" 
-                            style={{ width: '80px', padding: '8px', borderRadius: '4px', border: '1px solid var(--color-border)', textAlign: 'center', fontWeight: '800' }}
+                            className={s.tableInputCenter}
                             placeholder="0.00"
                             value={conteos[row.id] || ''}
                             readOnly={!puedeEditar || yaAuditado}
                             onChange={(e) => actualizarConteo(row.id, e.target.value)} 
                           />
                         </td>
-                        <td style={{ padding: '15px', fontWeight: '900', color: parseFloat(diferenciaReal) < 0 ? 'var(--color-danger)' : parseFloat(diferenciaReal) > 0 ? 'var(--color-success)' : 'inherit' }}>
+                        <td className={`${s.td} ${difColorClass}`} style={{ fontWeight: '900' }}>
                           {tieneConteo ? (parseFloat(diferenciaReal) > 0 ? `+${diferenciaReal}` : diferenciaReal) : '-'}
                         </td>
-                        <td style={{ padding: '15px', textAlign: 'right' }}>
+                        <td className={s.td} style={{ textAlign: 'right' }}>
                           <button 
-                            className={s.btnLogout} 
-                            style={{ backgroundColor: yaAuditado ? 'var(--color-success)' : 'var(--color-primary)', color: 'white', border: 'none', fontSize: '11px', padding: '8px 12px' }}
+                            className={yaAuditado ? `${s.btn} ${s.btnSuccess} ${s.btnSmall}` : `${s.btn} ${s.btnPrimary} ${s.btnSmall}`}
                             onClick={() => handleGuardarConteo(row)}
                             disabled={loading || !tieneConteo || !puedeEditar || yaAuditado}
                           >
-                            {yaAuditado ? '✅ OK' : 'GUARDAR'}
+                            {yaAuditado ? 'OK' : 'GUARDAR'}
                           </button>
                         </td>
                       </tr>
@@ -316,28 +310,28 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
 
           {/* VISTA: HISTORIAL MOVIMIENTOS */}
           {activeSubTab === 'movimientos' && (
-            <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto' }}>
-              <div style={{ padding: '20px', borderBottom: '1px solid var(--color-border)' }}>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: '800', margin: 0 }}>Historial de Movimientos</h3>
+            <div className={`${s.adminCard} ${s.tableContainer}`}>
+              <div className={s.tableHeader}>
+                <h3 className={s.cardTitle} style={{ margin: 0 }}>Historial de Movimientos</h3>
               </div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '700px' }}>
-                <thead style={{ backgroundColor: 'var(--color-bg-muted)', borderBottom: '1px solid var(--color-border)' }}>
+              <table className={s.table} style={{ minWidth: '700px' }}>
+                <thead className={s.thead}>
                   <tr>
-                    <th style={{ padding: '15px', fontSize: '12px' }}>FECHA</th>
-                    <th style={{ padding: '15px', fontSize: '12px' }}>INSUMO</th>
-                    <th style={{ padding: '15px', fontSize: '12px' }}>TIPO</th>
-                    <th style={{ padding: '15px', fontSize: '12px' }}>CANT.</th>
-                    <th style={{ padding: '15px', fontSize: '12px' }}>MOTIVO</th>
+                    <th className={s.th}>FECHA</th>
+                    <th className={s.th}>INSUMO</th>
+                    <th className={s.th}>TIPO</th>
+                    <th className={s.th}>CANT.</th>
+                    <th className={s.th}>MOTIVO</th>
                   </tr>
                 </thead>
                 <tbody>
                   {movimientos?.map(m => (
-                    <tr key={m.id} style={{ borderBottom: '1px solid var(--color-bg-muted)' }}>
-                      <td style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>{new Date(m.created_at).toLocaleString()}</td>
-                      <td style={{ padding: '15px', fontWeight: '700' }}>{m.insumo?.nombre}</td>
-                      <td style={{ padding: '15px', fontWeight: '800', color: m.tipo === 'ENTRADA' ? 'var(--color-success)' : 'var(--color-danger)' }}>{m.tipo}</td>
-                      <td style={{ padding: '15px', fontWeight: '700' }}>{m.cantidad_afectada}</td>
-                      <td style={{ padding: '15px', color: 'var(--color-text-muted)', fontSize: '13px' }}>{m.motivo}</td>
+                    <tr key={m.id}>
+                      <td className={`${s.td} ${s.textMuted}`} style={{ fontSize: '12px' }}>{new Date(m.created_at).toLocaleString()}</td>
+                      <td className={s.td} style={{ fontWeight: '700' }}>{m.insumo?.nombre}</td>
+                      <td className={`${s.td} ${m.tipo === 'ENTRADA' ? s.textSuccess : s.textDanger}`} style={{ fontWeight: '800' }}>{m.tipo}</td>
+                      <td className={s.td} style={{ fontWeight: '700' }}>{m.cantidad_afectada}</td>
+                      <td className={`${s.td} ${s.textMuted}`} style={{ fontSize: '13px' }}>{m.motivo}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -385,18 +379,11 @@ const SearchableSelect = ({
     <div style={{ position: 'relative' }}>
       <input
         type="text"
+        className={s.inputField}
         value={searchTerm}
         disabled={disabled}
         placeholder={placeholder}
-        style={{
-          width: "100%",
-          padding: "10px",
-          borderRadius: "var(--radius-ui)",
-          border: "1px solid var(--color-border)",
-          fontSize: "14px",
-          boxSizing: "border-box",
-          backgroundColor: disabled ? "var(--color-bg-app)" : "white"
-        }}
+        style={{ backgroundColor: disabled ? "var(--color-bg-app)" : "white" }}
         onChange={(e) => {
           setSearchTerm(e.target.value);
           setIsOpen(true);
@@ -414,39 +401,22 @@ const SearchableSelect = ({
       />
       
       {isOpen && !disabled && (
-        <ul style={{
-          position: 'absolute',
-          top: '100%',
-          left: 0,
-          right: 0,
-          maxHeight: '200px',
-          overflowY: 'auto',
-          background: 'white',
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-ui)',
-          zIndex: 1000,
-          margin: '4px 0 0 0',
-          padding: 0,
-          listStyle: 'none',
-          boxShadow: 'var(--shadow-ui)'
-        }}>
+        <ul className={s.dropdownList}>
           {filteredOptions.length > 0 ? filteredOptions.map((opt, index) => (
             <li
               key={index}
-              style={{ padding: '10px 15px', cursor: 'pointer', borderBottom: '1px solid var(--color-bg-muted)', fontSize: '13px' }}
+              className={s.dropdownItem}
               onMouseDown={(e) => {
                 e.preventDefault();
                 onChange(opt[valueKey]);
                 setSearchTerm(opt[labelKey]);
                 setIsOpen(false);
               }}
-              onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--color-bg-app)'}
-              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
             >
               {formatLabel ? formatLabel(opt) : opt[labelKey]}
             </li>
           )) : (
-            <li style={{ padding: '10px 15px', color: 'var(--color-text-muted)', fontSize: '13px' }}>
+            <li className={s.dropdownItem} style={{ color: 'var(--color-text-muted)' }}>
               No se encontraron coincidencias...
             </li>
           )}

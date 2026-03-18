@@ -34,34 +34,27 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
     if (res.success) setEditandoId(null);
   };
 
-  if (loading && !sugerenciasFiltradas.length) return <div className={s.tabContent}>📊 Cargando proyecciones...</div>;
+  if (loading && !sugerenciasFiltradas.length) return <div className={s.tabContent}> Cargando proyecciones...</div>;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div className={s.tabWrapper}>
       
       {/* NAVEGACIÓN DE SUB-TABS: Soporte para scroll horizontal en tablets */}
-      <nav style={{ display: 'flex', gap: '10px', borderBottom: '1px solid var(--color-border)', paddingBottom: '15px', overflowX: 'auto' }}>
+      <nav className={s.tabNav}>
         <button 
-          className={`${s.navItem} ${subTab === 'config' ? s.activeNavItem : ''}`} 
-          style={{ width: 'auto', padding: '8px 20px', whiteSpace: 'nowrap' }}
+          className={`${s.tabButton} ${subTab === 'config' ? s.activeTabButton : ''}`} 
           onClick={() => setSubTab('config')}
         >
-          ⚙️ ESTRATEGIA DE STOCK
+           ESTRATEGIA DE STOCK
         </button>
         <button 
-          className={`${s.navItem} ${subTab === 'compras' ? s.activeNavItem : ''}`} 
-          style={{ width: 'auto', padding: '8px 20px', display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}
+          className={`${s.tabButton} ${subTab === 'compras' ? s.activeTabButton : ''}`} 
+          style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
           onClick={() => setSubTab('compras')}
         >
-          🛒 LISTA DE MANDADO 
+           LISTA DE MANDADO 
           {listaParaComprar.length > 0 && (
-            <span style={{ 
-              backgroundColor: 'var(--color-danger)', 
-              color: 'white', 
-              fontSize: '10px', 
-              padding: '2px 6px', 
-              borderRadius: '10px' 
-            }}>
+            <span className={s.badgeCount}>
               {listaParaComprar.length}
             </span>
           )}
@@ -69,31 +62,16 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
       </nav>
 
       {/* HEADER CON PRESUPUESTO: Ajustado para que se apile en móviles/tablets */}
-      <section style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '15px'
-      }}>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--color-text-main)', margin: 0, minWidth: '250px' }}>
+      <section className={s.headerSection}>
+        <h2 className={s.pageTitle} style={{ margin: 0 }}>
           {subTab === 'config' ? 'Proyección de Inventario' : 'Órdenes Sugeridas'}
         </h2>
         
-        <div className={s.adminCard} style={{ 
-          padding: '10px 20px', 
-          borderLeft: '6px solid var(--color-success)', 
-          display: 'flex', 
-          flexDirection: 'column', 
-          alignItems: 'flex-end',
-          flex: '1',
-          maxWidth: '300px',
-          minWidth: '200px'
-        }}>
-          <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+        <div className={`${s.adminCard} ${s.statCard}`}>
+          <span className={s.statLabel}>
             Inversión Estimada
           </span>
-          <div style={{ fontSize: '1.8rem', fontWeight: '900', color: 'var(--color-success)' }}>
+          <div className={s.statValue}>
             {formatCurrency(presupuestoTotal)}
           </div>
         </div>
@@ -101,60 +79,70 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
 
       {/* --- VISTA 1: ESTRATEGIA (TABLA RESPONSIVA) --- */}
       {subTab === 'config' && (
-        <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '900px' }}>
-            <thead style={{ backgroundColor: 'var(--color-bg-muted)', borderBottom: '1px solid var(--color-border)' }}>
+        <div className={`${s.adminCard} ${s.tableContainer}`}>
+          <table className={s.table} style={{ minWidth: '900px' }}>
+            <thead className={s.thead}>
               <tr>
-                <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>INSUMO</th>
-                <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>CONSUMO/DÍA</th>
-                <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>🛒 COBERTURA</th>
-                <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>STOCK HOY</th>
-                <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>SUGERENCIA</th>
-                <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>COSTO</th>
-                <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)', textAlign: 'right' }}>AJUSTE</th>
+                <th className={s.th}>INSUMO</th>
+                <th className={s.th}style={{ textAlign: 'center' }}>CONSUMO/DÍA</th>
+                <th className={s.th}style={{ textAlign: 'center' }}>COBERTURA</th>
+                <th className={s.th}style={{ textAlign: 'center' }}>STOCK HOY</th>
+                <th className={s.th}style={{ textAlign: 'center' }}>SUGERENCIA</th>
+                <th className={s.th}style={{ textAlign: 'center' }}>COSTO</th>
+                <th className={s.th} style={{ textAlign: 'center' }}>AJUSTE</th>
               </tr>
             </thead>
             <tbody>
               {sugerenciasFiltradas.map((item) => (
-                <tr key={item.insumo_id} style={{ borderBottom: '1px solid var(--color-bg-muted)' }}>
-                  <td style={{ padding: '15px', fontWeight: '700', color: 'var(--color-text-main)' }}>{item.insumo_nombre}</td>
-                  <td style={{ padding: '15px' }}>{parseFloat(item.consumo_diario_real || 0).toFixed(2)}</td>
-                  <td style={{ padding: '15px' }}>
+                <tr key={item.insumo_id}>
+                  <td className={s.td} style={{ fontWeight: '700', color: 'var(--color-text-main)' }}>
+                    {item.insumo_nombre}
+                  </td>
+                  <td className={s.td}style={{ textAlign: 'center' }}>
+                    {parseFloat(item.consumo_diario_real || 0).toFixed(2)}
+                  </td>
+                  <td className={s.td}style={{ textAlign: 'center' }}>
                     {editandoId === item.insumo_id && puedeEditar ? (
                       <input 
                         type="number" 
-                        style={{ width: '60px', padding: '5px', borderRadius: '4px', border: '1px solid var(--color-primary)', boxSizing: 'border-box' }}
+                        className={s.tableInputCenter}
+                        style={{ maxWidth: '80px', margin: '0 auto', display: 'block',textAlign: 'center' }}
                         value={tempPolitica.cobertura} 
                         onChange={e => setTempPolitica({...tempPolitica, cobertura: e.target.value})} 
                         onBlur={() => handleSavePolicy(item.insumo_id)}
                         autoFocus
                       />
                     ) : (
-                      <span style={{ color: 'var(--color-primary)', fontWeight: '600' }}>{item.dias_cobertura_objetivo} días</span>
+                      <span style={{ color: 'var(--color-primary)', fontWeight: '600' }}>
+                        {item.dias_cobertura_objetivo} días
+                      </span>
                     )}
                   </td>
-                  <td style={{ padding: '15px' }}>{parseFloat(item.stock_fisico_hoy).toFixed(1)}</td>
-                  <td style={{ padding: '15px' }}>
+                  <td className={s.td}style={{ textAlign: 'center' }}>
+                    {parseFloat(item.stock_fisico_hoy).toFixed(1)}
+                  </td>
+                  <td className={s.td}style={{ textAlign: 'center' }}>
                     <span style={{ 
                       color: item.cajas_a_pedir > 0 ? 'var(--color-success)' : 'var(--color-text-muted)', 
-                      fontWeight: '800' 
+                      fontWeight: '600' 
                     }}>
                       {item.cajas_a_pedir} Cajas
                     </span>
                   </td>
-                  <td style={{ padding: '15px', fontWeight: '600' }}>{formatCurrency(item.presupuesto_estimado)}</td>
-                  <td style={{ padding: '15px', textAlign: 'right' }}>
+                  <td className={s.td} style={{ fontWeight: '600',textAlign: 'center' }}>
+                    {formatCurrency(item.presupuesto_estimado)}
+                  </td>
+                  <td className={s.td} style={{ textAlign: 'right' }}>
                     {/* El botón de editar solo se muestra si tiene permisos */}
                     {puedeEditar && (
                       <button 
-                        className={s.btnLogout} 
-                        style={{ padding: '5px 10px', fontSize: '12px' }}
+                        className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`} 
                         onClick={() => { 
                           setEditandoId(item.insumo_id); 
                           setTempPolitica({cobertura: item.dias_cobertura_objetivo, seguridad: item.dias_stock_seguridad}) 
                         }}
                       >
-                        EDITAR
+                        📝
                       </button>
                     )}
                   </td>
@@ -167,22 +155,12 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
 
       {/* --- VISTA 2: LISTA DE MANDADO --- */}
       {subTab === 'compras' && (
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
-          gap: '15px' 
-        }}>
+        <div className={s.cardsGrid}>
           {listaParaComprar.map(ins => (
-            <div key={ins.insumo_id} className={s.adminCard} style={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              justifyContent: 'space-between', 
-              padding: '20px',
-              gap: '15px'
-            }}>
+            <div key={ins.insumo_id} className={`${s.adminCard} ${s.cardFlex}`}>
               <div>
-                <strong style={{ fontSize: '1.1rem', color: 'var(--color-text-main)' }}>{ins.insumo_nombre}</strong>
-                <p style={{ margin: '5px 0 0', fontSize: '12px', color: 'var(--color-text-muted)', fontWeight: '600' }}>
+                <strong className={s.cardFlexTitle}>{ins.insumo_nombre}</strong>
+                <p className={s.cardFlexSubtitle}>
                   PROVEEDOR: {ins.proveedor_nombre}
                 </p>
               </div>
@@ -190,28 +168,20 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
               {/* Solo mostramos el botón de compra si tiene permiso de edición/compra */}
               {puedeEditar ? (
                 <button 
-                  className={s.btnLogout} 
-                  style={{ 
-                    backgroundColor: 'var(--color-success)', 
-                    color: 'white', 
-                    border: 'none', 
-                    padding: '12px 15px',
-                    fontWeight: '800',
-                    width: '100%'
-                  }} 
+                  className={`${s.btn} ${s.btnSuccess} ${s.btnFull}`} 
                   onClick={() => confirmarCompra(ins, usuarioId, sucursalId)}
                 >
                   ✓ RECIBIR {ins.cajas_a_pedir} CAJAS
                 </button>
               ) : (
-                <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--color-text-muted)', fontStyle: 'italic', padding: '10px', backgroundColor: 'var(--color-bg-muted)', borderRadius: 'var(--radius-ui)' }}>
+                <div className={s.readOnlyNotice}>
                   Solo lectura (Requiere permiso de gestión)
                 </div>
               )}
             </div>
           ))}
           {listaParaComprar.length === 0 && (
-            <div className={s.adminCard} style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px', color: 'var(--color-text-muted)' }}>
+            <div className={s.emptyState} style={{ gridColumn: '1/-1' }}>
               No hay compras sugeridas para los niveles actuales de stock.
             </div>
           )}

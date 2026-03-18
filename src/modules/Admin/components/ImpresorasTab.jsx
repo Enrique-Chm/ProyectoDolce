@@ -41,72 +41,69 @@ export const ImpresorasTab = ({ sucursalId }) => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--color-text-main)', margin: '0' }}>
+      <h2 className={s.pageTitle}>
         Configuración de Impresión
       </h2>
       
-      {/* Navegación de Sub-pestañas Homologada con Scroll Táctil */}
-      <nav style={{ display: 'flex', gap: '10px', borderBottom: '1px solid var(--color-border)', paddingBottom: '15px', overflowX: 'auto' }}>
+      {/* Navegación de Sub-pestañas Homologada */}
+      <nav className={s.tabNav}>
         <button 
-          className={`${s.navItem} ${activeSubTab === 'dispositivos' ? s.activeNavItem : ''}`} 
-          style={{ width: 'auto', padding: '8px 20px', whiteSpace: 'nowrap' }}
+          className={`${s.tabButton} ${activeSubTab === 'dispositivos' ? s.activeTabButton : ''}`} 
           onClick={() => setActiveSubTab('dispositivos')}
         >
-          📟 DISPOSITIVOS
+           DISPOSITIVOS
         </button>
         <button 
-          className={`${s.navItem} ${activeSubTab === 'diseno' ? s.activeNavItem : ''}`} 
-          style={{ width: 'auto', padding: '8px 20px', whiteSpace: 'nowrap' }}
+          className={`${s.tabButton} ${activeSubTab === 'diseno' ? s.activeTabButton : ''}`} 
           onClick={() => setActiveSubTab('diseno')}
         >
-          🎨 DISEÑO DE TICKET
+           DISEÑO DE TICKET
         </button>
       </nav>
 
       {/* --- VISTA 1: HARDWARE (DISPOSITIVOS) --- */}
       {activeSubTab === 'dispositivos' && (
-        <div className="admin-split-layout-sidebar">
+        <div className={s.splitLayout}>
           
           {/* Formulario Lateral: Solo visible o editable si tiene permiso */}
           <aside 
             className={s.adminCard} 
             style={{ 
-              padding: '20px', 
               border: '2px solid var(--color-primary)',
               display: puedeEditar ? 'block' : 'none' // Ocultamos el formulario si no puede editar
             }}
           >
-            <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: 'var(--color-primary)' }}>Vincular Nueva</h3>
+            <h3 className={s.cardTitle}>Vincular Nueva</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>NOMBRE IDENTIFICADOR</label>
+              <div className={s.formGroup}>
+                <label className={s.label}>NOMBRE IDENTIFICADOR</label>
                 <input 
                   type="text" 
-                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
+                  className={s.inputField}
                   placeholder="Ej. Barra / Cocina"
                   value={form.nombre} onChange={e => setForm({...form, nombre: e.target.value})}
                   disabled={!puedeEditar}
                 />
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>DESTINO DE IMPRESIÓN</label>
+              <div className={s.formGroup}>
+                <label className={s.label}>DESTINO DE IMPRESIÓN</label>
                 <select 
-                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', backgroundColor: 'white' }}
+                  className={s.inputField}
                   value={form.origen} onChange={e => setForm({...form, origen: e.target.value})}
                   disabled={!puedeEditar}
                 >
-                  <option value="caja">💵 Ventas / Caja</option>
-                  <option value="cocina">🍳 Cocina / Comandas</option>
-                  <option value="barra">🍹 Barra / Bebidas</option>
+                  <option value="caja"> Ventas / Caja</option>
+                  <option value="cocina"> Cocina / Comandas</option>
+                  <option value="barra"> Barra / Bebidas</option>
                 </select>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>PAPEL</label>
+              <div className={s.formGrid}>
+                <div className={s.formGroup}>
+                  <label className={s.label}>PAPEL</label>
                   <select 
-                    style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', backgroundColor: 'white' }}
+                    className={s.inputField}
                     value={form.formato} onChange={e => setForm({...form, formato: e.target.value})}
                     disabled={!puedeEditar}
                   >
@@ -114,11 +111,11 @@ export const ImpresorasTab = ({ sucursalId }) => {
                     <option value="58mm">58mm</option>
                   </select>
                 </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>IP ADDRESS</label>
+                <div className={s.formGroup}>
+                  <label className={s.label}>IP ADDRESS</label>
                   <input 
                     type="text" 
-                    style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
+                    className={s.inputField}
                     placeholder="192.168.1.100"
                     value={form.ip_address} onChange={e => setForm({...form, ip_address: e.target.value})}
                     disabled={!puedeEditar}
@@ -127,8 +124,8 @@ export const ImpresorasTab = ({ sucursalId }) => {
               </div>
 
               <button 
-                className={s.btnLogout} 
-                style={{ backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', marginTop: '10px', padding: '12px' }}
+                className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`} 
+                style={{ marginTop: '10px' }}
                 onClick={guardarImpresora} 
                 disabled={loading || !puedeEditar}
               >
@@ -138,46 +135,45 @@ export const ImpresorasTab = ({ sucursalId }) => {
           </aside>
 
           {/* Tabla de Impresoras */}
-          <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto', flex: 1 }}>
-            <div style={{ padding: '20px', borderBottom: '1px solid var(--color-border)' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0 }}>Impresoras Vinculadas</h3>
+          <div className={`${s.adminCard} ${s.tableContainer}`}>
+            <div className={s.tableHeader}>
+              <h3 className={s.cardTitle} style={{ margin: 0 }}>Impresoras Vinculadas</h3>
             </div>
             
             {impresoras.length === 0 ? (
-              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+              <div className={s.emptyState}>
                 No hay impresoras registradas.
               </div>
             ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '500px' }}>
-                <thead style={{ backgroundColor: 'var(--color-bg-muted)', borderBottom: '1px solid var(--color-border)' }}>
+              <table className={s.table} style={{ minWidth: '500px' }}>
+                <thead className={s.thead}>
                   <tr>
-                    <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>IDENTIFICADOR / IP</th>
-                    <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>DESTINO</th>
-                    <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)', textAlign: 'right' }}>ACCIONES</th>
+                    <th className={s.th}>IDENTIFICADOR / IP</th>
+                    <th className={s.th}>DESTINO</th>
+                    <th className={s.th} style={{ textAlign: 'right' }}>ACCIONES</th>
                   </tr>
                 </thead>
                 <tbody>
                   {impresoras.map(imp => (
-                    <tr key={imp.id} style={{ borderBottom: '1px solid var(--color-bg-muted)' }}>
-                      <td style={{ padding: '15px' }}>
+                    <tr key={imp.id}>
+                      <td className={s.td}>
                         <div style={{ fontWeight: '800', color: 'var(--color-text-main)' }}>{imp.nombre}</div>
                         <small style={{ color: 'var(--color-text-muted)', fontWeight: '600' }}>
                           IP: {imp.ip_address || 'USB/Local'} • {imp.formato}
                         </small>
                       </td>
-                      <td style={{ padding: '15px' }}>
-                        <span style={{ fontSize: '10px', fontWeight: '800', padding: '4px 8px', borderRadius: '4px', backgroundColor: 'var(--color-bg-app)', color: 'var(--color-primary)' }}>
+                      <td className={s.td}>
+                        <span className={s.badge}>
                           {imp.origen.toUpperCase()}
                         </span>
                       </td>
-                      <td style={{ padding: '15px', textAlign: 'right' }}>
+                      <td className={s.td} style={{ textAlign: 'right' }}>
                         {puedeBorrar && (
                           <button 
-                            className={s.btnLogout} 
-                            style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', padding: '5px 10px' }}
+                            className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`} 
                             onClick={() => eliminarImpresora(imp.id)}
                           >
-                            ELIMINAR
+                            Eliminar
                           </button>
                         )}
                       </td>
@@ -193,20 +189,21 @@ export const ImpresorasTab = ({ sucursalId }) => {
 
       {/* --- VISTA 2: DISEÑO DE TICKET --- */}
       {activeSubTab === 'diseno' && (
-        <div className="admin-split-layout-sidebar">
+        <div className={s.splitLayout}>
           
           {/* Controles de Diseño */}
-          <div className={s.adminCard} style={{ padding: '25px' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '10px' }}>Personalizar Ticket</h3>
+          <div className={s.adminCard}>
+            <h3 className={s.cardTitle} style={{ marginBottom: '10px' }}>Personalizar Ticket</h3>
             <p style={{ color: 'var(--color-text-muted)', fontSize: '13px', marginBottom: '25px' }}>
               Configuración visual para impresoras de caja.
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>ENCABEZADO</label>
+              <div className={s.formGroup}>
+                <label className={s.label}>ENCABEZADO</label>
                 <textarea 
-                  style={{ width: '100%', padding: '12px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', fontFamily: 'monospace', fontSize: '13px', boxSizing: 'border-box' }}
+                  className={s.inputField}
+                  style={{ fontFamily: 'monospace', resize: 'vertical' }}
                   rows="4"
                   value={configTicket.encabezado}
                   onChange={e => setConfigTicket({...configTicket, encabezado: e.target.value})}
@@ -214,30 +211,32 @@ export const ImpresorasTab = ({ sucursalId }) => {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '20px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>FUENTE ({configTicket.font_size_base}px)</label>
+              <div className={s.formGrid}>
+                <div className={s.formGroup}>
+                  <label className={s.label}>FUENTE ({configTicket.font_size_base}px)</label>
                   <input 
-                    type="range" min="10" max="18" style={{ width: '100%', accentColor: 'var(--color-primary)' }}
+                    type="range" min="10" max="18" 
+                    style={{ width: '100%', accentColor: 'var(--color-primary)' }}
                     value={configTicket.font_size_base}
                     onChange={e => setConfigTicket({...configTicket, font_size_base: parseInt(e.target.value)})}
                     disabled={!puedeEditar}
                   />
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                   <label style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', justifyContent: 'center' }}>
+                   <label style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: '600', color: 'var(--color-text-main)' }}>
                      <input type="checkbox" checked={configTicket.mostrar_logo} onChange={e => setConfigTicket({...configTicket, mostrar_logo: e.target.checked})} disabled={!puedeEditar} /> Logo
                    </label>
-                   <label style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                   <label style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: '600', color: 'var(--color-text-main)' }}>
                      <input type="checkbox" checked={configTicket.mostrar_mesero} onChange={e => setConfigTicket({...configTicket, mostrar_mesero: e.target.checked})} disabled={!puedeEditar} /> Mesero
                    </label>
                 </div>
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>PIE DE PÁGINA</label>
+              <div className={s.formGroup}>
+                <label className={s.label}>PIE DE PÁGINA</label>
                 <textarea 
-                  style={{ width: '100%', padding: '12px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', fontFamily: 'monospace', fontSize: '13px', boxSizing: 'border-box' }}
+                  className={s.inputField}
+                  style={{ fontFamily: 'monospace', resize: 'vertical' }}
                   rows="3"
                   value={configTicket.pie_pagina}
                   onChange={e => setConfigTicket({...configTicket, pie_pagina: e.target.value})}
@@ -247,8 +246,8 @@ export const ImpresorasTab = ({ sucursalId }) => {
 
               {puedeEditar && (
                 <button 
-                  className={s.btnLogout} 
-                  style={{ backgroundColor: 'var(--color-success)', color: 'white', border: 'none', padding: '15px', fontWeight: '800' }}
+                  className={`${s.btn} ${s.btnSuccess} ${s.btnFull}`} 
+                  style={{ padding: '15px', fontSize: '1rem' }}
                   onClick={guardarConfigTicket} 
                   disabled={loading}
                 >

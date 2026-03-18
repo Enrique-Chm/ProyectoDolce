@@ -20,8 +20,8 @@ export const AnaliticaTab = ({ sucursalId }) => {
   // 1. Bloqueo de seguridad
   if (!puedeVerAnalitica) {
     return (
-      <div className={s.tabContent} style={{ textAlign: 'center', padding: '100px' }}>
-        <p style={{ fontWeight: '800', color: 'var(--color-danger)', fontSize: '1.2rem' }}>
+      <div className={`${s.tabContent} ${s.messageState}`}>
+        <p className={s.messageStateDanger}>
           🚫 ACCESO RESTRINGIDO
         </p>
         <p style={{ color: 'var(--color-text-muted)' }}>
@@ -34,8 +34,8 @@ export const AnaliticaTab = ({ sucursalId }) => {
   // Pantalla de carga
   if (loading) {
     return (
-      <div className={s.tabContent} style={{ textAlign: 'center', padding: '100px' }}>
-        <p style={{ fontWeight: '800', color: 'var(--color-primary)', fontSize: '1.2rem' }}>
+      <div className={`${s.tabContent} ${s.messageState}`}>
+        <p className={s.messageStatePrimary}>
           📊 CALCULANDO ESTADO DE RESULTADOS...
         </p>
       </div>
@@ -48,61 +48,45 @@ export const AnaliticaTab = ({ sucursalId }) => {
   const staff = dataVentas?.desempeñoStaff || [];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '25px', animation: 'fadeIn 0.3s ease-out' }}>
+    <div className={s.analyticsWrapper}>
       
       {/* ENCABEZADO Y FILTROS DE FECHA */}
-      <header style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        flexWrap: 'wrap', 
-        gap: '15px',
-        borderBottom: '2px solid var(--color-bg-muted)',
-        paddingBottom: '20px'
-      }}>
+      <header className={s.analyticsHeader}>
         <div>
-          <h2 style={{ fontSize: '1.6rem', fontWeight: '900', margin: 0, color: 'var(--color-text-main)' }}>
+          <h2 className={s.analyticsTitle}>
             Ventas y Rentabilidad
           </h2>
-          <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', margin: '5px 0 0 0' }}>
+          <p className={s.analyticsSubtitle}>
             Estado de Resultados Real (P&L) consolidado
           </p>
         </div>
 
         {/* SELECTOR DE FECHAS */}
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '10px', 
-          background: 'var(--color-bg-muted)', 
-          padding: '8px 15px', 
-          borderRadius: 'var(--radius-ui)',
-          border: '1px solid var(--color-border)'
-        }}>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <label style={{ fontSize: '9px', fontWeight: '800', color: 'var(--color-text-muted)' }}>DESDE</label>
+        <div className={s.dateFilters}>
+          <div className={s.dateCol}>
+            <label className={s.dateLabel}>DESDE</label>
             <input 
               type="date" 
+              className={s.dateInput}
               value={fechaInicio} 
               onChange={(e) => setFechaInicio(e.target.value)} 
-              style={{ border: 'none', background: 'transparent', fontWeight: '700', cursor: 'pointer', color: 'var(--color-text-main)' }} 
             />
           </div>
-          <div style={{ width: '1px', height: '25px', background: 'var(--color-border)', margin: '0 5px' }}></div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <label style={{ fontSize: '9px', fontWeight: '800', color: 'var(--color-text-muted)' }}>HASTA</label>
+          <div className={s.dateDivider}></div>
+          <div className={s.dateCol}>
+            <label className={s.dateLabel}>HASTA</label>
             <input 
               type="date" 
+              className={s.dateInput}
               value={fechaFin} 
               onChange={(e) => setFechaFin(e.target.value)} 
-              style={{ border: 'none', background: 'transparent', fontWeight: '700', cursor: 'pointer', color: 'var(--color-text-main)' }} 
             />
           </div>
         </div>
       </header>
 
       {/* BLOQUE 1: KPIs FINANCIEROS (TARJETAS ACTUALIZADAS) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+      <div className={s.metricsGrid}>
         <MetricCard 
           label="1. VENTAS BRUTAS" 
           value={formatCurrency(stats.bruto || 0)} 
@@ -137,21 +121,17 @@ export const AnaliticaTab = ({ sucursalId }) => {
       </div>
 
       {/* BLOQUE 2: RANKINGS Y DESEMPEÑO */}
-      <div className="admin-split-layout-sidebar" style={{ alignItems: 'start' }}>
+      <div className={s.cardsGrid} style={{ alignItems: 'start' }}>
         
         {/* TOP 5 PRODUCTOS */}
         <div className={s.adminCard} style={{ padding: '25px' }}>
-          <h3 style={{ fontSize: '1.2rem', fontWeight: '800', marginBottom: '20px' }}>🏆 Top 5 Productos</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <h3 className={s.cardTitle}>🏆 Top 5 Productos</h3>
+          <div className={s.listContainer}>
             {ranking.map((p, i) => (
-              <div key={i} style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                padding: '12px 15px', 
-                background: 'var(--color-bg-app)', 
-                borderRadius: 'var(--radius-ui)',
-                borderLeft: i === 0 ? '4px solid var(--color-primary)' : '1px solid var(--color-border)'
-              }}>
+              <div 
+                key={i} 
+                className={`${s.rankingItem} ${i === 0 ? s.rankingItemFirst : ''}`}
+              >
                 <span style={{ fontWeight: '700', fontSize: '13px' }}>
                   <span style={{ opacity: 0.5, marginRight: '10px' }}>{i + 1}.</span>
                   {p.nombre}
@@ -162,7 +142,7 @@ export const AnaliticaTab = ({ sucursalId }) => {
               </div>
             ))}
             {ranking.length === 0 && (
-              <p style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '20px 0' }}>
+              <p className={s.emptyState} style={{ padding: '20px 0' }}>
                 No hay ventas registradas.
               </p>
             )}
@@ -171,18 +151,12 @@ export const AnaliticaTab = ({ sucursalId }) => {
 
         {/* VENTAS POR STAFF */}
         <div className={s.adminCard} style={{ padding: '25px', background: 'var(--color-bg-app)' }}>
-          <h3 style={{ fontSize: '1.2rem', fontWeight: '800', marginBottom: '20px' }}>👥 Desempeño Staff</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <h3 className={s.cardTitle}>👥 Desempeño Staff</h3>
+          <div className={s.listContainer} style={{ gap: '8px' }}>
             {staff.map((st, i) => (
-              <div key={i} style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                padding: '10px 0', 
-                borderBottom: '1px dashed var(--color-border)' 
-              }}>
+              <div key={i} className={s.staffItem}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ width: '28px', height: '28px', background: 'var(--color-text-main)', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '800' }}>
+                  <div className={s.staffAvatar}>
                     {st.nombre.charAt(0).toUpperCase()}
                   </div>
                   <span style={{ fontSize: '13px', fontWeight: '700' }}>{st.nombre}</span>
@@ -191,7 +165,7 @@ export const AnaliticaTab = ({ sucursalId }) => {
               </div>
             ))}
             {staff.length === 0 && (
-              <p style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '20px 0' }}>
+              <p className={s.emptyState} style={{ padding: '20px 0' }}>
                 Sin registros de staff.
               </p>
             )}
@@ -207,15 +181,15 @@ export const AnaliticaTab = ({ sucursalId }) => {
  * COMPONENTE INTERNO: TARJETA DE MÉTRICA
  */
 const MetricCard = ({ label, value, subtext, color, isHighlight = false }) => (
-  <div className={s.adminCard} style={{ 
-    padding: '22px', 
-    borderTop: `5px solid ${color}`,
-    background: isHighlight ? 'var(--color-bg-app)' : 'white',
-    boxShadow: isHighlight ? 'var(--shadow-md)' : 'var(--shadow-sm)'
-  }}>
-    <span style={{ fontSize: '9px', fontWeight: '900', color: 'var(--color-text-muted)', letterSpacing: '0.5px' }}>{label}</span>
-    <div style={{ fontSize: '1.6rem', fontWeight: '900', marginTop: '8px', color: isHighlight ? 'var(--color-success)' : 'inherit', letterSpacing: '-1px' }}>{value}</div>
-    {subtext && <p style={{ fontSize: '10px', color: 'var(--color-text-muted)', margin: '4px 0 0 0', fontWeight: '600' }}>{subtext}</p>}
+  <div 
+    className={`${s.adminCard} ${s.metricCard} ${isHighlight ? s.metricCardHighlight : ''}`} 
+    style={{ borderTop: `5px solid ${color}` }}
+  >
+    <span className={s.metricLabel}>{label}</span>
+    <div className={s.metricValue} style={{ color: isHighlight ? 'var(--color-success)' : 'inherit' }}>
+      {value}
+    </div>
+    {subtext && <p className={s.metricSubtext}>{subtext}</p>}
   </div>
 );
 

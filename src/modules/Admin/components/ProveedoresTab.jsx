@@ -11,7 +11,6 @@ export const ProveedoresTab = () => {
   
   /**
    * 🛡️ SEGURIDAD INTERNA (RBAC)
-   * Corregimos 'ver_proveedores' por 'editar_proveedores' para la acción de guardado.
    */
   const puedeEditar = hasPermission('editar_configuracion'); 
   const puedeBorrar = hasPermission('borrar_registros');
@@ -65,7 +64,7 @@ export const ProveedoresTab = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!puedeEditar) return; // 🛡️ Bloqueo de seguridad
+    if (!puedeEditar) return; 
 
     setLoading(true);
     try {
@@ -82,7 +81,7 @@ export const ProveedoresTab = () => {
   };
 
   const handleDelete = async (id, nombre) => {
-    if (!puedeBorrar) return; // 🛡️ Bloqueo de seguridad
+    if (!puedeBorrar) return; 
     if (window.confirm(`¿Estás seguro de eliminar al proveedor "${nombre}"?`)) {
       try {
         const { error } = await proveedoresService.delete(id);
@@ -96,37 +95,35 @@ export const ProveedoresTab = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--color-text-main)', margin: 0 }}>
-          Directorio de Proveedores
-        </h2>
-        {loading && <span style={{ fontSize: '12px', color: 'var(--color-primary)', fontWeight: '700' }}>CARGANDO...</span>}
+      <header className={s.pageHeader}>
+        <h2 className={s.pageTitle}>Directorio de Proveedores</h2>
+        {loading && <span className={s.syncBadge}>CARGANDO...</span>}
       </header>
 
-      <div className="admin-split-layout-sidebar">
+      <div className={s.splitLayout}>
         
         {/* PANEL DE REGISTRO / EDICIÓN PROTEGIDO */}
-        <aside className={s.adminCard} style={{ padding: '20px' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: 'var(--color-primary)' }}>
-            {editId ? (puedeEditar ? '📝 Editar Proveedor' : '🔍 Ficha Técnica') : '🏢 Nuevo Proveedor'}
+        <aside className={s.adminCard}>
+          <h3 className={s.cardTitle}>
+            {editId ? (puedeEditar ? 'Editar Proveedor' : 'Ficha Técnica') : '🏢 Nuevo Proveedor'}
           </h3>
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>NOMBRE DE LA EMPRESA</label>
+            <div className={s.formGroup}>
+              <label className={s.label}>NOMBRE DE LA EMPRESA</label>
               <input 
-                style={{ width: '100%', padding: '12px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
+                className={s.inputField}
                 value={formData.nombre_empresa} 
                 onChange={e => setFormData({...formData, nombre_empresa: e.target.value})} 
                 required 
                 placeholder="Nombre comercial"
-                readOnly={!puedeEditar} // 🛡️ Bloqueo escritura
+                readOnly={!puedeEditar}
               />
             </div>
 
-            <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>NOMBRE DEL CONTACTO</label>
+            <div className={s.formGroup}>
+              <label className={s.label}>NOMBRE DEL CONTACTO</label>
               <input 
-                style={{ width: '100%', padding: '12px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
+                className={s.inputField}
                 value={formData.contacto_nombre} 
                 onChange={e => setFormData({...formData, contacto_nombre: e.target.value})} 
                 placeholder="Persona de ventas/atención"
@@ -134,21 +131,21 @@ export const ProveedoresTab = () => {
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>TELÉFONO</label>
+            <div className={s.formGrid}>
+              <div className={s.formGroup}>
+                <label className={s.label}>TELÉFONO</label>
                 <input 
-                  style={{ width: '100%', padding: '12px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
+                  className={s.inputField}
                   value={formData.telefono} 
                   onChange={e => setFormData({...formData, telefono: e.target.value})} 
                   placeholder="WhatsApp/Oficina"
                   readOnly={!puedeEditar}
                 />
               </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>DÍAS CRÉDITO</label>
+              <div className={s.formGroup}>
+                <label className={s.label}>DÍAS CRÉDITO</label>
                 <input 
-                  style={{ width: '100%', padding: '12px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
+                  className={s.inputField}
                   type="number" 
                   value={formData.dias_credito} 
                   onChange={e => setFormData({...formData, dias_credito: e.target.value})} 
@@ -157,10 +154,10 @@ export const ProveedoresTab = () => {
               </div>
             </div>
 
-            <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>CORREO ELECTRÓNICO</label>
+            <div className={s.formGroup}>
+              <label className={s.label}>CORREO ELECTRÓNICO</label>
               <input 
-                style={{ width: '100%', padding: '12px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
+                className={s.inputField}
                 type="email" 
                 value={formData.correo} 
                 onChange={e => setFormData({...formData, correo: e.target.value})} 
@@ -169,13 +166,12 @@ export const ProveedoresTab = () => {
               />
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
-              {/* Solo habilitamos el botón de acción si puede editar */}
+            <div className={s.flexColumnGap10} style={{ marginTop: '10px' }}>
+              {/* Botón de acción principal */}
               {puedeEditar && (
                 <button 
                   type="submit" 
-                  className={s.btnLogout} 
-                  style={{ backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', padding: '16px', fontWeight: '700' }} 
+                  className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`}
                   disabled={loading}
                 >
                   {loading ? '...' : (editId ? 'ACTUALIZAR DATOS' : 'REGISTRAR PROVEEDOR')}
@@ -185,8 +181,7 @@ export const ProveedoresTab = () => {
               {editId && (
                 <button 
                   type="button" 
-                  className={s.btnLogout} 
-                  style={{ padding: '14px' }}
+                  className={`${s.btn} ${s.btn} ${s.btnSmall}`}
                   onClick={resetForm} 
                 >
                   {puedeEditar ? 'CANCELAR EDICIÓN' : 'CERRAR VISTA'}
@@ -197,60 +192,47 @@ export const ProveedoresTab = () => {
         </aside>
 
         {/* TABLA DE PROVEEDORES */}
-        <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto', flex: 1 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '700px' }}>
-            <thead style={{ backgroundColor: 'var(--color-bg-muted)', borderBottom: '1px solid var(--color-border)' }}>
+        <div className={`${s.adminCard} ${s.tableContainer}`}>
+          <table className={s.table} style={{ minWidth: '700px' }}>
+            <thead className={s.thead}>
               <tr>
-                <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>EMPRESA / CORREO</th>
-                <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>CONTACTO / TELÉFONO</th>
-                <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)', textAlign: 'center' }}>CRÉDITO</th>
-                <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)', textAlign: 'right' }}>ACCIONES</th>
+                <th className={s.th}>EMPRESA / CORREO</th>
+                <th className={s.th}>CONTACTO / TELÉFONO</th>
+                <th className={s.th} style={{ textAlign: 'center' }}>CRÉDITO</th>
+                <th className={s.th} style={{ textAlign: 'right' }}>ACCIONES</th>
               </tr>
             </thead>
             <tbody>
               {proveedores.length > 0 ? (
                 proveedores.map(p => (
-                  <tr key={p.id} style={{ borderBottom: '1px solid var(--color-bg-muted)', backgroundColor: editId === p.id ? 'var(--color-bg-app)' : 'transparent' }}>
-                    <td style={{ padding: '15px' }}>
-                      <div style={{ fontWeight: '800', color: 'var(--color-text-main)' }}>{p.nombre_empresa}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>{p.correo || 'Sin correo registrado'}</div>
+                  <tr key={p.id} style={{ backgroundColor: editId === p.id ? 'var(--color-bg-app)' : 'transparent' }}>
+                    <td className={s.td}>
+                      <div style={{ fontWeight: '600', color: 'var(--color-text-main)' }}>{p.nombre_empresa}</div>
+                      <div className={s.textMuted} style={{ fontSize: '11px' }}>{p.correo || 'Sin correo registrado'}</div>
                     </td>
-                    <td style={{ padding: '15px' }}>
+                    <td className={s.td}>
                       <div style={{ fontSize: '13px', fontWeight: '600' }}>{p.contacto_nombre || '---'}</div>
                       <div style={{ fontSize: '11px', color: 'var(--color-primary)', fontWeight: '700' }}>{p.telefono || 'Sin número'}</div>
                     </td>
-                    <td style={{ padding: '15px', textAlign: 'center' }}>
-                      <span 
-                        style={{ 
-                          fontSize: '10px', 
-                          fontWeight: '800', 
-                          padding: '4px 8px', 
-                          borderRadius: '4px',
-                          background: p.dias_credito > 0 ? 'var(--color-bg-app)' : 'transparent', 
-                          color: p.dias_credito > 0 ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                          border: '1px solid var(--color-border)'
-                        }}
-                      >
+                    <td className={s.td} style={{ textAlign: 'center' }}>
+                      <span className={s.badge} style={{ opacity: p.dias_credito > 0 ? 1 : 0.5 }}>
                         {p.dias_credito} d
                       </span>
                     </td>
-                    <td style={{ padding: '15px', textAlign: 'right' }}>
+                    <td className={s.td} style={{ textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                         <button 
-                          className={s.btnLogout} 
-                          style={{ padding: '8px 12px', fontSize: '11px' }}
+                          className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`}
                           onClick={() => prepararEdicion(p)}
                         >
-                          {puedeEditar ? 'EDITAR' : 'VER'}
+                          {puedeEditar ? '📝' : 'VER'}
                         </button>
-                        {/* Botón de borrado protegido */}
                         {puedeBorrar && (
                           <button 
-                            className={s.btnLogout} 
-                            style={{ padding: '8px 12px', fontSize: '11px', color: 'var(--color-danger)', borderColor: 'var(--color-danger)' }}
+                            className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`}
                             onClick={() => handleDelete(p.id, p.nombre_empresa)}
                           >
-                            BORRAR
+                            ❌
                           </button>
                         )}
                       </div>
@@ -259,7 +241,7 @@ export const ProveedoresTab = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-muted)' }}>
+                  <td colSpan="4" className={s.emptyState}>
                     {loading ? 'Cargando directorio...' : 'No hay proveedores registrados.'}
                   </td>
                 </tr>

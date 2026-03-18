@@ -114,24 +114,24 @@ export const InsumosTab = ({ sucursalId }) => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--color-text-main)', margin: 0 }}>
+        <h2 className={s.pageTitle}>
           Gestión de Insumos
         </h2>
         {loading && <span style={{ fontSize: '12px', color: 'var(--color-primary)', fontWeight: '700' }}>ACTUALIZANDO...</span>}
       </header>
 
-      <div className="admin-split-layout-sidebar">
+      <div className={s.splitLayout}>
         
         {/* FORMULARIO LATERAL: Se protege la edición */}
-        <aside className={s.adminCard} style={{ padding: '20px' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '20px', color: 'var(--color-primary)' }}>
-            {editId ? (puedeEditar ? '📝 Editar Insumo' : '👁️ Ver Insumo') : '📦 Nuevo Insumo'}
+        <aside className={s.adminCard}>
+          <h3 className={s.cardTitle}>
+            {editId ? (puedeEditar ? ' Editar Insumo' : ' Ver Insumo') : ' Nuevo Insumo'}
           </h3>
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>NOMBRE COMERCIAL</label>
+            <div className={s.formGroup}>
+              <label className={s.label}>NOMBRE COMERCIAL</label>
               <input 
-                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
+                className={s.inputField}
                 value={formData.nombre} 
                 onChange={e => setFormData({...formData, nombre: e.target.value})} 
                 required 
@@ -139,10 +139,10 @@ export const InsumosTab = ({ sucursalId }) => {
               />
             </div>
 
-            <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>MODELO / VARIANTE</label>
+            <div className={s.formGroup}>
+              <label className={s.label}>MODELO / VARIANTE</label>
               <input 
-                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
+                className={s.inputField}
                 value={formData.modelo} 
                 onChange={e => setFormData({...formData, modelo: e.target.value})} 
                 required 
@@ -150,9 +150,9 @@ export const InsumosTab = ({ sucursalId }) => {
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>CATEGORÍA</label>
+            <div className={s.formGrid}>
+              <div className={s.formGroup}>
+                <label className={s.label}>CATEGORÍA</label>
                 <SearchableSelect 
                   options={categorias}
                   value={formData.categoria}
@@ -163,8 +163,8 @@ export const InsumosTab = ({ sucursalId }) => {
                   onChange={(val) => setFormData({...formData, categoria: val})}
                 />
               </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>PROVEEDOR</label>
+              <div className={s.formGroup}>
+                <label className={s.label}>PROVEEDOR</label>
                 <SearchableSelect 
                   options={proveedores}
                   value={formData.proveedor}
@@ -177,23 +177,23 @@ export const InsumosTab = ({ sucursalId }) => {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>COSTO CAJA ($)</label>
+            <div className={s.formGrid}>
+              <div className={s.formGroup}>
+                <label className={s.label}>COSTO CAJA ($)</label>
                 <input 
                   type="number" step="0.01" 
-                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
+                  className={s.inputField}
                   value={formData.costo_por_caja} 
                   onChange={e => setFormData({...formData, costo_por_caja: e.target.value})} 
                   required 
                   readOnly={!puedeEditar} 
                 />
               </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>CONT. NETO</label>
+              <div className={s.formGroup}>
+                <label className={s.label}>CONT. NETO</label>
                 <input 
                   type="number" step="0.01" 
-                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
+                  className={s.inputField}
                   value={formData.contenido_neto} 
                   onChange={e => setFormData({...formData, contenido_neto: e.target.value})} 
                   required 
@@ -202,8 +202,8 @@ export const InsumosTab = ({ sucursalId }) => {
               </div>
             </div>
 
-            <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>UNIDAD DE MEDIDA</label>
+            <div className={s.formGroup}>
+              <label className={s.label}>UNIDAD DE MEDIDA</label>
               <SearchableSelect 
                 options={unidades}
                 value={formData.unidad_medida}
@@ -216,22 +216,22 @@ export const InsumosTab = ({ sucursalId }) => {
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>RENDIMIENTO %</label>
+            <div className={s.formGrid}>
+              <div className={s.formGroup}>
+                <label className={s.label}>RENDIMIENTO %</label>
                 <input 
                   type="number" step="0.01" 
-                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
+                  className={s.inputField}
                   value={formData.factor_rendimiento} 
                   onChange={e => setFormData({...formData, factor_rendimiento: e.target.value})} 
                   readOnly={!puedeEditar} 
                 />
               </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '5px' }}>DÍAS REABAST.</label>
+              <div className={s.formGroup}>
+                <label className={s.label}>DÍAS REABAST.</label>
                 <input 
                   type="number" 
-                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-ui)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
+                  className={s.inputField}
                   value={formData.dias_reabastecimiento} 
                   onChange={e => setFormData({...formData, dias_reabastecimiento: e.target.value})} 
                   readOnly={!puedeEditar} 
@@ -244,15 +244,19 @@ export const InsumosTab = ({ sucursalId }) => {
               {puedeEditar && (
                 <button 
                   type="submit" 
-                  className={s.btnLogout} 
-                  style={{ backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', flex: 1, padding: '12px' }} 
+                  className={`${s.btn} ${s.btnPrimary}`}
+                  style={{ flex: 1 }}
                   disabled={loading}
                 >
                   {loading ? '...' : (editId ? 'ACTUALIZAR' : 'GUARDAR')}
                 </button>
               )}
               {editId && (
-                <button type="button" onClick={resetForm} className={s.btnLogout} style={{ padding: '12px' }}>
+                <button 
+                  type="button" 
+                  onClick={resetForm} 
+                  className={`${s.btn} ${s.btnOutlineDanger}`}
+                >
                   {puedeEditar ? 'CANCELAR' : 'VOLVER'}
                 </button>
               )}
@@ -261,14 +265,14 @@ export const InsumosTab = ({ sucursalId }) => {
         </aside>
 
         {/* TABLA DE INSUMOS RESPONSIVA */}
-        <div className={s.adminCard} style={{ padding: '0', overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '700px' }}>
-            <thead style={{ backgroundColor: 'var(--color-bg-muted)', borderBottom: '1px solid var(--color-border)' }}>
+        <div className={`${s.adminCard} ${s.tableContainer}`}>
+          <table className={s.table} style={{ minWidth: '700px' }}>
+            <thead className={s.thead}>
               <tr>
-                <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>INSUMO / VARIANTE</th>
-                <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>COSTO UNIT.</th>
-                <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)' }}>CATEGORÍA</th>
-                <th style={{ padding: '15px', fontSize: '12px', color: 'var(--color-text-muted)', textAlign: 'right' }}>ACCIONES</th>
+                <th className={s.th}>INSUMO / VARIANTE</th>
+                <th className={s.th}>COSTO UNIT.</th>
+                <th className={s.th}>CATEGORÍA</th>
+                <th className={s.th} style={{ textAlign: 'right' }}>ACCIONES</th>
               </tr>
             </thead>
             <tbody>
@@ -281,38 +285,36 @@ export const InsumosTab = ({ sucursalId }) => {
               ) : (
                 insumos.map(i => (
                   <tr key={i.id} style={{ borderBottom: '1px solid var(--color-bg-muted)', backgroundColor: editId === i.id ? 'var(--color-bg-app)' : 'transparent' }}>
-                    <td style={{ padding: '15px' }}>
-                      <div style={{ fontWeight: '800', color: 'var(--color-text-main)' }}>{i.nombre}</div>
+                    <td className={s.td}>
+                      <div style={{ fontWeight: '600', color: 'var(--color-text-main)' }}>{i.nombre}</div>
                       <small style={{ color: 'var(--color-text-muted)', fontWeight: '600' }}>
                         {i.modelo} | {i.proveedores?.nombre_empresa}
                       </small>
                     </td>
-                    <td style={{ padding: '15px' }}>
-                      <div style={{ fontWeight: '800', color: 'var(--color-primary)' }}>${i.costo_unitario?.toFixed(2)}</div>
+                    <td className={s.td}>
+                      <div style={{ fontWeight: '600', color: 'var(--color-primary)' }}>${i.costo_unitario?.toFixed(2)}</div>
                       <small style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>por {i.cat_unidades_medida?.abreviatura}</small>
                     </td>
-                    <td style={{ padding: '15px' }}>
+                    <td className={s.td}>
                       <div style={{ fontWeight: '700', fontSize: '13px' }}>{i.cat_categoria_insumos?.nombre}</div>
                       <small style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>{i.dias_reabastecimiento} días reabast.</small>
                     </td>
-                    <td style={{ padding: '15px', textAlign: 'right' }}>
+                    <td className={s.td} style={{ textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: '5px', justifyContent: 'flex-end' }}>
                         <button 
                           onClick={() => {setEditId(i.id); setFormData({...i});}} 
-                          className={s.btnLogout} 
-                          style={{ padding: '5px 10px', fontSize: '11px' }}
+                          className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`} 
                         >
-                          {puedeEditar ? 'EDITAR' : 'VER'}
+                          {puedeEditar ? '📝' : 'VER'}
                         </button>
                         
                         {/* Botón de Borrar protegido específicamente */}
                         {puedeBorrar && (
                           <button 
-                            className={s.btnLogout} 
-                            style={{ padding: '5px 10px', fontSize: '11px', color: 'var(--color-danger)', borderColor: 'var(--color-danger)' }}
-                            onClick={async () => { if(confirm('¿Borrar insumo?')) { await supabase.from('lista_insumo').delete().eq('id', i.id); fetchData(); } }}
+                            className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`} 
+                            onClick={async () => { if(window.confirm('¿Borrar insumo?')) { await supabase.from('lista_insumo').delete().eq('id', i.id); fetchData(); } }}
                           >
-                            BORRAR
+                            ❌
                           </button>
                         )}
                       </div>
@@ -362,18 +364,11 @@ const SearchableSelect = ({
     <div style={{ position: 'relative' }}>
       <input
         type="text"
+        className={s.inputField}
         value={searchTerm}
         disabled={disabled}
         placeholder={placeholder}
-        style={{
-          width: "100%",
-          padding: "10px",
-          borderRadius: "var(--radius-ui)",
-          border: "1px solid var(--color-border)",
-          fontSize: "14px",
-          boxSizing: "border-box",
-          backgroundColor: disabled ? "var(--color-bg-app)" : "white"
-        }}
+        style={{ backgroundColor: disabled ? "var(--color-bg-app)" : "white" }}
         onChange={(e) => {
           setSearchTerm(e.target.value);
           setIsOpen(true);
@@ -391,39 +386,22 @@ const SearchableSelect = ({
       />
       
       {isOpen && !disabled && (
-        <ul style={{
-          position: 'absolute',
-          top: '100%',
-          left: 0,
-          right: 0,
-          maxHeight: '200px',
-          overflowY: 'auto',
-          background: 'white',
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-ui)',
-          zIndex: 1000,
-          margin: '4px 0 0 0',
-          padding: 0,
-          listStyle: 'none',
-          boxShadow: 'var(--shadow-ui)'
-        }}>
+        <ul className={s.dropdownList}>
           {filteredOptions.length > 0 ? filteredOptions.map((opt, index) => (
             <li
               key={index}
-              style={{ padding: '10px 15px', cursor: 'pointer', borderBottom: '1px solid var(--color-bg-muted)', fontSize: '13px' }}
+              className={s.dropdownItem}
               onMouseDown={(e) => {
                 e.preventDefault();
                 onChange(opt[valueKey]);
                 setSearchTerm(opt[labelKey]);
                 setIsOpen(false);
               }}
-              onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--color-bg-app)'}
-              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
             >
               {formatLabel ? formatLabel(opt) : opt[labelKey]}
             </li>
           )) : (
-            <li style={{ padding: '10px 15px', color: 'var(--color-text-muted)', fontSize: '13px' }}>
+            <li className={s.dropdownItem} style={{ color: 'var(--color-text-muted)' }}>
               No se encontraron coincidencias...
             </li>
           )}
