@@ -45,11 +45,11 @@ export const ConfigTab = () => {
   if (loading) return <div className={s.tabContent}><p>Cargando configuración...</p></div>;
 
   return (
-    <div className={s.tabWrapper}>
-      <h2 className={s.pageTitle}>
-        Configuración del Sistema
-      </h2>
-
+<div className={s.tabWrapper}>
+    {/* SECCIÓN CABECERA: Misma estructura que Caja */}
+    <div className={s.pageHeader}>
+      <h2 className={s.pageTitle}>Configuración del Sistema</h2>
+    </div>
       {/* Navegación de Sub-pestañas con Protección de Acceso */}
       <nav className={s.tabNav}>
         {hasPermission('ver_unidades') && (

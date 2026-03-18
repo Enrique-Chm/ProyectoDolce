@@ -221,10 +221,12 @@ const CajeroTab = ({ usuarioId }) => {
   if (loading) return <div className={s.emptyState}>Sincronizando caja...</div>;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <header className={s.pageHeader}>
-        <h2 className={s.pageTitle}>Gestión de Caja</h2>
-      </header>
+<div className={s.tabWrapper}>
+    {/* SECCIÓN CABECERA: Limpia y sin etiquetas duplicadas */}
+    <div className={s.pageHeader}>
+      <h2 className={s.pageTitle}>Gestión de Caja</h2>
+      {/* Aquí podrías poner un botón de "Abrir Turno" si quisieras */}
+    </div>
 
       {/* --- NAVEGACIÓN HOMOLOGADA --- */}
       <nav className={s.tabNav}>

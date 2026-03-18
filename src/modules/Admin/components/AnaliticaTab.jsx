@@ -36,7 +36,7 @@ export const AnaliticaTab = ({ sucursalId }) => {
     return (
       <div className={`${s.tabContent} ${s.messageState}`}>
         <p className={s.messageStatePrimary}>
-          📊 CALCULANDO ESTADO DE RESULTADOS...
+           CALCULANDO ESTADO DE RESULTADOS...
         </p>
       </div>
     );

@@ -164,7 +164,7 @@ export const RecetasTab = ({ sucursalId }) => {
                 return (
                   <div key={idx} className={s.itemCardRelative}>
                     {puedeEditar && (
-                      <button type="button" className={`${s.btn} ${s.btnRemoveCircle} ${s.btnSmall}`} onClick={() => removeIngrediente(idx)}>X</button>
+                      <button type="button" className={`${s.btnSecondary} ${s.btnRemoveCircle} ${s.btnSmall}`} onClick={() => removeIngrediente(idx)}>X</button>
                     )}
                     <div className={s.formGroup} style={{ marginBottom: '10px' }}>
                       <label className={s.label} style={{ fontSize: '9px' }}>SELECCIONAR INSUMO</label>

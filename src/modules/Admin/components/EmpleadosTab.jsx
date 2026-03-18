@@ -13,11 +13,10 @@ export const EmpleadosTab = () => {
     emp.permisos.find((p) => p.clave_permiso === clave)?.id;
 
   return (
-    <div>
+    <div className={s.tabWrapper}>
       <div className={s.pageHeader}>
         <h2 className={s.pageTitle}>Gestión de Capital Humano</h2>
       </div>
-
       {/* Navegación de Sub-pestañas con validación de permisos */}
       <nav className={s.tabNav}>
         {hasPermission("ver_usuarios") && (
@@ -47,7 +46,6 @@ export const EmpleadosTab = () => {
           </button>
         )}
       </nav>
-
       {/* --- SUBTAB: EQUIPO --- */}
       {subTab === "usuarios" && hasPermission("ver_usuarios") && (
         <div className={s.splitLayout}>
@@ -64,7 +62,10 @@ export const EmpleadosTab = () => {
                     className={s.inputField}
                     value={emp.formData.nombre}
                     onChange={(e) =>
-                      emp.setFormData({ ...emp.formData, nombre: e.target.value })
+                      emp.setFormData({
+                        ...emp.formData,
+                        nombre: e.target.value,
+                      })
                     }
                     required
                   />
@@ -146,8 +147,14 @@ export const EmpleadosTab = () => {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                  <button type="submit" className={`${s.btn} ${s.btnPrimary}`} style={{ flex: 1 }}>
+                <div
+                  style={{ display: "flex", gap: "10px", marginTop: "10px" }}
+                >
+                  <button
+                    type="submit"
+                    className={`${s.btn} ${s.btnPrimary}`}
+                    style={{ flex: 1 }}
+                  >
                     {emp.editId ? "ACTUALIZAR" : "REGISTRAR"}
                   </button>
                   {emp.editId && (
@@ -171,17 +178,29 @@ export const EmpleadosTab = () => {
                 <tr>
                   <th className={s.th}>EMPLEADO / SUCURSAL</th>
                   <th className={s.th}>ROL</th>
-                  <th className={s.th} style={{ textAlign: "right" }}>ACCIONES</th>
+                  <th className={s.th} style={{ textAlign: "right" }}>
+                    ACCIONES
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {emp.usuarios.map((u) => (
                   <tr key={u.id}>
                     <td className={s.td}>
-                      <div style={{ fontWeight: "600", color: "var(--color-text-main)" }}>
+                      <div
+                        style={{
+                          fontWeight: "600",
+                          color: "var(--color-text-main)",
+                        }}
+                      >
                         {u.nombre}
                       </div>
-                      <small style={{ color: "var(--color-primary)", fontWeight: "bold" }}>
+                      <small
+                        style={{
+                          color: "var(--color-primary)",
+                          fontWeight: "bold",
+                        }}
+                      >
                         {emp.sucursales.find((suc) => suc.id === u.sucursal_id)
                           ?.nombre || "Sin Sucursal"}
                       </small>
@@ -211,13 +230,21 @@ export const EmpleadosTab = () => {
           </div>
         </div>
       )}
-
       {/* --- SUBTAB: PERMISOS --- */}
       {subTab === "permisos" && hasPermission("ver_configuracion") && (
         <div className={s.splitLayout}>
           <aside className={s.adminCard}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-              <h3 className={s.cardTitle} style={{ margin: 0 }}>Roles</h3>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "20px",
+              }}
+            >
+              <h3 className={s.cardTitle} style={{ margin: 0 }}>
+                Roles
+              </h3>
               {emp.puedeEditarConfig && (
                 <button
                   className={`${s.btn} ${s.btnSec} ${s.btnSmall}`}
@@ -249,13 +276,18 @@ export const EmpleadosTab = () => {
                     required
                   />
                 </div>
-                <button type="submit" className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`}>
+                <button
+                  type="submit"
+                  className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`}
+                >
                   GUARDAR ROL
                 </button>
               </form>
             )}
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "5px" }}
+            >
               {emp.roles.map((r) => (
                 <div
                   key={r.id}
@@ -284,7 +316,14 @@ export const EmpleadosTab = () => {
           </aside>
 
           <div className={`${s.adminCard} ${s.tableContainer}`}>
-            <div className={s.tableHeader} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div
+              className={s.tableHeader}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
               <h3 style={{ fontSize: "1.1rem", fontWeight: "700", margin: 0 }}>
                 Matriz de Facultades
               </h3>
@@ -309,10 +348,18 @@ export const EmpleadosTab = () => {
                 <thead className={s.thead}>
                   <tr>
                     <th className={s.th}>MÓDULO DEL SISTEMA</th>
-                    <th className={s.th} style={{ textAlign: "center" }}>VER</th>
-                    <th className={s.th} style={{ textAlign: "center" }}>CREAR</th>
-                    <th className={s.th} style={{ textAlign: "center" }}>EDITAR</th>
-                    <th className={s.th} style={{ textAlign: "center" }}>BORRAR</th>
+                    <th className={s.th} style={{ textAlign: "center" }}>
+                      VER
+                    </th>
+                    <th className={s.th} style={{ textAlign: "center" }}>
+                      CREAR
+                    </th>
+                    <th className={s.th} style={{ textAlign: "center" }}>
+                      EDITAR
+                    </th>
+                    <th className={s.th} style={{ textAlign: "center" }}>
+                      BORRAR
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -326,7 +373,9 @@ export const EmpleadosTab = () => {
 
                     return (
                       <tr key={m.slug}>
-                        <td className={s.td} style={{ fontWeight: "700" }}>{m.label}</td>
+                        <td className={s.td} style={{ fontWeight: "700" }}>
+                          {m.label}
+                        </td>
 
                         {/* COLUMNA VER */}
                         <td className={s.td} style={{ textAlign: "center" }}>
@@ -339,7 +388,14 @@ export const EmpleadosTab = () => {
                               onChange={() => emp.togglePermiso(idVer)}
                             />
                           ) : (
-                            <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>N/A</span>
+                            <span
+                              style={{
+                                fontSize: "10px",
+                                color: "var(--color-text-muted)",
+                              }}
+                            >
+                              N/A
+                            </span>
                           )}
                         </td>
 
@@ -354,7 +410,14 @@ export const EmpleadosTab = () => {
                               onChange={() => emp.togglePermiso(idCrear)}
                             />
                           ) : (
-                            <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>N/A</span>
+                            <span
+                              style={{
+                                fontSize: "10px",
+                                color: "var(--color-text-muted)",
+                              }}
+                            >
+                              N/A
+                            </span>
                           )}
                         </td>
 
@@ -369,7 +432,14 @@ export const EmpleadosTab = () => {
                               onChange={() => emp.togglePermiso(idEditar)}
                             />
                           ) : (
-                            <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>N/A</span>
+                            <span
+                              style={{
+                                fontSize: "10px",
+                                color: "var(--color-text-muted)",
+                              }}
+                            >
+                              N/A
+                            </span>
                           )}
                         </td>
 
@@ -384,7 +454,14 @@ export const EmpleadosTab = () => {
                               onChange={() => emp.togglePermiso(idBorrar)}
                             />
                           ) : (
-                            <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>N/A</span>
+                            <span
+                              style={{
+                                fontSize: "10px",
+                                color: "var(--color-text-muted)",
+                              }}
+                            >
+                              N/A
+                            </span>
                           )}
                         </td>
                       </tr>
@@ -396,7 +473,6 @@ export const EmpleadosTab = () => {
           </div>
         </div>
       )}
-
       {/* --- SUBTAB: SUCURSALES --- */}
       {subTab === "sucursales" && hasPermission("ver_sucursales") && (
         <div className={s.splitLayout}>
@@ -433,8 +509,11 @@ export const EmpleadosTab = () => {
                     }
                   />
                 </div>
-                <div style={{ marginTop: '10px' }}>
-                  <button type="submit" className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`}>
+                <div style={{ marginTop: "10px" }}>
+                  <button
+                    type="submit"
+                    className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`}
+                  >
                     GUARDAR SUCURSAL
                   </button>
                 </div>
@@ -448,7 +527,9 @@ export const EmpleadosTab = () => {
                 <tr>
                   <th className={s.th}>NOMBRE</th>
                   <th className={s.th}>DIRECCIÓN</th>
-                  <th className={s.th} style={{ textAlign: "right" }}>ACCIONES</th>
+                  <th className={s.th} style={{ textAlign: "right" }}>
+                    ACCIONES
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -500,7 +581,7 @@ const SearchableSelect = ({
 
   useEffect(() => {
     const selected = options.find(
-      (opt) => String(opt[valueKey]) === String(value)
+      (opt) => String(opt[valueKey]) === String(value),
     );
     if (selected) {
       setSearchTerm(selected[labelKey]);
@@ -510,7 +591,7 @@ const SearchableSelect = ({
   }, [value, options, valueKey, labelKey]);
 
   const filteredOptions = options.filter((opt) =>
-    String(opt[labelKey]).toLowerCase().includes(searchTerm.toLowerCase())
+    String(opt[labelKey]).toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   return (
@@ -532,7 +613,7 @@ const SearchableSelect = ({
           setTimeout(() => {
             setIsOpen(false);
             const selected = options.find(
-              (opt) => String(opt[valueKey]) === String(value)
+              (opt) => String(opt[valueKey]) === String(value),
             );
             if (selected) setSearchTerm(selected[labelKey]);
             else setSearchTerm("");
@@ -558,7 +639,10 @@ const SearchableSelect = ({
               </li>
             ))
           ) : (
-            <li className={s.dropdownItem} style={{ color: "var(--color-text-muted)" }}>
+            <li
+              className={s.dropdownItem}
+              style={{ color: "var(--color-text-muted)" }}
+            >
               No se encontraron coincidencias...
             </li>
           )}

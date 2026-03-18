@@ -67,11 +67,11 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
   };
 
   return (
-    <div className={s.tabWrapper}>
-      <h2 className={s.pageTitle}>
-        Control de Inventarios
-      </h2>
-
+<div className={s.tabWrapper}>
+    {/* SECCIÓN CABECERA: Misma estructura que Caja */}
+    <div className={s.pageHeader}>
+      <h2 className={s.pageTitle}>Inventarios</h2>
+    </div>
       {/* Navegación de Sub-pestañas */}
       <nav className={s.tabNav}>
         <button 

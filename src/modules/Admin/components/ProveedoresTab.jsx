@@ -215,8 +215,8 @@ export const ProveedoresTab = () => {
                       <div style={{ fontSize: '11px', color: 'var(--color-primary)', fontWeight: '700' }}>{p.telefono || 'Sin número'}</div>
                     </td>
                     <td className={s.td} style={{ textAlign: 'center' }}>
-                      <span className={s.badge} style={{ opacity: p.dias_credito > 0 ? 1 : 0.5 }}>
-                        {p.dias_credito} d
+                      <span className={s.th} style={{ opacity: p.dias_credito > 0 ? 1 : 0.5 }}>
+                        {p.dias_credito} Dias
                       </span>
                     </td>
                     <td className={s.td} style={{ textAlign: 'right' }}>

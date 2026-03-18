@@ -38,7 +38,9 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
 
   return (
     <div className={s.tabWrapper}>
-      
+      <div className={s.pageHeader}>
+        <h2 className={s.pageTitle}>Proyeccion Compras</h2>
+      </div>
       {/* NAVEGACIÓN DE SUB-TABS: Soporte para scroll horizontal en tablets */}
       <nav className={s.tabNav}>
         <button 

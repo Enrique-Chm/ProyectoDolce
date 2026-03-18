@@ -40,10 +40,11 @@ export const ImpresorasTab = ({ sucursalId }) => {
   const htmlPreview = generarHTMLTicket(datosPreview, '80mm', 'caja', configTicket);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <h2 className={s.pageTitle}>
-        Configuración de Impresión
-      </h2>
+<div className={s.tabWrapper}>
+    {/* SECCIÓN CABECERA: Misma estructura que Caja */}
+    <div className={s.pageHeader}>
+      <h2 className={s.pageTitle}>Configuracion de Impresion</h2>
+    </div>
       
       {/* Navegación de Sub-pestañas Homologada */}
       <nav className={s.tabNav}>
