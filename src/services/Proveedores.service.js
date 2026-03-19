@@ -36,18 +36,21 @@ export const proveedoresService = {
    */
   async save(payload, id = null) {
     try {
-      // 🛡️ Blindaje: Validación de edición/creación
-      if (!hasPermission('editar_proveedores')) {
-        return { data: null, error: { message: "Acceso denegado: No tienes facultades para gestionar proveedores." } };
-      }
-
       if (id) {
+        // 🛡️ Blindaje: Validación de edición
+        if (!hasPermission('editar_proveedores')) {
+          return { data: null, error: { message: "Acceso denegado: No tienes facultades para editar proveedores." } };
+        }
         // Actualización
         return await supabase
           .from('proveedores')
           .update(payload)
           .eq('id', id);
       } else {
+        // 🛡️ Blindaje: Validación de creación
+        if (!hasPermission('crear_proveedores')) {
+          return { data: null, error: { message: "Acceso denegado: No tienes facultades para crear proveedores." } };
+        }
         // Inserción
         return await supabase
           .from('proveedores')
@@ -65,8 +68,8 @@ export const proveedoresService = {
   async delete(id) {
     try {
       // 🛡️ Blindaje: Validación de borrado crítico
-      if (!hasPermission('borrar_registros')) {
-        return { data: null, error: { message: "Acceso denegado: Se requiere permiso de administrador para eliminar proveedores." } };
+      if (!hasPermission('borrar_proveedores')) {
+        return { data: null, error: { message: "Acceso denegado: Se requiere permiso para eliminar proveedores." } };
       }
 
       const { data, error } = await supabase

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import s from '../AdminPage.module.css'; 
 import { useConfigTab } from '../../../hooks/useConfigTab';
-import { MATRIZ_MODULOS, hasPermission } from '../../../utils/checkPermiso'; // Importamos seguridad
+import { hasPermission } from '../../../utils/checkPermiso'; // 🛡️ Importamos seguridad
 
 export const ConfigTab = () => {
   const [subTab, setSubTab] = useState('unidades');
@@ -28,9 +28,12 @@ export const ConfigTab = () => {
     handleSubmitCatMenu,
     handleSubmitCatInsumo,
     handleSubmitMotivo,
-    puedeEditarU,
-    puedeEditarC,
-    puedeEditarM
+    handleDelete, // 👈 Importamos la acción de borrado
+    // 🛡️ Facultades importadas del hook
+    puedeCrearU, puedeEditarU,
+    puedeCrearC, puedeEditarC,
+    puedeCrearM, puedeEditarM,
+    puedeBorrarConfig // 🛡️ Facultad de borrado global
   } = useConfigTab(subTab);
 
   const handleTabChange = (newTab) => {
@@ -45,12 +48,13 @@ export const ConfigTab = () => {
   if (loading) return <div className={s.tabContent}><p>Cargando configuración...</p></div>;
 
   return (
-<div className={s.tabWrapper}>
-    {/* SECCIÓN CABECERA: Misma estructura que Caja */}
-    <div className={s.pageHeader}>
-      <h2 className={s.pageTitle}>Configuración del Sistema</h2>
-    </div>
-      {/* Navegación de Sub-pestañas con Protección de Acceso */}
+    <div className={s.tabWrapper}>
+      {/* SECCIÓN CABECERA */}
+      <div className={s.pageHeader}>
+        <h2 className={s.pageTitle}>Configuración del Sistema</h2>
+      </div>
+
+      {/* Navegación de Sub-pestañas */}
       <nav className={s.tabNav}>
         {hasPermission('ver_unidades') && (
           <button
@@ -81,7 +85,7 @@ export const ConfigTab = () => {
       {/* --- SECCIÓN UNIDADES --- */}
       {subTab === 'unidades' && hasPermission('ver_unidades') && (
         <div className={s.splitLayout}>
-          <aside className={s.adminCard} style={{ display: puedeEditarU || uEditId ? 'block' : 'none' }}>
+          <aside className={s.adminCard} style={{ display: puedeCrearU || uEditId ? 'block' : 'none' }}>
             <h3 className={s.cardTitle}>
               {uEditId ? (puedeEditarU ? 'Editar' : 'Ver') : 'Nueva'} Unidad
             </h3>
@@ -90,20 +94,24 @@ export const ConfigTab = () => {
                 <label className={s.label}>NOMBRE</label>
                 <input 
                   className={s.inputField}
-                  value={uNombre} onChange={e => setUNombre(e.target.value)} required readOnly={!puedeEditarU} 
+                  value={uNombre} onChange={e => setUNombre(e.target.value)} required 
+                  readOnly={uEditId ? !puedeEditarU : !puedeCrearU} 
                 />
               </div>
               <div className={s.formGroup}>
                 <label className={s.label}>ABREVIATURA</label>
                 <input 
                   className={s.inputField}
-                  value={uAbrev} onChange={e => setUAbrev(e.target.value)} required readOnly={!puedeEditarU} 
+                  value={uAbrev} onChange={e => setUAbrev(e.target.value)} required 
+                  readOnly={uEditId ? !puedeEditarU : !puedeCrearU} 
                 />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
-                {puedeEditarU && <button type="submit" className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`}>GUARDAR</button>}
+                {(uEditId ? puedeEditarU : puedeCrearU) && (
+                  <button type="submit" className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`}>GUARDAR</button>
+                )}
                 {uEditId && (
-                  <button type="button" className={`${s.btn} ${s.btnOutlineDanger} ${s.btnFull}`} onClick={() => { setUEditId(null); setUNombre(''); setUAbrev(''); }}>
+                  <button type="button" className={`${s.btn} ${s.btnDark} ${s.btnFull}`} onClick={() => { setUEditId(null); setUNombre(''); setUAbrev(''); }}>
                     {puedeEditarU ? 'CANCELAR' : 'CERRAR'}
                   </button>
                 )}
@@ -126,9 +134,16 @@ export const ConfigTab = () => {
                     <td className={s.td}>#{u.id}</td>
                     <td className={s.td}><strong>{u.nombre}</strong> <span className={s.textMuted}>({u.abreviatura})</span></td>
                     <td className={s.td} style={{ textAlign: 'right' }}>
-                      <button className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`} onClick={() => { setUEditId(u.id); setUNombre(u.nombre); setUAbrev(u.abreviatura); }}>
-                        {puedeEditarU ? '📝' : 'VER'}
-                      </button>
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        <button className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`} onClick={() => { setUEditId(u.id); setUNombre(u.nombre); setUAbrev(u.abreviatura); }}>
+                          {puedeEditarU ? '📝' : 'VER'}
+                        </button>
+                        {puedeBorrarConfig && (
+                          <button className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`} onClick={() => handleDelete('unidades', u.id)}>
+                            ❌
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -142,9 +157,8 @@ export const ConfigTab = () => {
       {subTab === 'categorias' && hasPermission('ver_categorias') && (
         <div className={s.flexColumnGap20}>
           
-          {/* Bloque 1: Categorías de Menú */}
           <div className={s.splitLayout}>
-            <aside className={s.adminCard} style={{ display: puedeEditarC || cMenuEditId ? 'block' : 'none' }}>
+            <aside className={s.adminCard} style={{ display: puedeCrearC || cMenuEditId ? 'block' : 'none' }}>
               <h3 className={s.cardTitle}>
                 {cMenuEditId ? (puedeEditarC ? 'Editar Categoría Menú' : 'Detalle Categoría Menú') : 'Nueva Categoría Menú'}
               </h3>
@@ -153,7 +167,8 @@ export const ConfigTab = () => {
                   <label className={s.label}>NOMBRE CATEGORÍA</label>
                   <input 
                     className={s.inputField}
-                    value={cMenuNombre} onChange={e => setCMenuNombre(e.target.value)} placeholder="Ej: Hamburguesas" required readOnly={!puedeEditarC} 
+                    value={cMenuNombre} onChange={e => setCMenuNombre(e.target.value)} placeholder="Ej: Hamburguesas" required 
+                    readOnly={cMenuEditId ? !puedeEditarC : !puedeCrearC} 
                   />
                 </div>
                 <div className={s.formGroup}>
@@ -161,17 +176,18 @@ export const ConfigTab = () => {
                   <input 
                     type="color"
                     className={`${s.inputField} ${s.colorPicker}`}
-                    value={cMenuColor} onChange={e => setCMenuColor(e.target.value)} disabled={!puedeEditarC} 
+                    value={cMenuColor} onChange={e => setCMenuColor(e.target.value)} 
+                    disabled={cMenuEditId ? !puedeEditarC : !puedeCrearC} 
                   />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
-                  {puedeEditarC && (
+                  {(cMenuEditId ? puedeEditarC : puedeCrearC) && (
                     <button type="submit" className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`}>
                       {cMenuEditId ? 'ACTUALIZAR' : 'GUARDAR'}
                     </button>
                   )}
                   {cMenuEditId && (
-                    <button type="button" className={`${s.btn} ${s.btnOutlineDanger} ${s.btnFull}`} onClick={() => { setCMenuEditId(null); setCMenuNombre(''); setCMenuColor('#005696'); }}>
+                    <button type="button" className={`${s.btn} ${s.btnDark} ${s.btnFull}`} onClick={() => { setCMenuEditId(null); setCMenuNombre(''); setCMenuColor('#005696'); }}>
                       {puedeEditarC ? 'CANCELAR' : 'CERRAR'}
                     </button>
                   )}
@@ -195,9 +211,16 @@ export const ConfigTab = () => {
                       </td>
                       <td className={s.td}><strong>{c.nombre}</strong></td>
                       <td className={s.td} style={{ textAlign: 'right' }}>
-                        <button className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`} onClick={() => { setCMenuEditId(c.id); setCMenuNombre(c.nombre); setCMenuColor(c.color_etiqueta); }}>
-                          {puedeEditarC ? '📝' : 'VER'}
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                          <button className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`} onClick={() => { setCMenuEditId(c.id); setCMenuNombre(c.nombre); setCMenuColor(c.color_etiqueta); }}>
+                            {puedeEditarC ? '📝' : 'VER'}
+                          </button>
+                          {puedeBorrarConfig && (
+                            <button className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`} onClick={() => handleDelete('menu', c.id)}>
+                              ❌
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -206,9 +229,8 @@ export const ConfigTab = () => {
             </div>
           </div>
 
-          {/* Bloque 2: Categorías de Insumos */}
           <div className={s.splitLayout}>
-            <aside className={s.adminCard} style={{ display: puedeEditarC || cInsumoEditId ? 'block' : 'none' }}>
+            <aside className={s.adminCard} style={{ display: puedeCrearC || cInsumoEditId ? 'block' : 'none' }}>
               <h3 className={s.cardTitle}>
                 {cInsumoEditId ? (puedeEditarC ? 'Editar Almacén' : 'Detalle Almacén') : 'Nueva Categoría Almacén'}
               </h3>
@@ -217,17 +239,18 @@ export const ConfigTab = () => {
                   <label className={s.label}>NOMBRE CATEGORÍA</label>
                   <input 
                     className={s.inputField}
-                    value={cInsumoNombre} onChange={e => setCInsumoNombre(e.target.value)} placeholder="Ej: Proteínas" required readOnly={!puedeEditarC} 
+                    value={cInsumoNombre} onChange={e => setCInsumoNombre(e.target.value)} placeholder="Ej: Proteínas" required 
+                    readOnly={cInsumoEditId ? !puedeEditarC : !puedeCrearC} 
                   />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
-                  {puedeEditarC && (
+                  {(cInsumoEditId ? puedeEditarC : puedeCrearC) && (
                     <button type="submit" className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`}>
                       {cInsumoEditId ? 'ACTUALIZAR' : 'GUARDAR'}
                     </button>
                   )}
                   {cInsumoEditId && (
-                    <button type="button" className={`${s.btn} ${s.btnOutlineDanger} ${s.btnFull}`} onClick={() => { setCInsumoEditId(null); setCInsumoNombre(''); }}>
+                    <button type="button" className={`${s.btn} ${s.btnDark} ${s.btnFull}`} onClick={() => { setCInsumoEditId(null); setCInsumoNombre(''); }}>
                       {puedeEditarC ? 'CANCELAR' : 'CERRAR'}
                     </button>
                   )}
@@ -249,9 +272,16 @@ export const ConfigTab = () => {
                       <td className={s.td}>#{c.id}</td>
                       <td className={s.td}><strong>{c.nombre}</strong></td>
                       <td className={s.td} style={{ textAlign: 'right' }}>
-                        <button className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`} onClick={() => { setCInsumoEditId(c.id); setCInsumoNombre(c.nombre); }}>
-                          {puedeEditarC ? '📝' : 'VER'}
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                          <button className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`} onClick={() => { setCInsumoEditId(c.id); setCInsumoNombre(c.nombre); }}>
+                            {puedeEditarC ? '📝' : 'VER'}
+                          </button>
+                          {puedeBorrarConfig && (
+                            <button className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`} onClick={() => handleDelete('insumos', c.id)}>
+                              ❌
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -265,7 +295,7 @@ export const ConfigTab = () => {
       {/* --- SECCIÓN MOTIVOS INVENTARIO --- */}
       {subTab === 'motivos' && hasPermission('ver_configuracion') && (
         <div className={s.splitLayout}>
-          <aside className={s.adminCard} style={{ display: puedeEditarM || mEditId ? 'block' : 'none' }}>
+          <aside className={s.adminCard} style={{ display: puedeCrearM || mEditId ? 'block' : 'none' }}>
             <h3 className={s.cardTitle}>
               {mEditId ? (puedeEditarM ? 'Editar Motivo' : 'Detalle Motivo') : 'Nuevo Motivo'}
             </h3>
@@ -274,14 +304,16 @@ export const ConfigTab = () => {
                 <label className={s.label}>NOMBRE DEL MOTIVO</label>
                 <input 
                   className={s.inputField}
-                  value={mNombre} onChange={e => setMNombre(e.target.value)} placeholder="Ej: Compra Proveedor" required readOnly={!puedeEditarM} 
+                  value={mNombre} onChange={e => setMNombre(e.target.value)} placeholder="Ej: Compra Proveedor" required 
+                  readOnly={mEditId ? !puedeEditarM : !puedeCrearM} 
                 />
               </div>
               <div className={s.formGroup}>
                 <label className={s.label}>TIPO DE MOVIMIENTO</label>
                 <select 
                   className={s.inputField}
-                  value={mTipo} onChange={e => setMTipo(e.target.value)} disabled={!puedeEditarM}
+                  value={mTipo} onChange={e => setMTipo(e.target.value)} 
+                  disabled={mEditId ? !puedeEditarM : !puedeCrearM}
                 >
                   <option value="ENTRADA">ENTRADA (+)</option>
                   <option value="MERMA">MERMA (-)</option>
@@ -290,9 +322,11 @@ export const ConfigTab = () => {
                 </select>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
-                {puedeEditarM && <button type="submit" className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`}>GUARDAR</button>}
+                {(mEditId ? puedeEditarM : puedeCrearM) && (
+                  <button type="submit" className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`}>GUARDAR</button>
+                )}
                 {mEditId && (
-                  <button type="button" className={`${s.btn} ${s.btnOutlineDanger} ${s.btnFull}`} onClick={() => { setMEditId(null); setMNombre(''); setMTipo('ENTRADA'); }}>
+                  <button type="button" className={`${s.btn} ${s.btnDark} ${s.btnFull}`} onClick={() => { setMEditId(null); setMNombre(''); setMTipo('ENTRADA'); }}>
                     {puedeEditarM ? 'CANCELAR' : 'CERRAR'}
                   </button>
                 )}
@@ -319,9 +353,16 @@ export const ConfigTab = () => {
                     </td>
                     <td className={s.td}><strong>{m.nombre_motivo}</strong></td>
                     <td className={s.td} style={{ textAlign: 'right' }}>
-                      <button className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`} onClick={() => { setMEditId(m.id); setMNombre(m.nombre_motivo); setMTipo(m.tipo); }}>
-                        {puedeEditarM ? '📝' : 'VER'}
-                      </button>
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        <button className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`} onClick={() => { setMEditId(m.id); setMNombre(m.nombre_motivo); setMTipo(m.tipo); }}>
+                          {puedeEditarM ? '📝' : 'VER'}
+                        </button>
+                        {puedeBorrarConfig && (
+                          <button className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`} onClick={() => handleDelete('motivos', m.id)}>
+                            ❌
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

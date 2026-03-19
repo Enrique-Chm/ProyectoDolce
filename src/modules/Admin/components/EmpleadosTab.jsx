@@ -49,107 +49,113 @@ export const EmpleadosTab = () => {
       {/* --- SUBTAB: EQUIPO --- */}
       {subTab === "usuarios" && hasPermission("ver_usuarios") && (
         <div className={s.splitLayout}>
-          {/* Formulario: Solo visible si tiene permiso de edición */}
-          {hasPermission("editar_usuarios") && (
-            <aside className={s.adminCard}>
-              <h3 className={s.cardTitle}>
-                {emp.editId ? "Editar Perfil" : " Nuevo Integrante"}
-              </h3>
-              <form onSubmit={emp.handleSaveUsuario} className={s.loginForm}>
+          {/* Formulario: Visible si puede crear, o si puede editar y hay un ID */}
+          <aside className={s.adminCard} style={{ display: emp.puedeCrearUsuarios || emp.editId ? 'block' : 'none' }}>
+            <h3 className={s.cardTitle}>
+              {emp.editId ? (emp.puedeEditarUsuarios ? "Editar Perfil" : "Ver Perfil") : " Nuevo Integrante"}
+            </h3>
+            <form onSubmit={emp.handleSaveUsuario} className={s.loginForm}>
+              <div className={s.formGroup}>
+                <label className={s.label}>NOMBRE COMPLETO</label>
+                <input
+                  className={s.inputField}
+                  value={emp.formData.nombre}
+                  onChange={(e) =>
+                    emp.setFormData({
+                      ...emp.formData,
+                      nombre: e.target.value,
+                    })
+                  }
+                  required
+                  readOnly={emp.editId ? !emp.puedeEditarUsuarios : !emp.puedeCrearUsuarios}
+                />
+              </div>
+
+              <div className={s.formGroup}>
+                <label className={s.label}>SUCURSAL ASIGNADA</label>
+                <SearchableSelect
+                  options={emp.sucursales}
+                  value={emp.formData.sucursal_id}
+                  valueKey="id"
+                  labelKey="nombre"
+                  placeholder="Seleccionar sucursal..."
+                  onChange={(val) =>
+                    emp.setFormData({ ...emp.formData, sucursal_id: val })
+                  }
+                  disabled={emp.editId ? !emp.puedeEditarUsuarios : !emp.puedeCrearUsuarios}
+                />
+              </div>
+
+              <div className={s.formGrid}>
                 <div className={s.formGroup}>
-                  <label className={s.label}>NOMBRE COMPLETO</label>
+                  <label className={s.label}>USUARIO</label>
                   <input
                     className={s.inputField}
-                    value={emp.formData.nombre}
+                    value={emp.formData.username}
                     onChange={(e) =>
                       emp.setFormData({
                         ...emp.formData,
-                        nombre: e.target.value,
+                        username: e.target.value,
                       })
                     }
                     required
+                    readOnly={emp.editId ? !emp.puedeEditarUsuarios : !emp.puedeCrearUsuarios}
                   />
                 </div>
-
                 <div className={s.formGroup}>
-                  <label className={s.label}>SUCURSAL ASIGNADA</label>
+                  <label className={s.label}>ROL</label>
                   <SearchableSelect
-                    options={emp.sucursales}
-                    value={emp.formData.sucursal_id}
+                    options={emp.roles}
+                    value={emp.formData.rol_id}
                     valueKey="id"
-                    labelKey="nombre"
-                    placeholder="Seleccionar sucursal..."
+                    labelKey="nombre_rol"
+                    placeholder="Elegir rol..."
                     onChange={(val) =>
-                      emp.setFormData({ ...emp.formData, sucursal_id: val })
+                      emp.setFormData({ ...emp.formData, rol_id: val })
                     }
+                    disabled={emp.editId ? !emp.puedeEditarUsuarios : !emp.puedeCrearUsuarios}
                   />
                 </div>
+              </div>
 
-                <div className={s.formGrid}>
-                  <div className={s.formGroup}>
-                    <label className={s.label}>USUARIO</label>
-                    <input
-                      className={s.inputField}
-                      value={emp.formData.username}
-                      onChange={(e) =>
-                        emp.setFormData({
-                          ...emp.formData,
-                          username: e.target.value,
-                        })
-                      }
-                      required
-                    />
-                  </div>
-                  <div className={s.formGroup}>
-                    <label className={s.label}>ROL</label>
-                    <SearchableSelect
-                      options={emp.roles}
-                      value={emp.formData.rol_id}
-                      valueKey="id"
-                      labelKey="nombre_rol"
-                      placeholder="Elegir rol..."
-                      onChange={(val) =>
-                        emp.setFormData({ ...emp.formData, rol_id: val })
-                      }
-                    />
-                  </div>
+              <div className={s.formGrid}>
+                <div className={s.formGroup}>
+                  <label className={s.label}>PASSWORD</label>
+                  <input
+                    type="password"
+                    className={s.inputField}
+                    value={emp.formData.password_hash}
+                    onChange={(e) =>
+                      emp.setFormData({
+                        ...emp.formData,
+                        password_hash: e.target.value,
+                      })
+                    }
+                    required={!emp.editId}
+                    readOnly={emp.editId ? !emp.puedeEditarUsuarios : !emp.puedeCrearUsuarios}
+                  />
                 </div>
-
-                <div className={s.formGrid}>
-                  <div className={s.formGroup}>
-                    <label className={s.label}>PASSWORD</label>
-                    <input
-                      type="password"
-                      className={s.inputField}
-                      value={emp.formData.password_hash}
-                      onChange={(e) =>
-                        emp.setFormData({
-                          ...emp.formData,
-                          password_hash: e.target.value,
-                        })
-                      }
-                      required={!emp.editId}
-                    />
-                  </div>
-                  <div className={s.formGroup}>
-                    <label className={s.label}>PIN (4 DÍGITOS)</label>
-                    <input
-                      type="number"
-                      className={s.inputField}
-                      value={emp.formData.pin_seguridad}
-                      onChange={(e) =>
-                        emp.setFormData({
-                          ...emp.formData,
-                          pin_seguridad: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
+                <div className={s.formGroup}>
+                  <label className={s.label}>PIN (4 DÍGITOS)</label>
+                  <input
+                    type="number"
+                    className={s.inputField}
+                    value={emp.formData.pin_seguridad}
+                    onChange={(e) =>
+                      emp.setFormData({
+                        ...emp.formData,
+                        pin_seguridad: e.target.value,
+                      })
+                    }
+                    readOnly={emp.editId ? !emp.puedeEditarUsuarios : !emp.puedeCrearUsuarios}
+                  />
                 </div>
+              </div>
 
-                <div
-                  style={{ display: "flex", gap: "10px", marginTop: "10px" }}
-                >
+              <div
+                style={{ display: "flex", gap: "10px", marginTop: "10px" }}
+              >
+                {(emp.editId ? emp.puedeEditarUsuarios : emp.puedeCrearUsuarios) && (
                   <button
                     type="submit"
                     className={`${s.btn} ${s.btnPrimary}`}
@@ -157,19 +163,19 @@ export const EmpleadosTab = () => {
                   >
                     {emp.editId ? "ACTUALIZAR" : "REGISTRAR"}
                   </button>
-                  {emp.editId && (
-                    <button
-                      type="button"
-                      className={`${s.btn} ${s.btnDark}`}
-                      onClick={emp.resetUserForm}
-                    >
-                      CANCELAR
-                    </button>
-                  )}
-                </div>
-              </form>
-            </aside>
-          )}
+                )}
+                {emp.editId && (
+                  <button
+                    type="button"
+                    className={`${s.btn} ${s.btnDark}`}
+                    onClick={emp.resetUserForm}
+                  >
+                    {emp.puedeEditarUsuarios ? "CANCELAR" : "CERRAR"}
+                  </button>
+                )}
+              </div>
+            </form>
+          </aside>
 
           {/* Listado de Empleados */}
           <div className={`${s.adminCard} ${s.tableContainer}`}>
@@ -211,7 +217,7 @@ export const EmpleadosTab = () => {
                       </span>
                     </td>
                     <td className={s.td} style={{ textAlign: "right" }}>
-                      {hasPermission("editar_usuarios") && (
+                      <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
                         <button
                           className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`}
                           onClick={() => {
@@ -219,9 +225,17 @@ export const EmpleadosTab = () => {
                             emp.setFormData(u);
                           }}
                         >
-                          📝
+                          {emp.puedeEditarUsuarios ? '📝' : 'VER'}
                         </button>
-                      )}
+                        {emp.puedeBorrarUsuarios && (
+                          <button
+                            className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`}
+                            onClick={() => emp.handleDeleteUsuario(u.id, u.nombre)}
+                          >
+                            ❌
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -245,7 +259,7 @@ export const EmpleadosTab = () => {
               <h3 className={s.cardTitle} style={{ margin: 0 }}>
                 Roles
               </h3>
-              {emp.puedeEditarConfig && (
+              {emp.puedeCrearConfig && (
                 <button
                   className={`${s.btn} ${s.btnSec} ${s.btnSmall}`}
                   style={{ padding: "4px 10px" }}
@@ -256,7 +270,7 @@ export const EmpleadosTab = () => {
               )}
             </div>
 
-            {emp.mostrarFormRol && emp.puedeEditarConfig && (
+            {emp.mostrarFormRol && emp.puedeCrearConfig && (
               <form
                 onSubmit={emp.handleSaveRol}
                 style={{
@@ -476,50 +490,65 @@ export const EmpleadosTab = () => {
       {/* --- SUBTAB: SUCURSALES --- */}
       {subTab === "sucursales" && hasPermission("ver_sucursales") && (
         <div className={s.splitLayout}>
-          {hasPermission("editar_sucursales") && (
-            <aside className={s.adminCard}>
-              <h3 className={s.cardTitle}>
-                {emp.editSucursalId ? "Editar Sucursal" : "Nueva Sucursal"}
-              </h3>
-              <form onSubmit={emp.handleSaveSucursal} className={s.loginForm}>
-                <div className={s.formGroup}>
-                  <label className={s.label}>NOMBRE</label>
-                  <input
-                    className={s.inputField}
-                    value={emp.sucursalFormData.nombre}
-                    onChange={(e) =>
-                      emp.setSucursalFormData({
-                        ...emp.sucursalFormData,
-                        nombre: e.target.value,
-                      })
-                    }
-                    required
-                  />
-                </div>
-                <div className={s.formGroup}>
-                  <label className={s.label}>DIRECCIÓN</label>
-                  <input
-                    className={s.inputField}
-                    value={emp.sucursalFormData.direccion}
-                    onChange={(e) =>
-                      emp.setSucursalFormData({
-                        ...emp.sucursalFormData,
-                        direccion: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-                <div style={{ marginTop: "10px" }}>
+          <aside className={s.adminCard} style={{ display: emp.puedeCrearSucursales || emp.editSucursalId ? 'block' : 'none' }}>
+            <h3 className={s.cardTitle}>
+              {emp.editSucursalId ? (emp.puedeEditarSucursales ? "Editar Sucursal" : "Ver Sucursal") : "Nueva Sucursal"}
+            </h3>
+            <form onSubmit={emp.handleSaveSucursal} className={s.loginForm}>
+              <div className={s.formGroup}>
+                <label className={s.label}>NOMBRE</label>
+                <input
+                  className={s.inputField}
+                  value={emp.sucursalFormData.nombre}
+                  onChange={(e) =>
+                    emp.setSucursalFormData({
+                      ...emp.sucursalFormData,
+                      nombre: e.target.value,
+                    })
+                  }
+                  required
+                  readOnly={emp.editSucursalId ? !emp.puedeEditarSucursales : !emp.puedeCrearSucursales}
+                />
+              </div>
+              <div className={s.formGroup}>
+                <label className={s.label}>DIRECCIÓN</label>
+                <input
+                  className={s.inputField}
+                  value={emp.sucursalFormData.direccion}
+                  onChange={(e) =>
+                    emp.setSucursalFormData({
+                      ...emp.sucursalFormData,
+                      direccion: e.target.value,
+                    })
+                  }
+                  readOnly={emp.editSucursalId ? !emp.puedeEditarSucursales : !emp.puedeCrearSucursales}
+                />
+              </div>
+              <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
+                {(emp.editSucursalId ? emp.puedeEditarSucursales : emp.puedeCrearSucursales) && (
                   <button
                     type="submit"
-                    className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`}
+                    className={`${s.btn} ${s.btnPrimary}`}
+                    style={{ flex: 1 }}
                   >
                     GUARDAR SUCURSAL
                   </button>
-                </div>
-              </form>
-            </aside>
-          )}
+                )}
+                {emp.editSucursalId && (
+                  <button
+                    type="button"
+                    className={`${s.btn} ${s.btnDark}`}
+                    onClick={() => {
+                      emp.setEditSucursalId(null);
+                      emp.setSucursalFormData({ nombre: '', direccion: '' });
+                    }}
+                  >
+                    {emp.puedeEditarSucursales ? "CANCELAR" : "CERRAR"}
+                  </button>
+                )}
+              </div>
+            </form>
+          </aside>
 
           <div className={`${s.adminCard} ${s.tableContainer}`}>
             <table className={s.table} style={{ minWidth: "500px" }}>
@@ -540,7 +569,7 @@ export const EmpleadosTab = () => {
                     </td>
                     <td className={s.td}>{suc.direccion || "N/A"}</td>
                     <td className={s.td} style={{ textAlign: "right" }}>
-                      {hasPermission("editar_sucursales") && (
+                      <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
                         <button
                           className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`}
                           onClick={() => {
@@ -548,9 +577,17 @@ export const EmpleadosTab = () => {
                             emp.setSucursalFormData(suc);
                           }}
                         >
-                          📝
+                          {emp.puedeEditarSucursales ? '📝' : 'VER'}
                         </button>
-                      )}
+                        {emp.puedeBorrarSucursales && (
+                          <button
+                            className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`}
+                            onClick={() => emp.handleDeleteSucursal(suc.id, suc.nombre)}
+                          >
+                            ❌
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

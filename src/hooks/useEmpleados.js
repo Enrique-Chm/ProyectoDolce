@@ -11,13 +11,21 @@ export const useEmpleados = () => {
   const [permisos, setPermisos] = useState([]);
   const [sucursales, setSucursales] = useState([]);
 
-  // 🛡️ DEFINICIÓN DE FACULTADES (RBAC)
+  // 🛡️ DEFINICIÓN DE FACULTADES (RBAC) - ESTÁNDAR COMPLETO
   const puedeVerUsuarios = hasPermission('ver_usuarios');
+  const puedeCrearUsuarios = hasPermission('crear_usuarios'); 
   const puedeEditarUsuarios = hasPermission('editar_usuarios');
+  const puedeBorrarUsuarios = hasPermission('borrar_usuarios'); // 👈 Nuevo
+  
   const puedeVerConfig = hasPermission('ver_configuracion');
+  const puedeCrearConfig = hasPermission('crear_configuracion'); 
   const puedeEditarConfig = hasPermission('editar_configuracion');
+  const puedeBorrarConfig = hasPermission('borrar_configuracion'); // 👈 Nuevo
+  
   const puedeVerSucursales = hasPermission('ver_sucursales');
+  const puedeCrearSucursales = hasPermission('crear_sucursales'); 
   const puedeEditarSucursales = hasPermission('editar_sucursales');
+  const puedeBorrarSucursales = hasPermission('borrar_sucursales'); // 👈 Nuevo
 
   // --- ESTADO USUARIOS ---
   const [editId, setEditId] = useState(null);
@@ -61,9 +69,11 @@ export const useEmpleados = () => {
 
   useEffect(() => { cargarDatos(); }, [cargarDatos]);
 
+  // --- MÉTODOS DE USUARIOS ---
   const handleSaveUsuario = async (e) => {
     e.preventDefault();
-    if (!puedeEditarUsuarios) return alert("No tienes permiso para gestionar usuarios.");
+    const tienePermiso = editId ? puedeEditarUsuarios : puedeCrearUsuarios;
+    if (!tienePermiso) return alert("No tienes permiso para gestionar usuarios.");
 
     const payload = { 
       ...formData, 
@@ -75,11 +85,24 @@ export const useEmpleados = () => {
     cargarDatos();
   };
 
+  const handleDeleteUsuario = async (id, nombre) => {
+    if (!puedeBorrarUsuarios) return alert("Acceso denegado para eliminar usuarios.");
+    if (window.confirm(`¿Estás seguro de eliminar al empleado "${nombre}"?`)) {
+      try {
+        await empleadosService.deleteUsuario(id);
+        cargarDatos();
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+  };
+
   const resetUserForm = () => {
     setEditId(null);
     setFormData({ nombre: '', rol_id: '', username: '', password_hash: '', pin_seguridad: '', status: 'activo', sucursal_id: '' });
   };
 
+  // --- MÉTODOS DE MATRIZ DE PERMISOS ---
   const seleccionarRol = async (id) => {
     if (!puedeVerConfig) return;
     setRolSeleccionado(id);
@@ -87,7 +110,6 @@ export const useEmpleados = () => {
     setPermisosActivos(activos);
   };
 
-  // 🛠️ MEJORA 1: Ahora solo cambia el estado local (No toca la base de datos)
   const togglePermiso = (permisoId) => {
     if (!permisoId) return;
     if (!puedeEditarConfig) return alert("Acceso denegado: No puedes alterar la matriz de permisos.");
@@ -99,14 +121,12 @@ export const useEmpleados = () => {
     setPermisosActivos(nuevaLista);
   };
 
-  // 🛠️ MEJORA 2: Nueva función exclusiva para el botón "Guardar Cambios"
   const guardarMatrizPermisos = async () => {
     if (!rolSeleccionado) return alert("Selecciona un rol primero.");
     if (!puedeEditarConfig) return alert("Acceso denegado: No puedes modificar la matriz.");
 
     setLoading(true);
     try {
-      // Envía la lista final a Supabase en una sola transacción
       const res = await empleadosService.actualizarPermisosRol(rolSeleccionado, permisosActivos);
       if (res.success) {
         alert("✅ Matriz de permisos actualizada correctamente.");
@@ -123,20 +143,36 @@ export const useEmpleados = () => {
 
   const handleSaveRol = async (e) => {
     e.preventDefault();
-    if (!puedeEditarConfig) return alert("No tienes permiso para modificar roles.");
+    const tienePermiso = editRolId ? puedeEditarConfig : puedeCrearConfig;
+    if (!tienePermiso) return alert("No tienes permiso para modificar/crear roles.");
 
     await empleadosService.saveRol(rolFormData, editRolId);
     setRolFormData({ nombre_rol: '', descripcion: '' }); setEditRolId(null); setMostrarFormRol(false);
     cargarDatos();
   };
 
+  // --- MÉTODOS DE SUCURSALES ---
   const handleSaveSucursal = async (e) => {
     e.preventDefault();
-    if (!puedeEditarSucursales) return alert("No tienes permiso para gestionar sucursales.");
+    const tienePermiso = editSucursalId ? puedeEditarSucursales : puedeCrearSucursales;
+    if (!tienePermiso) return alert("No tienes permiso para gestionar sucursales.");
 
     await sucursalesService.save(sucursalFormData, editSucursalId);
     setEditSucursalId(null); setSucursalFormData({ nombre: '', direccion: '' });
     cargarDatos();
+  };
+
+  const handleDeleteSucursal = async (id, nombre) => {
+    if (!puedeBorrarSucursales) return alert("Acceso denegado para eliminar sucursales.");
+    if (window.confirm(`¿Estás seguro de eliminar la sucursal "${nombre}"?`)) {
+      try {
+        const res = await sucursalesService.delete(id);
+        if (res.error) throw res.error;
+        cargarDatos();
+      } catch (error) {
+        alert("Error al eliminar: " + error.message);
+      }
+    }
   };
 
   return {
@@ -147,13 +183,17 @@ export const useEmpleados = () => {
     sucursales: puedeVerSucursales ? sucursales : [],
     
     rolSeleccionado, permisosActivos, seleccionarRol, togglePermiso,
-    guardarMatrizPermisos, // 🛠️ Exportamos la nueva función
+    guardarMatrizPermisos, 
     
-    formData, setFormData, editId, setEditId, handleSaveUsuario, resetUserForm,
+    formData, setFormData, editId, setEditId, handleSaveUsuario, handleDeleteUsuario, resetUserForm,
     rolFormData, setRolFormData, mostrarFormRol, setMostrarFormRol, editRolId, setEditRolId, handleSaveRol,
-    sucursalFormData, setSucursalFormData, editSucursalId, setEditSucursalId, handleSaveSucursal,
+    sucursalFormData, setSucursalFormData, editSucursalId, setEditSucursalId, handleSaveSucursal, handleDeleteSucursal,
     
-    puedeVerUsuarios, puedeEditarUsuarios, puedeVerConfig, puedeEditarConfig, puedeVerSucursales, puedeEditarSucursales,
+    // 🛡️ Exportamos todas las facultades
+    puedeVerUsuarios, puedeCrearUsuarios, puedeEditarUsuarios, puedeBorrarUsuarios,
+    puedeVerConfig, puedeCrearConfig, puedeEditarConfig, puedeBorrarConfig,
+    puedeVerSucursales, puedeCrearSucursales, puedeEditarSucursales, puedeBorrarSucursales,
+    
     recargar: cargarDatos
   };
 };

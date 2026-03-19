@@ -43,7 +43,7 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
             <div className={s.flexCenterGap} style={{ flexWrap: 'wrap' }}>
               {/* Solo mostramos historial si tiene permiso */}
               {puedeVerHistorial && (
-                <button className={`${stylesAdmin.btn} ${stylesAdmin.btnOutlineDanger}`} style={{ whiteSpace: 'nowrap' }} onClick={() => setView('historial')}>📜 HISTORIAL</button>
+                <button className={`${stylesAdmin.btn} ${stylesAdmin.btnOutlineDanger}`} style={{ whiteSpace: 'nowrap' }} onClick={() => setView('historial')}>HISTORIAL</button>
               )}
               {/* Botón de nueva mesa condicionado por permiso */}
               {puedeTomarOrdenes && (

@@ -16,7 +16,7 @@ export const recetasService = {
     try {
       // 🛡️ Blindaje: Verificación de lectura
       if (!hasPermission('ver_recetas')) {
-        return { recetasAgrupadas: [], insumos: [], unidades: [] };
+        return { recetasAgrupadas: [], subrecetas: [], insumos: [], unidades: [] };
       }
 
       // Si por alguna razón no llega el ID, usamos el 1 (Matriz) por defecto
@@ -37,7 +37,7 @@ export const recetasService = {
           .eq('sucursal_id', sId)
           .order('nombre'),
         
-        // Las unidades de medida son globales (catálogo maestro)
+        // Las unidades de medida son globales
         supabase
           .from('cat_unidades_medida')
           .select('id, nombre, abreviatura')
@@ -47,8 +47,19 @@ export const recetasService = {
       if (ins.error) throw ins.error;
       if (uni.error) throw uni.error;
 
+      const todasLasRecetas = rec.data || [];
+      
+      // 💡 CORRECCIÓN AQUÍ: El nombre correcto de la columna es 'subreceta'
+      const subrecetas = todasLasRecetas.filter(r => 
+        r.subreceta === true || 
+        r.subreceta === 'true' || 
+        r.subreceta === 1 || 
+        r.subreceta === 't'
+      );
+
       return {
-        recetasAgrupadas: rec.data || [],
+        recetasAgrupadas: todasLasRecetas,
+        subrecetas: subrecetas, // 👈 Ahora sí irá llena de datos
         insumos: ins.data || [],
         unidades: uni.data || []
       };
@@ -64,25 +75,28 @@ export const recetasService = {
   async saveReceta(rows, nombreOriginal, isEditing = false) {
     try {
       // 🛡️ Blindaje: Verificación de edición/creación
-      if (!hasPermission('editar_recetas')) {
-        return { error: { message: "Acceso Denegado: No tienes permiso para guardar o editar recetas." } };
+      if (isEditing) {
+        if (!hasPermission('editar_recetas')) {
+          return { error: { message: "Acceso Denegado: No tienes permiso para editar recetas." } };
+        }
+      } else {
+        if (!hasPermission('crear_recetas')) {
+          return { error: { message: "Acceso Denegado: No tienes permiso para crear recetas." } };
+        }
       }
 
-      // Obtenemos el sucursal_id de la primera fila para asegurar consistencia
       const sucursalId = rows[0]?.sucursal_id;
 
-      // Limpieza de versión anterior si estamos editando (dentro de la misma sucursal)
       if (isEditing && nombreOriginal) {
         const { error: deleteError } = await supabase
           .from('recetas')
           .delete()
           .eq('nombre', nombreOriginal)
-          .eq('sucursal_id', sucursalId); // Seguridad: solo borra en este local
+          .eq('sucursal_id', sucursalId); 
         
         if (deleteError) throw deleteError;
       }
 
-      // Insertamos las filas con su sucursal_id correspondiente
       return await supabase.from('recetas').insert(rows);
     } catch (error) {
       console.error("Error en recetasService.saveReceta:", error);
@@ -95,14 +109,11 @@ export const recetasService = {
    */
   async deleteReceta(nombre, sucursalId) {
     try {
-      // 🛡️ Blindaje: Verificación de borrado (Nivel Administrativo)
-      if (!hasPermission('borrar_registros')) {
-        return { error: { message: "Acceso Denegado: Se requieren permisos de borrado para esta acción." } };
+      if (!hasPermission('borrar_recetas')) {
+        return { error: { message: "Acceso Denegado: Se requieren permisos de borrado." } };
       }
 
-      // Es recomendable pasar el sucursalId para no borrar recetas homónimas en otros locales
       const query = supabase.from('recetas').delete().eq('nombre', nombre);
-      
       if (sucursalId) query.eq('sucursal_id', sucursalId);
       
       return await query;

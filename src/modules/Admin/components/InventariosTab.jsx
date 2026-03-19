@@ -2,9 +2,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useInventarios } from "../../../hooks/useInventariosTab"; 
 import s from "../AdminPage.module.css"; 
-import { hasPermission } from "../../../utils/checkPermiso"; // 🛡️ Importamos seguridad
 
 const InventariosTab = ({ sucursalId, usuarioId }) => {
+  // Consumimos estados, métodos y las nuevas banderas de seguridad del hook
   const { 
     insumos,              
     insumosFiltrados,     
@@ -19,11 +19,9 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
     loading, 
     procesarNuevoMovimiento, 
     generarContraste,
-    guardarConteoFisico 
+    guardarConteoFisico,
+    puedeVer, puedeCrear, puedeEditar // 🛡️ Banderas de seguridad extraídas
   } = useInventarios(sucursalId);
-
-  // 🛡️ SEGURIDAD INTERNA (RBAC)
-  const puedeEditar = hasPermission('editar_inventario');
 
   // --- ESTADOS VISUALES ---
   const [activeSubTab, setActiveSubTab] = useState('stock'); 
@@ -40,7 +38,8 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
   // --- HANDLERS ---
   const handleSubmitMovimiento = async (e) => {
     e.preventDefault();
-    if (!puedeEditar) return; // Bloqueo de seguridad
+    // 🛡️ Bloqueo de seguridad: Crear movimientos requiere permiso de creación
+    if (!puedeCrear) return; 
     if (!nuevoMov.insumo_id) return alert("Por favor selecciona un insumo de la lista.");
 
     const res = await procesarNuevoMovimiento(nuevoMov, insumoSeleccionado, usuarioId);
@@ -54,7 +53,8 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
   };
 
   const handleGuardarConteo = async (row) => {
-    if (!puedeEditar) return; // Bloqueo de seguridad
+    // 🛡️ Bloqueo de seguridad: Auditar requiere permiso de edición
+    if (!puedeEditar) return; 
     const valorFisico = conteos[row.id];
     if (valorFisico === undefined || valorFisico === '') {
       return alert("Por favor ingresa el peso/conteo que marca la báscula.");
@@ -100,7 +100,7 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
         {activeSubTab !== 'contraste' && (
           <aside className={s.adminCard}>
             <h3 className={s.cardTitle}>
-              {puedeEditar ? 'Nuevo Movimiento' : 'Consulta de Insumo'}
+              {puedeCrear ? 'Nuevo Movimiento' : 'Consulta de Insumo'}
             </h3>
             <form onSubmit={handleSubmitMovimiento} className={s.loginForm}>
               
@@ -113,7 +113,7 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                   labelKey="nombre"
                   placeholder=" Buscar producto..."
                   formatLabel={(opt) => `${opt.nombre} (Stock: ${opt.stock_fisico} ${opt.unidad})`}
-                  disabled={loading}
+                  disabled={loading || !puedeCrear}
                   onChange={(val) => setNuevoMov({...nuevoMov, insumo_id: val})}
                 />
               </div>
@@ -124,7 +124,8 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                   <select 
                     className={s.inputField}
                     value={nuevoMov.tipo} 
-                    disabled={!puedeEditar}
+                    disabled={!puedeCrear}
+                    style={{ backgroundColor: !puedeCrear ? "var(--color-bg-muted)" : "white" }}
                     onChange={(e) => setNuevoMov({...nuevoMov, tipo: e.target.value, motivo: ''})}
                   >
                     <option value="ENTRADA">Entrada (+)</option>
@@ -140,7 +141,8 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                     value={nuevoMov.cantidad} 
                     onChange={(e) => setNuevoMov({...nuevoMov, cantidad: e.target.value})} 
                     required 
-                    readOnly={!puedeEditar}
+                    readOnly={!puedeCrear}
+                    style={{ backgroundColor: !puedeCrear ? "var(--color-bg-muted)" : "white" }}
                   />
                 </div>
               </div>
@@ -150,7 +152,8 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                 <select 
                   className={s.inputField}
                   value={nuevoMov.motivo} 
-                  disabled={!puedeEditar}
+                  disabled={!puedeCrear}
+                  style={{ backgroundColor: !puedeCrear ? "var(--color-bg-muted)" : "white" }}
                   onChange={(e) => setNuevoMov({...nuevoMov, motivo: e.target.value})} 
                   required
                 >
@@ -162,7 +165,7 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                 </small>
               </div>
 
-              {puedeEditar && (
+              {puedeCrear && (
                 <button 
                   type="submit" 
                   className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`} 

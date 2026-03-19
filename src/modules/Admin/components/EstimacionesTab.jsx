@@ -69,11 +69,11 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
           {subTab === 'config' ? 'Proyección de Inventario' : 'Órdenes Sugeridas'}
         </h2>
         
-        <div className={`${s.adminCard} ${s.statCard}`}>
-          <span className={s.statLabel}>
+        <div className={`${s.btn} ${s.btnSec} ${s.btnSmall}`}>
+          <span className={`${s.btn} ${s.btnSec} ${s.btnSmall}`}>
             Inversión Estimada
           </span>
-          <div className={s.statValue}>
+          <div className={`${s.btn} ${s.btnSec} ${s.btnSmall}`}>
             {formatCurrency(presupuestoTotal)}
           </div>
         </div>

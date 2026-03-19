@@ -1,96 +1,59 @@
 // Archivo: src/modules/Admin/components/ProveedoresTab.jsx
-import React, { useState, useEffect } from 'react';
-import { proveedoresService } from '../../../services/Proveedores.service';
+import React from 'react';
 import s from '../AdminPage.module.css';
-import { hasPermission } from '../../../utils/checkPermiso'; // 🛡️ Importamos seguridad
+import { useProveedoresTab } from '../../../hooks/useProveedoresTab'; // 👈 Importamos el nuevo hook
+import Swal from 'sweetalert2'; // 👈 Importamos al "Guardia" para las confirmaciones destructivas
 
 export const ProveedoresTab = () => {
-  const [proveedores, setProveedores] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [editId, setEditId] = useState(null);
-  
-  /**
-   * 🛡️ SEGURIDAD INTERNA (RBAC)
-   */
-  const puedeEditar = hasPermission('editar_configuracion'); 
-  const puedeBorrar = hasPermission('borrar_registros');
+  // Consumimos estados y métodos desde el hook
+  const {
+    proveedores, loading, editId, formData, setFormData,
+    puedeCrear, puedeEditar, puedeBorrar,
+    resetForm, prepararEdicion, handleSubmit, handleDelete
+  } = useProveedoresTab();
 
-  const [formData, setFormData] = useState({
-    nombre_empresa: '',
-    contacto_nombre: '',
-    telefono: '',
-    correo: '',
-    dias_credito: 0
-  });
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const data = await proveedoresService.getAll();
-      setProveedores(data);
-    } catch (error) {
-      console.error("Error al cargar proveedores:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const resetForm = () => {
-    setEditId(null);
-    setFormData({
-      nombre_empresa: '',
-      contacto_nombre: '',
-      telefono: '',
-      correo: '',
-      dias_credito: 0
-    });
-  };
-
-  const prepararEdicion = (p) => {
-    setEditId(p.id);
-    setFormData({
-      nombre_empresa: p.nombre_empresa || '',
-      contacto_nombre: p.contacto_nombre || '',
-      telefono: p.telefono || '',
-      correo: p.correo || '',
-      dias_credito: p.dias_credito || 0
-    });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!puedeEditar) return; 
-
-    setLoading(true);
-    try {
-      const { error } = await proveedoresService.save(formData, editId);
-      if (error) throw error;
-      
+  // 🛡️ CONFIRMACIÓN PARA DESCARTAR CAMBIOS
+  const handleCancelClick = () => {
+    // Revisamos si el usuario ya escribió algo en el formulario
+    const tieneDatos = formData.nombre_empresa || formData.contacto_nombre || formData.telefono || formData.correo;
+    
+    if (tieneDatos) {
+      Swal.fire({
+        title: '¿Estás seguro?',
+        text: "Los datos que escribiste se perderán.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33', 
+        cancelButtonColor: '#3085d6', 
+        confirmButtonText: 'Sí, descartar',
+        cancelButtonText: 'Seguir editando'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          resetForm();
+        }
+      });
+    } else {
+      // Si está vacío, cerramos directamente sin molestar
       resetForm();
-      await fetchData();
-    } catch (error) {
-      alert("Error al procesar la solicitud: " + error.message);
-    } finally {
-      setLoading(false);
     }
   };
 
-  const handleDelete = async (id, nombre) => {
-    if (!puedeBorrar) return; 
-    if (window.confirm(`¿Estás seguro de eliminar al proveedor "${nombre}"?`)) {
-      try {
-        const { error } = await proveedoresService.delete(id);
-        if (error) throw error;
-        await fetchData();
-      } catch (error) {
-        alert("Error al eliminar: " + error.message);
+  // 🛡️ CONFIRMACIÓN PARA BORRAR PROVEEDOR
+  const confirmDeleteProveedor = (id, nombre_empresa) => {
+    Swal.fire({
+      title: `¿Eliminar al proveedor "${nombre_empresa}"?`,
+      text: "Esta acción no se puede deshacer.",
+      icon: 'error',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#6c757d', // Gris neutral para cancelar
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        handleDelete(id, nombre_empresa); // Disparamos la función de tu hook
       }
-    }
+    });
   };
 
   return (
@@ -102,8 +65,8 @@ export const ProveedoresTab = () => {
 
       <div className={s.splitLayout}>
         
-        {/* PANEL DE REGISTRO / EDICIÓN PROTEGIDO */}
-        <aside className={s.adminCard}>
+        {/* PANEL DE REGISTRO / EDICIÓN PROTEGIDO: Oculto si no puede crear ni hay un elemento en vista */}
+        <aside className={s.adminCard} style={{ display: puedeCrear || editId ? 'block' : 'none' }}>
           <h3 className={s.cardTitle}>
             {editId ? (puedeEditar ? 'Editar Proveedor' : 'Ficha Técnica') : '🏢 Nuevo Proveedor'}
           </h3>
@@ -116,7 +79,8 @@ export const ProveedoresTab = () => {
                 onChange={e => setFormData({...formData, nombre_empresa: e.target.value})} 
                 required 
                 placeholder="Nombre comercial"
-                readOnly={!puedeEditar}
+                readOnly={editId ? !puedeEditar : !puedeCrear}
+                style={{ backgroundColor: (editId ? !puedeEditar : !puedeCrear) ? "var(--color-bg-muted)" : "white" }}
               />
             </div>
 
@@ -127,7 +91,8 @@ export const ProveedoresTab = () => {
                 value={formData.contacto_nombre} 
                 onChange={e => setFormData({...formData, contacto_nombre: e.target.value})} 
                 placeholder="Persona de ventas/atención"
-                readOnly={!puedeEditar}
+                readOnly={editId ? !puedeEditar : !puedeCrear}
+                style={{ backgroundColor: (editId ? !puedeEditar : !puedeCrear) ? "var(--color-bg-muted)" : "white" }}
               />
             </div>
 
@@ -139,7 +104,8 @@ export const ProveedoresTab = () => {
                   value={formData.telefono} 
                   onChange={e => setFormData({...formData, telefono: e.target.value})} 
                   placeholder="WhatsApp/Oficina"
-                  readOnly={!puedeEditar}
+                  readOnly={editId ? !puedeEditar : !puedeCrear}
+                  style={{ backgroundColor: (editId ? !puedeEditar : !puedeCrear) ? "var(--color-bg-muted)" : "white" }}
                 />
               </div>
               <div className={s.formGroup}>
@@ -149,7 +115,8 @@ export const ProveedoresTab = () => {
                   type="number" 
                   value={formData.dias_credito} 
                   onChange={e => setFormData({...formData, dias_credito: e.target.value})} 
-                  readOnly={!puedeEditar}
+                  readOnly={editId ? !puedeEditar : !puedeCrear}
+                  style={{ backgroundColor: (editId ? !puedeEditar : !puedeCrear) ? "var(--color-bg-muted)" : "white" }}
                 />
               </div>
             </div>
@@ -162,13 +129,14 @@ export const ProveedoresTab = () => {
                 value={formData.correo} 
                 onChange={e => setFormData({...formData, correo: e.target.value})} 
                 placeholder="correo@proveedor.com"
-                readOnly={!puedeEditar}
+                readOnly={editId ? !puedeEditar : !puedeCrear}
+                style={{ backgroundColor: (editId ? !puedeEditar : !puedeCrear) ? "var(--color-bg-muted)" : "white" }}
               />
             </div>
 
             <div className={s.flexColumnGap10} style={{ marginTop: '10px' }}>
-              {/* Botón de acción principal */}
-              {puedeEditar && (
+              {/* Botón de acción principal: Evalúa permiso dinámicamente */}
+              {(editId ? puedeEditar : puedeCrear) && (
                 <button 
                   type="submit" 
                   className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`}
@@ -181,8 +149,8 @@ export const ProveedoresTab = () => {
               {editId && (
                 <button 
                   type="button" 
-                  className={`${s.btn} ${s.btn} ${s.btnSmall}`}
-                  onClick={resetForm} 
+                  className={`${s.btn} ${s.btnDark} ${s.btnSmall}`}
+                  onClick={handleCancelClick} // 👈 Cambiamos resetForm por nuestra nueva confirmación
                 >
                   {puedeEditar ? 'CANCELAR EDICIÓN' : 'CERRAR VISTA'}
                 </button>
@@ -230,7 +198,7 @@ export const ProveedoresTab = () => {
                         {puedeBorrar && (
                           <button 
                             className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`}
-                            onClick={() => handleDelete(p.id, p.nombre_empresa)}
+                            onClick={() => confirmDeleteProveedor(p.id, p.nombre_empresa)} // 👈 Cambiamos handleDelete por nuestra confirmación
                           >
                             ❌
                           </button>

@@ -32,9 +32,9 @@ export const inventarioService = {
   },
 
   async crearMovimiento(movimiento) {
-    // 🛡️ Blindaje de escritura (Kardex)
-    if (!hasPermission('editar_inventario')) {
-      return { success: false, error: 'Acceso denegado: No tienes facultades para mover inventario.' };
+    // 🛡️ Blindaje de escritura (Kardex) - Inserción de nuevo movimiento
+    if (!hasPermission('crear_inventario')) {
+      return { success: false, error: 'Acceso denegado: No tienes facultades para registrar nuevos movimientos de inventario.' };
     }
 
     try {
@@ -130,9 +130,9 @@ export const inventarioService = {
   },
 
   async aplicarAuditoriaInsumo({ sucursal_id, insumo_id, stock_esperado, conteo_fisico, usuario_id }) {
-    // 🛡️ Blindaje crítico: Las auditorías son la base del control
+    // 🛡️ Blindaje crítico: Las auditorías son la base del control (Edición/Ajuste de Stock)
     if (!hasPermission('editar_inventario')) {
-      return { success: false, error: 'Acceso denegado: Se requiere rol administrativo para auditar insumos.' };
+      return { success: false, error: 'Acceso denegado: Se requiere rol administrativo para auditar y ajustar insumos.' };
     }
 
     try {

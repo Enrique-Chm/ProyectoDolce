@@ -1,25 +1,28 @@
 // Archivo: src/modules/Admin/AdminPage.jsx
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, Suspense } from "react";
+import { Navigate } from "react-router-dom"; // 👈 IMPORTANTE: Agregamos Navigate
 import s from "./AdminPage.module.css";
 import { authService } from "../../services/Auth.service";
 import { sucursalesService } from "../../services/Sucursales.service";
 import { useSessionGuard } from "../../hooks/useSessionGuard";
 
-// Componentes de las pestañas
-import { Login } from "./Login";
-import { AnaliticaTab } from "./components/AnaliticaTab";
-import { ConfigTab } from "./components/ConfigTab"; 
-import { ProveedoresTab } from "./components/ProveedoresTab";
-import { InsumosTab } from "./components/InsumosTab";
-import { RecetasTab } from "./components/RecetasTab";
-import { ProductosTab } from "./components/ProductosTab";
-import { EmpleadosTab } from "./components/EmpleadosTab";
-import { MeseroTab } from "./components/MeseroTab"; 
-import CajeroTab from './components/CajeroTab';
-import { ImpresorasTab } from "./components/ImpresorasTab";
-import InventariosTab from "./components/InventariosTab"; 
-import EstimacionesTab from "./components/EstimacionesTab"; 
-import { GastosTab } from "./components/GastosTab";
+// 🚀 LAZY LOADING: Componentes de las pestañas (Carga bajo demanda)
+// Para los que tienen export nombrado (export const ...)
+const AnaliticaTab = React.lazy(() => import("./components/AnaliticaTab").then(module => ({ default: module.AnaliticaTab })));
+const ConfigTab = React.lazy(() => import("./components/ConfigTab").then(module => ({ default: module.ConfigTab }))); 
+const ProveedoresTab = React.lazy(() => import("./components/ProveedoresTab").then(module => ({ default: module.ProveedoresTab })));
+const InsumosTab = React.lazy(() => import("./components/InsumosTab").then(module => ({ default: module.InsumosTab })));
+const RecetasTab = React.lazy(() => import("./components/RecetasTab").then(module => ({ default: module.RecetasTab })));
+const ProductosTab = React.lazy(() => import("./components/ProductosTab").then(module => ({ default: module.ProductosTab })));
+const EmpleadosTab = React.lazy(() => import("./components/EmpleadosTab").then(module => ({ default: module.EmpleadosTab })));
+const MeseroTab = React.lazy(() => import("./components/MeseroTab").then(module => ({ default: module.MeseroTab }))); 
+const ImpresorasTab = React.lazy(() => import("./components/ImpresorasTab").then(module => ({ default: module.ImpresorasTab })));
+const GastosTab = React.lazy(() => import("./components/GastosTab").then(module => ({ default: module.GastosTab })));
+
+// Para los que tienen export por defecto (export default ...)
+const CajeroTab = React.lazy(() => import('./components/CajeroTab'));
+const InventariosTab = React.lazy(() => import("./components/InventariosTab")); 
+const EstimacionesTab = React.lazy(() => import("./components/EstimacionesTab")); 
 
 const AdminPage = () => {
   useSessionGuard();
@@ -82,8 +85,9 @@ const AdminPage = () => {
     setUserSession(null);
   };
 
+  // 🛑 CAMBIO CLAVE: Expulsamos al usuario a la ruta oficial de Login
   if (!userSession) {
-    return <Login onLoginSuccess={(session) => setUserSession(session)} />;
+    return <Navigate to="/login" replace />;
   }
 
   return (
@@ -144,19 +148,25 @@ const AdminPage = () => {
 
         {/* CONTENIDO DINÁMICO */}
         <section className={s.tabContent}>
-           {activeTab === 'analitica' && <AnaliticaTab sucursalId={filterSucursal} />}
-           {activeTab === 'mesero' && <MeseroTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
-           {activeTab === 'cajero' && <CajeroTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
-           {activeTab === 'insumos' && <InsumosTab sucursalId={filterSucursal} />}
-           {activeTab === 'kardex' && <InventariosTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
-           {activeTab === 'estimaciones' && <EstimacionesTab sucursalId={filterSucursal} />}
-           {activeTab === 'gastos' && <GastosTab />}
-           {activeTab === 'recetas' && <RecetasTab sucursalId={filterSucursal} />}
-           {activeTab === 'productos' && <ProductosTab sucursalId={filterSucursal} />}
-           {activeTab === 'proveedores' && <ProveedoresTab sucursalId={filterSucursal} />}
-           {activeTab === 'empleados' && <EmpleadosTab />}
-           {activeTab === 'impresoras' && <ImpresorasTab sucursalId={filterSucursal} />}
-           {activeTab === 'config' && <ConfigTab />}
+          <Suspense fallback={
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '40px', color: 'gray', fontWeight: 'bold' }}>
+              Cargando módulo...
+            </div>
+          }>
+             {activeTab === 'analitica' && <AnaliticaTab sucursalId={filterSucursal} />}
+             {activeTab === 'mesero' && <MeseroTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
+             {activeTab === 'cajero' && <CajeroTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
+             {activeTab === 'insumos' && <InsumosTab sucursalId={filterSucursal} />}
+             {activeTab === 'kardex' && <InventariosTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
+             {activeTab === 'estimaciones' && <EstimacionesTab sucursalId={filterSucursal} />}
+             {activeTab === 'gastos' && <GastosTab />}
+             {activeTab === 'recetas' && <RecetasTab sucursalId={filterSucursal} />}
+             {activeTab === 'productos' && <ProductosTab sucursalId={filterSucursal} />}
+             {activeTab === 'proveedores' && <ProveedoresTab sucursalId={filterSucursal} />}
+             {activeTab === 'empleados' && <EmpleadosTab />}
+             {activeTab === 'impresoras' && <ImpresorasTab sucursalId={filterSucursal} />}
+             {activeTab === 'config' && <ConfigTab />}
+          </Suspense>
         </section>
       </main>
     </div>

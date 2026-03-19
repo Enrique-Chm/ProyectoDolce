@@ -11,9 +11,11 @@ export const useInventarios = (sucursalId) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // 🛡️ DEFINICIÓN DE FACULTADES
+  // 🛡️ DEFINICIÓN DE FACULTADES ESTANDARIZADAS
   const puedeVer = hasPermission('ver_inventario');
+  const puedeCrear = hasPermission('crear_inventario');
   const puedeEditar = hasPermission('editar_inventario');
+  const puedeBorrar = hasPermission('borrar_inventario');
 
   // --- ESTADOS MOVIDOS DESDE EL JSX ---
   const [searchTerm, setSearchTerm] = useState('');
@@ -94,8 +96,8 @@ export const useInventarios = (sucursalId) => {
 
   // --- LÓGICA DE NEGOCIO: REGISTRO MANUAL ---
   const procesarNuevoMovimiento = async (nuevoMov, insumoSeleccionado, usuarioId) => {
-    // 🛡️ BLINDAJE: Bloqueo de acción si no tiene facultades
-    if (!puedeEditar) return { success: false, error: "No tienes permiso para registrar movimientos de inventario." };
+    // 🛡️ BLINDAJE: Registro de nuevos movimientos requiere permiso de creación
+    if (!puedeCrear) return { success: false, error: "No tienes permiso para registrar nuevos movimientos de inventario." };
     if (!insumoSeleccionado) return { success: false, error: "Selecciona un insumo de la lista." };
     
     const stockAntes = Number(insumoSeleccionado.stock_fisico);
@@ -156,8 +158,8 @@ export const useInventarios = (sucursalId) => {
   }, [sucursalId, puedeVer]);
 
   const guardarConteoFisico = async (filaAuditoria, conteoFisico, usuarioId, fechaInicio, fechaFin) => {
-    // 🛡️ BLINDAJE: Las auditorías son críticas, solo personal con permiso de edición
-    if (!puedeEditar) return { success: false, error: "Acceso denegado: Se requiere nivel administrativo para auditar." };
+    // 🛡️ BLINDAJE: Las auditorías son críticas (ajuste de stock), requieren permiso de edición
+    if (!puedeEditar) return { success: false, error: "Acceso denegado: Se requiere permiso para auditar/editar inventario." };
 
     setLoading(true);
     try {
@@ -202,8 +204,8 @@ export const useInventarios = (sucursalId) => {
 
   return {
     // Datos blindados de salida
-    insumos: puedeVer ? insumos : [],              
-    insumosFiltrados,     
+    insumos: puedeVer ? insumos : [],              
+    insumosFiltrados,     
     movimientos: puedeVer ? movimientos : [],
     motivosCatalogo: puedeVer ? motivosCatalogo : [],
     contrasteData: puedeVer ? contrasteData : [],
@@ -224,6 +226,8 @@ export const useInventarios = (sucursalId) => {
 
     // 🛡️ Flags de seguridad para el JSX
     puedeVer,
-    puedeEditar
+    puedeCrear,
+    puedeEditar,
+    puedeBorrar
   };
 };

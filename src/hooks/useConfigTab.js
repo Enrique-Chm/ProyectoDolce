@@ -6,9 +6,11 @@ import { hasPermission } from '../utils/checkPermiso';
 export const useConfigTab = (subTab) => {
   const [loading, setLoading] = useState(false);
 
-  // 🛡️ DEFINICIÓN DE FACULTADES (Blindaje de nivel Configuración)
+  // 🛡️ DEFINICIÓN DE FACULTADES BASE (Blindaje de nivel Configuración)
   const puedeVerConfig = hasPermission('ver_configuracion');
+  const puedeCrearConfig = hasPermission('crear_configuracion');   // 👈 Nuevo estándar
   const puedeEditarConfig = hasPermission('editar_configuracion');
+  const puedeBorrarConfig = hasPermission('borrar_configuracion'); // 👈 Nuevo estándar
 
   // --- ESTADOS: UNIDADES ---
   const [unidades, setUnidades] = useState([]);
@@ -31,13 +33,16 @@ export const useConfigTab = (subTab) => {
   const [mTipo, setMTipo] = useState('ENTRADA');
   const [mEditId, setMEditId] = useState(null);
 
-  // Lógica de Permisos Original (Mantenida al 100%)
-  // 🛡️ Nota: Se mantienen los nombres de variables del usuario pero se asegura la protección
+  // Lógica de Permisos Original (Mantenida al 100% y expandida para la separación Crear/Editar)
+  const puedeCrearU = puedeCrearConfig && hasPermission('ver_unidades');
   const puedeEditarU = puedeEditarConfig && hasPermission('ver_unidades');
+  
+  const puedeCrearC = puedeCrearConfig && hasPermission('ver_categorias');
   const puedeEditarC = puedeEditarConfig && hasPermission('ver_categorias');
+  
+  const puedeCrearM = puedeCrearConfig && hasPermission('ver_insumos'); 
   const puedeEditarM = puedeEditarConfig && hasPermission('ver_insumos'); 
-  const puedeBorrar = hasPermission('borrar_registros');
-
+  
   const fetchData = useCallback(async () => {
     // 🛡️ BLINDAJE: Si no tiene permiso general de ver configuración, no hacemos nada
     if (!puedeVerConfig) return;
@@ -49,7 +54,6 @@ export const useConfigTab = (subTab) => {
         setUnidades(data || []);
       } 
       else if (subTab === 'categorias') {
-        // Ejecutamos por separado para que una tabla mala no rompa la otra
         const menuRes = await configService.getMenu();
         const insumosRes = await configService.getInsumos();
         
@@ -77,35 +81,79 @@ export const useConfigTab = (subTab) => {
   // --- HANDLERS BLINDADOS ---
   const handleSubmitUnidad = async (e) => {
     e.preventDefault();
-    if (!puedeEditarU) return; // 🛡️ Protección de ejecución
+    const tienePermiso = uEditId ? puedeEditarU : puedeCrearU;
+    if (!tienePermiso) return alert("Acceso Denegado: Se requiere permiso para guardar unidades de medida."); 
+
     const { error } = await configService.saveUnidad({ nombre: uNombre, abreviatura: uAbrev }, uEditId);
-    if (!error) { resetUnidad(); fetchData(); }
+    if (!error) { 
+      resetUnidad(); 
+      fetchData(); 
+    } else {
+      alert("Error al guardar: " + error.message);
+    }
   };
 
   const handleSubmitCatMenu = async (e) => {
     e.preventDefault();
-    if (!puedeEditarC) return; // 🛡️ Protección de ejecución
+    const tienePermiso = cMenuEditId ? puedeEditarC : puedeCrearC;
+    if (!tienePermiso) return alert("Acceso Denegado: Se requiere permiso para guardar categorías de menú."); 
+
     const { error } = await configService.saveMenu({ nombre: cMenuNombre, color_etiqueta: cMenuColor }, cMenuEditId);
-    if (!error) { resetCatMenu(); fetchData(); }
-    else alert("Error al guardar: " + error.message);
+    if (!error) { 
+      resetCatMenu(); 
+      fetchData(); 
+    } else { 
+      alert("Error al guardar: " + error.message);
+    }
   };
 
   const handleSubmitCatInsumo = async (e) => {
     e.preventDefault();
-    if (!puedeEditarC) return; // 🛡️ Protección de ejecución
+    const tienePermiso = cInsumoEditId ? puedeEditarC : puedeCrearC;
+    if (!tienePermiso) return alert("Acceso Denegado: Se requiere permiso para guardar categorías de insumos."); 
+
     const { error } = await configService.saveInsumo({ nombre: cInsumoNombre }, cInsumoEditId);
-    if (!error) { resetCatInsumo(); fetchData(); }
-    else alert("Error al guardar: " + error.message);
+    if (!error) { 
+      resetCatInsumo(); 
+      fetchData(); 
+    } else { 
+      alert("Error al guardar: " + error.message);
+    }
   };
 
   const handleSubmitMotivo = async (e) => {
     e.preventDefault();
-    if (!puedeEditarM) return; // 🛡️ Protección de ejecución
+    const tienePermiso = mEditId ? puedeEditarM : puedeCrearM;
+    if (!tienePermiso) return alert("Acceso Denegado: Se requiere permiso para guardar motivos de ajuste."); 
+
     const { error } = await configService.saveMotivoInventario({ nombre_motivo: mNombre, tipo: mTipo }, mEditId);
-    if (!error) { resetMotivo(); fetchData(); }
+    if (!error) { 
+      resetMotivo(); 
+      fetchData(); 
+    } else {
+      alert("Error al guardar: " + error.message);
+    }
   };
 
-  // Resets auxiliares (Mantenidos intactos)
+  // 🛡️ LÓGICA DE BORRADO AÑADIDA
+  const handleDelete = async (tipo, id) => {
+    if (!puedeBorrarConfig) return alert("Acceso Denegado: Se requiere permiso para borrar en configuración.");
+    
+    if (window.confirm("¿Estás seguro de eliminar este registro? Esta acción no se puede deshacer.")) {
+      setLoading(true);
+      let res;
+      if (tipo === 'unidades') res = await configService.deleteUnidad(id);
+      if (tipo === 'menu') res = await configService.deleteMenu(id);
+      if (tipo === 'insumos') res = await configService.deleteInsumo(id);
+      if (tipo === 'motivos') res = await configService.deleteMotivoInventario(id);
+
+      if (res?.error) alert("Error al eliminar: " + res.error.message);
+      else fetchData();
+      setLoading(false);
+    }
+  };
+
+  // Resets auxiliares
   const resetUnidad = () => { setUEditId(null); setUNombre(''); setUAbrev(''); };
   const resetCatMenu = () => { setCMenuEditId(null); setCMenuNombre(''); setCMenuColor('#005696'); };
   const resetCatInsumo = () => { setCInsumoEditId(null); setCInsumoNombre(''); };
@@ -113,16 +161,20 @@ export const useConfigTab = (subTab) => {
 
   return {
     loading, 
-    // 🛡️ Exportamos facultades para que el JSX oculte botones
-    puedeEditarU, puedeEditarC, puedeEditarM, puedeBorrar, puedeVerConfig,
+    // 🛡️ Exportamos facultades
+    puedeVerConfig, puedeBorrarConfig, // Corregido el nombre aquí
+    puedeCrearU, puedeEditarU, 
+    puedeCrearC, puedeEditarC, 
+    puedeCrearM, puedeEditarM,
     
-    // 🛡️ Datos blindados: Si no puede ver configuración, devolvemos vacíos
+    // Exportamos función de borrado
+    handleDelete, 
+
     unidades: puedeVerConfig ? unidades : [], 
     catMenu: puedeVerConfig ? catMenu : [], 
     catInsumos: puedeVerConfig ? catInsumos : [],
     motivosInventario: puedeVerConfig ? motivosInventario : [],
 
-    // Resto de estados y setters (Sin cambios)
     uNombre, setUNombre, uAbrev, setUAbrev, uEditId, setUEditId, handleSubmitUnidad,
     cMenuNombre, setCMenuNombre, cMenuColor, setCMenuColor, cInsumoNombre, setCInsumoNombre, 
     cMenuEditId, setCMenuEditId, cInsumoEditId, setCInsumoEditId, handleSubmitCatMenu, handleSubmitCatInsumo,
