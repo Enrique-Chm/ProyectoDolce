@@ -12,9 +12,14 @@ export const useRecetasTab = (sucursalId) => {
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
+  // Estados base de la receta
   const [nombreReceta, setNombreReceta] = useState("");
   const [isSubreceta, setIsSubreceta] = useState(false);
   
+  // 💡 NUEVOS ESTADOS: Rendimiento y Unidad Final
+  const [rendimiento, setRendimiento] = useState(1);
+  const [unidadMedidaFinal, setUnidadMedidaFinal] = useState("");
+
   const [ingredientes, setIngredientes] = useState([
     { tipo: 'insumo', insumo_id: "", cantidad: "", unidad_id: "" },
   ]);
@@ -31,7 +36,7 @@ export const useRecetasTab = (sucursalId) => {
       setLoading(true);
       const data = await recetasService.getInitialData(sucursalId);
       
-      const unidadesDescargadas = data.unidades || []; // 👈 Usamos la info directa del server
+      const unidadesDescargadas = data.unidades || []; 
       
       setRecetasAgrupadas(data.recetasAgrupadas || []);
       setUnidades(unidadesDescargadas);
@@ -41,9 +46,8 @@ export const useRecetasTab = (sucursalId) => {
       const subAdaptadas = (data.subrecetas || []).map(sub => ({
         id: sub.id_receta || sub.nombre, 
         nombre: sub.nombre,
-        costo_unitario: sub.costo_total_receta || sub.costo_total || 0,
-        // 💡 Buscamos en 'unidadesDescargadas' para no crear un bucle infinito
-        unidad_medida: unidadesDescargadas.find(u => u.nombre.toLowerCase().includes('porción'))?.id || "" 
+        costo_unitario: sub.costo_unitario_final || sub.costo_total_receta || 0, // 👈 Usamos el costo unitario real
+        unidad_medida_id: sub.unidad_medida_final || "" 
       }));
       setSubrecetasLista(subAdaptadas);
       
@@ -53,7 +57,7 @@ export const useRecetasTab = (sucursalId) => {
     } finally {
       setLoading(false);
     }
-  }, [sucursalId, puedeVer]); // 👈 Quitamos 'unidades' de aquí para romper el bucle
+  }, [sucursalId, puedeVer]);
 
   useEffect(() => {
     fetchData();
@@ -74,6 +78,8 @@ export const useRecetasTab = (sucursalId) => {
   const resetForm = () => {
     setNombreReceta("");
     setIsSubreceta(false);
+    setRendimiento(1); // 👈 Reset rendimiento
+    setUnidadMedidaFinal(""); // 👈 Reset unidad final
     setIngredientes([{ tipo: 'insumo', insumo_id: "", cantidad: "", unidad_id: "" }]);
     setIsEditing(false);
   };
@@ -83,8 +89,11 @@ export const useRecetasTab = (sucursalId) => {
     setNombreReceta(receta.nombre);
     setIsSubreceta(receta.subreceta);
     
+    // 💡 Cargamos el rendimiento y la unidad final desde la receta seleccionada
+    setRendimiento(receta.rendimiento_cantidad || 1);
+    setUnidadMedidaFinal(receta.unidad_medida_final || "");
+
     const ingsMapeados = receta.detalle_ingredientes.map((ing) => {
-      // 💡 Averiguamos si el ingrediente guardado era insumo o subreceta
       const esSubrecetaDb = subrecetasLista.some(s => s.nombre === ing.insumo);
       const tipoReal = esSubrecetaDb ? 'subreceta' : 'insumo';
       
@@ -116,12 +125,19 @@ export const useRecetasTab = (sucursalId) => {
     const hayIncompletos = ingredientes.some(ing => !ing.insumo_id);
     if (hayIncompletos) return toast.error("Por favor, selecciona opciones válidas en todos los ingredientes.");
 
+    if (!unidadMedidaFinal && isSubreceta) {
+        return toast.error("Define la unidad de medida del resultado final.");
+    }
+
     setLoading(true);
     const guardandoToast = toast.loading(isEditing ? "Actualizando receta..." : "Guardando receta...");
 
+    // 💡 Incluimos rendimiento y unidad final en cada fila (denormalización para la tabla recetas)
     const rows = ingredientes.map((ing) => ({
       nombre: nombreReceta,
       subreceta: isSubreceta,
+      rendimiento_cantidad: parseFloat(rendimiento) || 1, // 👈 Persistencia de rendimiento
+      unidad_medida_final: parseInt(unidadMedidaFinal) || null, // 👈 Persistencia de UM Final
       insumo: ing.tipo === 'insumo' ? parseInt(ing.insumo_id) : null, 
       subreceta_id: ing.tipo === 'subreceta' ? ing.insumo_id : null,
       cantidad: parseFloat(ing.cantidad),
@@ -155,7 +171,11 @@ export const useRecetasTab = (sucursalId) => {
 
   return {
     recetasAgrupadas, insumos, subrecetasLista, unidades, loading, isEditing, 
-    nombreReceta, setNombreReceta, isSubreceta, setIsSubreceta, ingredientes, setIngredientes,
+    nombreReceta, setNombreReceta, 
+    isSubreceta, setIsSubreceta, 
+    rendimiento, setRendimiento, // 👈 Exportamos nuevos estados
+    unidadMedidaFinal, setUnidadMedidaFinal, // 👈 Exportamos nuevos estados
+    ingredientes, setIngredientes,
     puedeCrear, puedeEditar, puedeBorrar,
     removeIngrediente, resetForm, handleEdit, handleSubmit, handleDeleteReceta
   };

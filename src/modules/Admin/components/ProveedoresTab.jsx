@@ -1,8 +1,8 @@
 // Archivo: src/modules/Admin/components/ProveedoresTab.jsx
 import React from 'react';
 import s from '../AdminPage.module.css';
-import { useProveedoresTab } from '../../../hooks/useProveedoresTab'; // 👈 Importamos el nuevo hook
-import Swal from 'sweetalert2'; // 👈 Importamos al "Guardia" para las confirmaciones destructivas
+import { useProveedoresTab } from '../../../hooks/useProveedoresTab'; 
+import Swal from 'sweetalert2'; 
 
 export const ProveedoresTab = () => {
   // Consumimos estados y métodos desde el hook
@@ -12,9 +12,12 @@ export const ProveedoresTab = () => {
     resetForm, prepararEdicion, handleSubmit, handleDelete
   } = useProveedoresTab();
 
+  // 💡 LÓGICA DE VISIBILIDAD DINÁMICA
+  // El formulario solo se muestra si el usuario puede crear o si está editando un registro.
+  const mostrarFormulario = puedeCrear || editId;
+
   // 🛡️ CONFIRMACIÓN PARA DESCARTAR CAMBIOS
   const handleCancelClick = () => {
-    // Revisamos si el usuario ya escribió algo en el formulario
     const tieneDatos = formData.nombre_empresa || formData.contacto_nombre || formData.telefono || formData.correo;
     
     if (tieneDatos) {
@@ -33,7 +36,6 @@ export const ProveedoresTab = () => {
         }
       });
     } else {
-      // Si está vacío, cerramos directamente sin molestar
       resetForm();
     }
   };
@@ -46,12 +48,12 @@ export const ProveedoresTab = () => {
       icon: 'error',
       showCancelButton: true,
       confirmButtonColor: '#d33',
-      cancelButtonColor: '#6c757d', // Gris neutral para cancelar
+      cancelButtonColor: '#6c757d', 
       confirmButtonText: 'Sí, eliminar',
       cancelButtonText: 'Cancelar'
     }).then((result) => {
       if (result.isConfirmed) {
-        handleDelete(id, nombre_empresa); // Disparamos la función de tu hook
+        handleDelete(id, nombre_empresa);
       }
     });
   };
@@ -63,10 +65,11 @@ export const ProveedoresTab = () => {
         {loading && <span className={s.syncBadge}>CARGANDO...</span>}
       </header>
 
-      <div className={s.splitLayout}>
+      {/* 💡 LAYOUT DINÁMICO: splitLayout (2 cols) o fullLayout (1 col) */}
+      <div className={mostrarFormulario ? s.splitLayout : s.fullLayout}>
         
-        {/* PANEL DE REGISTRO / EDICIÓN PROTEGIDO: Oculto si no puede crear ni hay un elemento en vista */}
-        <aside className={s.adminCard} style={{ display: puedeCrear || editId ? 'block' : 'none' }}>
+        {/* PANEL DE REGISTRO / EDICIÓN PROTEGIDO */}
+        <aside className={s.adminCard} style={{ display: mostrarFormulario ? 'block' : 'none' }}>
           <h3 className={s.cardTitle}>
             {editId ? (puedeEditar ? 'Editar Proveedor' : 'Ficha Técnica') : '🏢 Nuevo Proveedor'}
           </h3>
@@ -135,7 +138,6 @@ export const ProveedoresTab = () => {
             </div>
 
             <div className={s.flexColumnGap10} style={{ marginTop: '10px' }}>
-              {/* Botón de acción principal: Evalúa permiso dinámicamente */}
               {(editId ? puedeEditar : puedeCrear) && (
                 <button 
                   type="submit" 
@@ -150,7 +152,7 @@ export const ProveedoresTab = () => {
                 <button 
                   type="button" 
                   className={`${s.btn} ${s.btnDark} ${s.btnSmall}`}
-                  onClick={handleCancelClick} // 👈 Cambiamos resetForm por nuestra nueva confirmación
+                  onClick={handleCancelClick} 
                 >
                   {puedeEditar ? 'CANCELAR EDICIÓN' : 'CERRAR VISTA'}
                 </button>
@@ -159,9 +161,9 @@ export const ProveedoresTab = () => {
           </form>
         </aside>
 
-        {/* TABLA DE PROVEEDORES */}
+        {/* TABLA DE PROVEEDORES: Se adapta al ancho disponible */}
         <div className={`${s.adminCard} ${s.tableContainer}`}>
-          <table className={s.table} style={{ minWidth: '700px' }}>
+          <table className={s.table} style={{ minWidth: '700px', width: '100%' }}>
             <thead className={s.thead}>
               <tr>
                 <th className={s.th}>EMPRESA / CORREO</th>
@@ -183,8 +185,8 @@ export const ProveedoresTab = () => {
                       <div style={{ fontSize: '11px', color: 'var(--color-primary)', fontWeight: '700' }}>{p.telefono || 'Sin número'}</div>
                     </td>
                     <td className={s.td} style={{ textAlign: 'center' }}>
-                      <span className={s.th} style={{ opacity: p.dias_credito > 0 ? 1 : 0.5 }}>
-                        {p.dias_credito} Dias
+                      <span style={{ opacity: p.dias_credito > 0 ? 1 : 0.5, fontWeight: '600' }}>
+                        {p.dias_credito} Días
                       </span>
                     </td>
                     <td className={s.td} style={{ textAlign: 'right' }}>
@@ -193,12 +195,12 @@ export const ProveedoresTab = () => {
                           className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`}
                           onClick={() => prepararEdicion(p)}
                         >
-                          {puedeEditar ? '📝' : 'VER'}
+                          {puedeEditar ? '📝' : '👁️'}
                         </button>
                         {puedeBorrar && (
                           <button 
                             className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`}
-                            onClick={() => confirmDeleteProveedor(p.id, p.nombre_empresa)} // 👈 Cambiamos handleDelete por nuestra confirmación
+                            onClick={() => confirmDeleteProveedor(p.id, p.nombre_empresa)}
                           >
                             ❌
                           </button>

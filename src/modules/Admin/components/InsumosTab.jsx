@@ -305,7 +305,7 @@ export const InsumosTab = ({ sucursalId }) => {
                           onClick={() => {setEditId(i.id); setFormData({...i});}} 
                           className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`} 
                         >
-                          {puedeEditar ? '📝' : 'VER'}
+                          {puedeEditar ? '📝' : '👁️'}
                         </button>
                         
                         {/* Botón de Borrar protegido específicamente */}

@@ -4,8 +4,9 @@ import { hasPermission } from '../utils/checkPermiso'; // 🛡️ Importación d
 
 /**
  * SERVICIO DE RECETAS (Multi-Sucursal)
- * La lógica de filtrado ahora asegura que cada local 
+ * La lógica de filtrado asegura que cada local 
  * gestione sus propios costos e ingredientes.
+ * Actualizado para soportar Rendimiento y UM Final.
  */
 export const recetasService = {
   
@@ -23,7 +24,8 @@ export const recetasService = {
       const sId = sucursalId || 1;
 
       const [rec, ins, uni] = await Promise.all([
-        // Filtramos la vista de recetas por sucursal
+        // Filtramos la vista de recetas por sucursal. 
+        // La vista ya incluye rendimiento_cantidad y unidad_medida_final.
         supabase
           .from('vista_recetas_completas')
           .select('*')
@@ -41,6 +43,7 @@ export const recetasService = {
         supabase
           .from('cat_unidades_medida')
           .select('id, nombre, abreviatura')
+          .order('nombre')
       ]);
 
       if (rec.error) throw rec.error;
@@ -49,7 +52,7 @@ export const recetasService = {
 
       const todasLasRecetas = rec.data || [];
       
-      // 💡 CORRECCIÓN AQUÍ: El nombre correcto de la columna es 'subreceta'
+      // 💡 CORRECCIÓN: El nombre correcto de la columna es 'subreceta'
       const subrecetas = todasLasRecetas.filter(r => 
         r.subreceta === true || 
         r.subreceta === 'true' || 
@@ -59,7 +62,7 @@ export const recetasService = {
 
       return {
         recetasAgrupadas: todasLasRecetas,
-        subrecetas: subrecetas, // 👈 Ahora sí irá llena de datos
+        subrecetas: subrecetas, 
         insumos: ins.data || [],
         unidades: uni.data || []
       };
@@ -71,6 +74,7 @@ export const recetasService = {
 
   /**
    * Guarda la receta vinculándola a la sucursal seleccionada.
+   * Los objetos en 'rows' deben incluir rendimiento_cantidad y unidad_medida_final.
    */
   async saveReceta(rows, nombreOriginal, isEditing = false) {
     try {
@@ -87,6 +91,7 @@ export const recetasService = {
 
       const sucursalId = rows[0]?.sucursal_id;
 
+      // Si es edición, eliminamos la versión anterior antes de insertar la nueva
       if (isEditing && nombreOriginal) {
         const { error: deleteError } = await supabase
           .from('recetas')
@@ -97,6 +102,8 @@ export const recetasService = {
         if (deleteError) throw deleteError;
       }
 
+      // Insertamos las nuevas filas. Supabase aceptará rendimiento_cantidad y unidad_medida_final 
+      // porque ya existen en la estructura de la tabla.
       return await supabase.from('recetas').insert(rows);
     } catch (error) {
       console.error("Error en recetasService.saveReceta:", error);

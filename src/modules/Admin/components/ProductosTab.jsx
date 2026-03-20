@@ -15,20 +15,30 @@ const getMarginColor = (margen) => {
 };
 
 export const ProductosTab = ({ sucursalId }) => {
+  const [activeSubTab, setActiveSubTab] = useState('productos'); // 'productos' | 'grupos'
+
   const {
-    productos, categorias, recetasCosteadas, subrecetasDisponibles, loading, editId, formData, setFormData,
+    productos, categorias, recetasCosteadas, subrecetasDisponibles, gruposMaestros, loading,
     puedeCrear, puedeEditar, puedeBorrar,
-    addGrupo, removeGrupo, updateGrupo, addOpcionAGrupo, removeOpcionDeGrupo, updateOpcion,
-    handleSubmit, handleDelete, resetForm, handleEdit
+    // Hook: Estados y Métodos de Productos
+    editProdId, prodFormData, setProdFormData, handleSubmitProducto, handleEditProd, handleDeleteProd, resetProdForm, toggleGrupoEnProducto,
+    // Hook: Estados y Métodos de Grupos Maestros
+    editGrupoId, grupoFormData, setGrupoFormData, handleSubmitGrupo, handleEditGrupo, handleDeleteGrupo, resetGrupoForm, addOpcion, removeOpcion, updateOpcion
   } = useProductosTab(sucursalId);
 
-  const handleCancelClick = () => {
-    const tieneDatos = formData.nombre || formData.precio_venta > 0 || formData.grupos.length > 0;
-    
+  // 💡 LÓGICA DE VISIBILIDAD DINÁMICA (Para expansión de tablas según Rol)
+  const mostrarFormularioProd = puedeCrear || editProdId;
+  const mostrarFormularioGrupo = puedeCrear || editGrupoId;
+
+  // ==========================================
+  // 🛡️ ALERTAS SWEETALERT2: PRODUCTOS
+  // ==========================================
+  const handleCancelProdClick = () => {
+    const tieneDatos = prodFormData.nombre || prodFormData.precio_venta > 0 || prodFormData.grupos_vinculados.length > 0;
     if (tieneDatos) {
       Swal.fire({
         title: '¿Descartar cambios?',
-        text: "Los ajustes de precio o extras no guardados se perderán.",
+        text: "Los ajustes de precio o configuración no guardados se perderán.",
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33', 
@@ -36,10 +46,10 @@ export const ProductosTab = ({ sucursalId }) => {
         confirmButtonText: 'Sí, descartar',
         cancelButtonText: 'Seguir editando'
       }).then((result) => {
-        if (result.isConfirmed) resetForm();
+        if (result.isConfirmed) resetProdForm();
       });
     } else {
-      resetForm();
+      resetProdForm();
     }
   };
 
@@ -54,284 +64,415 @@ export const ProductosTab = ({ sucursalId }) => {
       confirmButtonText: 'Sí, quitar del menú',
       cancelButtonText: 'Cancelar'
     }).then((result) => {
-      if (result.isConfirmed) handleDelete(id); 
+      if (result.isConfirmed) handleDeleteProd(id); 
+    });
+  };
+
+  // ==========================================
+  // 🛡️ ALERTAS SWEETALERT2: GRUPOS MAESTROS
+  // ==========================================
+  const handleCancelGrupoClick = () => {
+    const tieneDatos = grupoFormData.nombre_grupo || (grupoFormData.opciones.length > 0 && grupoFormData.opciones[0].subreceta_id);
+    if (tieneDatos) {
+      Swal.fire({
+        title: '¿Descartar cambios?',
+        text: "La configuración de opciones no guardada se perderá.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33', 
+        cancelButtonColor: '#3085d6', 
+        confirmButtonText: 'Sí, descartar',
+        cancelButtonText: 'Seguir editando'
+      }).then((result) => {
+        if (result.isConfirmed) resetGrupoForm();
+      });
+    } else {
+      resetGrupoForm();
+    }
+  };
+
+  const confirmDeleteGrupo = (id, nombre) => {
+    Swal.fire({
+      title: `¿Eliminar grupo "${nombre}"?`,
+      text: "Este grupo desaparecerá de todos los productos que lo tengan vinculado. Esta acción no se puede deshacer.",
+      icon: 'error',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#6c757d', 
+      confirmButtonText: 'Sí, eliminar grupo',
+      cancelButtonText: 'Cancelar'
+    }).then((result) => {
+      if (result.isConfirmed) handleDeleteGrupo(id); 
     });
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div className={s.tabWrapper}>
       <header className={s.pageHeader}>
-        <h2 className={s.pageTitle}>Estrategia de Precios (Menú)</h2>
+        <h2 className={s.pageTitle}>Ingeniería de Menú</h2>
         {loading && <span className={s.syncBadge}>ACTUALIZANDO...</span>}
       </header>
 
-      <div className={s.splitLayout}>
-        
-        {/* LADO IZQUIERDO: FORMULARIO PROTEGIDO */}
-        <aside className={s.adminCard} style={{ display: puedeCrear || editId ? 'block' : 'none' }}>
-          <h3 className={s.cardTitle}>
-            {editId ? (puedeEditar ? 'Ajustar Producto' : 'Consulta de Producto') : 'Nuevo Producto'}
-          </h3>
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            
-            <div className={s.formGroup}>
-              <label className={s.label}>RECETA PRINCIPAL</label>
-              <SearchableSelect 
-                options={recetasCosteadas}
-                value={formData.nombre}
-                valueKey="nombre"
-                labelKey="nombre"
-                placeholder="Buscar receta..."
-                formatLabel={(opt) => `${opt.nombre} ($${opt.costo_final.toFixed(2)})`}
-                disabled={editId ? !puedeEditar : !puedeCrear}
-                onChange={(selectedValue) => {
-                  const rec = recetasCosteadas.find(r => r.nombre === selectedValue);
-                  setFormData({...formData, nombre: selectedValue, costo_referencia: rec ? rec.costo_final : 0});
-                }}
-              />
-            </div>
+      {/* NAVEGACIÓN DE SUB-TABS */}
+      <nav className={s.tabNav}>
+        <button 
+          className={`${s.tabButton} ${activeSubTab === 'productos' ? s.activeTabButton : ''}`} 
+          onClick={() => setActiveSubTab('productos')}
+        >
+          PLATILLOS DEL MENÚ
+        </button>
+        <button 
+          className={`${s.tabButton} ${activeSubTab === 'grupos' ? s.activeTabButton : ''}`} 
+          onClick={() => setActiveSubTab('grupos')}
+        >
+           CATÁLOGO DE EXTRAS
+        </button>
+      </nav>
 
-            <div className={s.formGrid}>
+      {/* ============================================================== */}
+      {/* VISTA 1: PLATILLOS DEL MENÚ */}
+      {/* ============================================================== */}
+      {activeSubTab === 'productos' && (
+        <div className={mostrarFormularioProd ? s.splitLayout : s.fullLayout}>
+          <aside className={s.adminCard} style={{ display: mostrarFormularioProd ? 'block' : 'none' }}>
+            <h3 className={s.cardTitle}>{editProdId ? 'Ajustar Producto' : 'Nuevo Producto'}</h3>
+            
+            <form onSubmit={handleSubmitProducto} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div className={s.formGroup}>
-                <label className={s.label}>PRECIO PÚBLICO ($)</label>
-                <input 
-                  type="number" step="0.01" 
-                  className={s.inputField}
-                  style={{ fontWeight: '600', backgroundColor: (editId ? !puedeEditar : !puedeCrear) ? "var(--color-bg-muted)" : "white" }}
-                  value={formData.precio_venta} 
-                  onChange={e => setFormData({...formData, precio_venta: e.target.value})} 
-                  required readOnly={editId ? !puedeEditar : !puedeCrear} 
+                <label className={s.label}>RECETA PRINCIPAL</label>
+                <SearchableSelect 
+                  options={recetasCosteadas} 
+                  value={prodFormData.nombre} 
+                  valueKey="nombre" 
+                  labelKey="nombre"
+                  placeholder="Buscar receta costeada..."
+                  formatLabel={(opt) => `${opt.nombre} ($${opt.costo_final.toFixed(2)})`}
+                  disabled={editProdId ? !puedeEditar : !puedeCrear}
+                  onChange={(val) => {
+                    const rec = recetasCosteadas.find(r => r.nombre === val);
+                    setProdFormData({...prodFormData, nombre: val, costo_referencia: rec ? rec.costo_final : 0});
+                  }}
                 />
               </div>
-              <div className={s.formGroup}>
-                <label className={s.label}>MARGEN NETO %</label>
-                <div className={s.unitDisplayBox} style={{ 
-                  fontWeight: '700', 
-                  color: getMarginColor(formData.margen_en_vivo) 
-                }}>
-                  {formData.margen_en_vivo}%
+
+              <div className={s.formGrid}>
+                <div className={s.formGroup}>
+                  <label className={s.label}>PRECIO PÚBLICO ($)</label>
+                  <input 
+                    type="number" step="0.01" className={s.inputField}
+                    style={{ fontWeight: '600', backgroundColor: (editProdId ? !puedeEditar : !puedeCrear) ? "var(--color-bg-muted)" : "white" }}
+                    value={prodFormData.precio_venta} 
+                    onChange={e => setProdFormData({...prodFormData, precio_venta: e.target.value})} 
+                    required readOnly={editProdId ? !puedeEditar : !puedeCrear} 
+                  />
+                </div>
+                <div className={s.formGroup}>
+                  <label className={s.label}>MARGEN NETO %</label>
+                  <div className={s.unitDisplayBox} style={{ fontWeight: '700', color: getMarginColor(prodFormData.margen_en_vivo) }}>
+                    {prodFormData.margen_en_vivo}%
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* ============================================================== */}
-            {/* 💡 SECCIÓN DE GRUPOS DE MODIFICADORES */}
-            {/* ============================================================== */}
-            <div className={s.flexColumnGap10} style={{ borderTop: '1px dashed var(--color-border)', paddingTop: '15px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <label className={s.label}>GRUPOS DE MODIFICADORES (EXTRAS)</label>
-                {(editId ? puedeEditar : puedeCrear) && (
-                  <button type="button" onClick={addGrupo} className={`${s.btn} ${s.btnSec} ${s.btnSmall}`}>+ CREAR GRUPO</button>
+              <div className={s.formGroup} style={{ borderTop: '1px dashed var(--color-border)', paddingTop: '15px' }}>
+                <label className={s.label}>VINCULAR GRUPOS DE EXTRAS</label>
+                <SearchableSelect 
+                  options={gruposMaestros.filter(g => !prodFormData.grupos_vinculados.includes(g.id))} 
+                  value="" 
+                  valueKey="id" 
+                  labelKey="nombre"
+                  placeholder="Buscar grupo para añadir..."
+                  disabled={editProdId ? !puedeEditar : !puedeCrear}
+                  onChange={(val) => {
+                    if (val) toggleGrupoEnProducto(val);
+                  }}
+                />
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px' }}>
+                  {prodFormData.grupos_vinculados.map(gId => {
+                    const grupo = gruposMaestros.find(gm => gm.id === gId);
+                    if (!grupo) return null;
+                    return (
+                      <div key={gId} className={s.badge} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: 'var(--color-primary)', color: 'white' }}>
+                        <span>{grupo.nombre}</span>
+                        {(editProdId ? puedeEditar : puedeCrear) && (
+                          <b 
+                            style={{ cursor: 'pointer', fontSize: '12px', borderLeft: '1px solid rgba(255,255,255,0.3)', paddingLeft: '8px' }} 
+                            onClick={() => toggleGrupoEnProducto(gId)}
+                          > × </b>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className={s.formGroup} style={{ borderTop: '1px dashed var(--color-border)', paddingTop: '15px' }}>
+                <label className={s.label}>CATEGORÍA EN MENÚ</label>
+                <SearchableSelect 
+                  options={categorias} 
+                  value={prodFormData.categoria} 
+                  valueKey="id" 
+                  labelKey="nombre"
+                  placeholder="Seleccionar categoría..."
+                  disabled={editProdId ? !puedeEditar : !puedeCrear}
+                  onChange={(val) => setProdFormData({...prodFormData, categoria: val})}
+                />
+              </div>
+
+              <div className={s.flexColumnGap10} style={{ marginTop: '10px' }}>
+                {(editProdId ? puedeEditar : puedeCrear) && (
+                  <button type="submit" className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`} disabled={loading}>
+                    {loading ? '...' : (editProdId ? 'ACTUALIZAR' : 'GUARDAR EN MENÚ')}
+                  </button>
+                )}
+                {editProdId && (
+                  <button type="button" className={`${s.btn} ${s.btnDark} ${s.btnFull}`} onClick={handleCancelProdClick}>
+                    {puedeEditar ? 'CANCELAR EDICIÓN' : 'CERRAR DETALLE'}
+                  </button>
+                )}
+              </div>
+            </form>
+          </aside>
+
+          <div className={`${s.adminCard} ${s.tableContainer}`}>
+            <table className={s.table} style={{ minWidth: '600px', width: '100%' }}>
+              <thead className={s.thead}>
+                <tr>
+                  <th className={s.th}>PRODUCTO</th>
+                  <th className={s.th}>COSTO RECETA</th>
+                  <th className={s.th}>VENTA (CON IVA)</th>
+                  <th className={s.th} style={{ textAlign: 'right' }}>ACCIONES</th>
+                </tr>
+              </thead>
+              <tbody>
+                {productos.map(p => {
+                  const costoBase = p.costo_actual || 0;
+                  const ventaBase = p.precio_venta || 0;
+                  const netoBase = ventaBase / IVA_FACTOR;
+                  const margenBase = netoBase > 0 ? (((netoBase - costoBase) / netoBase) * 100).toFixed(1) : 0;
+
+                  return (
+                    <tr key={p.id}>
+                      <td className={s.td}>
+                        <div style={{ fontWeight: '600', color: 'var(--color-text-main)' }}>{p.nombre}</div>
+                        <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '5px' }}>
+                          {(p.grupos || []).map(g => (
+                            <span key={g.id} className={s.badge} style={{ background: '#e0e7ff', color: '#3730a3', fontSize: '10px' }}>+ {g.nombre}</span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className={s.td}>${costoBase.toFixed(2)}</td>
+                      <td className={s.td}>
+                        <div className={s.totalAmount} style={{ color: 'var(--color-primary)' }}>${ventaBase.toFixed(2)}</div>
+                        <div style={{ fontSize: '12px', fontWeight: '700', color: getMarginColor(margenBase) }}>
+                          {margenBase}% Margen Real
+                        </div>
+                      </td>
+                      <td className={s.td} style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                          <button className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`} onClick={() => handleEditProd(p)}>
+                            {puedeEditar ? '📝' : '👁️'}
+                          </button>
+                          {puedeBorrar && (
+                            <button className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`} onClick={() => confirmDeleteProducto(p.id, p.nombre)}>
+                              ❌
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* VISTA 2: CATÁLOGO DE GRUPOS MAESTROS (EXTRAS) */}
+      {/* ============================================================== */}
+      {activeSubTab === 'grupos' && (
+        <div className={mostrarFormularioGrupo ? s.splitLayout : s.fullLayout}>
+          <aside className={s.adminCard} style={{ display: mostrarFormularioGrupo ? 'block' : 'none' }}>
+            <h3 className={s.cardTitle}>{editGrupoId ? 'Editar Grupo Maestro' : 'Crear Grupo Maestro'}</h3>
+            
+            <form onSubmit={handleSubmitGrupo} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <div className={s.formGroup}>
+                <label className={s.label}>NOMBRE DEL GRUPO</label>
+                <input 
+                  type="text" 
+                  className={s.inputField} 
+                  placeholder="Ej. Elige tu Proteína, Extras..." 
+                  value={grupoFormData.nombre_grupo} 
+                  onChange={e => setGrupoFormData({...grupoFormData, nombre_grupo: e.target.value})} 
+                  required readOnly={editGrupoId ? !puedeEditar : !puedeCrear}
+                />
+              </div>
+
+              <div className={s.formGrid} style={{ marginBottom: '5px' }}>
+                <label className={s.checkboxLabel}>
+                  <input 
+                    type="checkbox" 
+                    className={s.checkbox} 
+                    checked={grupoFormData.obligatorio} 
+                    onChange={(e) => setGrupoFormData({...grupoFormData, obligatorio: e.target.checked})} 
+                    disabled={editGrupoId ? !puedeEditar : !puedeCrear}
+                  />
+                  <span>Selección Obligatoria</span>
+                </label>
+                <div className={s.formGroup} style={{ marginBottom: -10 }}>
+                  <label className={s.label} >MÁXIMO PERMITIDO</label>
+                  <input 
+                    type="number" min="1" step="1" 
+                    className={s.inputField} 
+                    value={grupoFormData.maximo} 
+                    onChange={e => setGrupoFormData({...grupoFormData, maximo: parseInt(e.target.value)})} 
+                    required readOnly={editGrupoId ? !puedeEditar : !puedeCrear}
+                  />
+                </div>
+              </div>
+
+              <hr className={s.hr} />
+
+              <div className={s.flexColumnGap10} style={{ padding: '15px', background: 'var(--color-bg-muted)', borderRadius: '8px' }}>
+                <label className={s.label}>OPCIONES (COSTEO E INVENTARIO)</label>
+                
+                {grupoFormData.opciones.map((opcion, idx) => {
+                  const subData = subrecetasDisponibles.find(s => s.nombre === opcion.subreceta_id);
+                  const unidadAbrev = subData?.unidad_abreviatura || "Pz";
+
+                  return (
+                    <div key={idx} className={s.itemCardRelative} style={{ background: 'white', padding: '10px' }}>
+                      {(editGrupoId ? puedeEditar : puedeCrear) && (
+                        <button type="button" className={`${s.btnSecondary} ${s.btnRemoveCircle} ${s.btnSmall}`} onClick={() => removeOpcion(idx)} style={{top:'5px', right:'5px'}}>X</button>
+                      )}
+                      
+                      <div style={{ marginBottom: '10px', paddingRight: '20px' }}>
+                        <SearchableSelect 
+                          options={subrecetasDisponibles} 
+                          value={opcion.subreceta_id} 
+                          valueKey="nombre" 
+                          labelKey="nombre"
+                          placeholder="Buscar preparación..." 
+                          formatLabel={(opt) => `${opt.nombre} - $${opt.costo_final.toFixed(2)} por ${opt.unidad_abreviatura || 'unidad'}`}
+                          disabled={editGrupoId ? !puedeEditar : !puedeCrear}
+                          onChange={(val) => updateOpcion(idx, 'subreceta_id', val)}
+                        />
+                      </div>
+                      
+                      <div className={s.formGrid} style={{ gridTemplateColumns: '1fr 1fr 1fr', gap: '5px' }}>
+                        <div>
+                          <label className={s.label}>CANTIDAD ({unidadAbrev})</label>
+                          <input 
+                            type="number" step="0.001" 
+                            className={s.inputField} 
+                            value={opcion.cantidad} 
+                            onChange={e => updateOpcion(idx, 'cantidad', e.target.value)} 
+                            required readOnly={editGrupoId ? !puedeEditar : !puedeCrear}
+                          />
+                        </div>
+                        <div>
+                          <label className={s.label}>PRECIO</label>
+                          <input 
+                            type="number" step="0.01" 
+                            className={s.inputField} 
+                            value={opcion.precio_venta} 
+                            onChange={e => updateOpcion(idx, 'precio_venta', e.target.value)} 
+                            required readOnly={editGrupoId ? !puedeEditar : !puedeCrear}
+                          />
+                        </div>
+                        <div>
+                          <label className={s.label}>MARGEN</label>
+                          <div className={s.unitDisplayBox} style={{ width:'100%', fontSize: '15px', fontWeight: '700', color: getMarginColor(opcion.margen) }}>
+                            {opcion.margen}%
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                
+                {(editGrupoId ? puedeEditar : puedeCrear) && (
+                  <button type="button" onClick={addOpcion} className={`${s.btn} ${s.btnOutlineEditar} ${s.btnSmall}`} style={{ alignSelf: 'flex-start' }}>
+                    + AÑADIR OPCIÓN
+                  </button>
                 )}
               </div>
 
-              <div className={s.flexColumnGap15}>
-                {formData.grupos.map((grupo, idxGrupo) => (
-                  <div key={idxGrupo} className={s.adminCard} style={{ backgroundColor: 'var(--color-bg-app)', padding: '15px', position: 'relative' }}>
-                    
-                    {(editId ? puedeEditar : puedeCrear) && (
-                      <button type="button" className={s.btnRemoveCircle} onClick={() => removeGrupo(idxGrupo)} style={{ top: '-10px', right: '-10px' }}>✕</button>
-                    )}
-
-                    <div className={s.formGroup}>
-                      <label className={s.label}>NOMBRE DEL GRUPO</label>
-                      <input 
-                        type="text" 
-                        className={s.inputField}
-                        placeholder="Ej. Elige tu Proteína, Extras..." 
-                        value={grupo.nombre_grupo} 
-                        onChange={e => updateGrupo(idxGrupo, 'nombre_grupo', e.target.value)} 
-                        required readOnly={editId ? !puedeEditar : !puedeCrear} 
-                      />
-                    </div>
-
-                    <div className={s.formGrid} style={{ marginBottom: '15px' }}>
-                      <label className={s.checkboxLabel}>
-                        <input
-                          type="checkbox"
-                          className={s.checkbox}
-                          checked={grupo.obligatorio}
-                          onChange={(e) => updateGrupo(idxGrupo, 'obligatorio', e.target.checked)}
-                          disabled={editId ? !puedeEditar : !puedeCrear}
-                        />
-                        <span style={{ fontSize: '12px', fontWeight: 'bold' }}>Selección Obligatoria</span>
-                      </label>
-                      
-                      <div className={s.formGroup} style={{ marginBottom: 0 }}>
-                        <label className={s.label} style={{ fontSize: '9px' }}>MÁXIMO PERMITIDO</label>
-                        <input 
-                          type="number" min="1" step="1"
-                          className={s.inputField}
-                          value={grupo.maximo} 
-                          onChange={e => updateGrupo(idxGrupo, 'maximo', parseInt(e.target.value))} 
-                          required readOnly={editId ? !puedeEditar : !puedeCrear} 
-                        />
-                      </div>
-                    </div>
-
-                    {/* OPCIONES DENTRO DEL GRUPO */}
-                    <div className={s.flexColumnGap10} style={{ paddingLeft: '15px', borderLeft: '3px solid var(--color-primary)' }}>
-                      <label className={s.label} style={{ fontSize: '10px' }}>OPCIONES DISPONIBLES</label>
-                      
-                      {grupo.opciones.map((opcion, idxOpcion) => (
-                        <div key={idxOpcion} className={s.itemCardRelative} style={{ padding: '10px' }}>
-                          {(editId ? puedeEditar : puedeCrear) && (
-                            <button type="button" className={`${s.btnSecondary} ${s.btnRemoveCircle} ${s.btnSmall}`} onClick={() => removeOpcionDeGrupo(idxGrupo, idxOpcion)} style={{ top: '5px', right: '5px' }}>X</button>
-                          )}
-                          
-                          <div style={{ marginBottom: '10px', paddingRight: '20px' }}>
-                            <SearchableSelect 
-                              options={subrecetasDisponibles}
-                              value={opcion.subreceta_id}
-                              valueKey="nombre"
-                              labelKey="nombre"
-                              placeholder="Buscar sub-receta..."
-                              formatLabel={(opt) => `${opt.nombre} ($${opt.costo_final.toFixed(2)})`}
-                              disabled={editId ? !puedeEditar : !puedeCrear}
-                              onChange={(val) => updateOpcion(idxGrupo, idxOpcion, 'subreceta_id', val)}
-                            />
-                          </div>
-
-                          <div className={s.formGrid}>
-                            <input 
-                              type="number" step="0.01" 
-                              className={s.inputField}
-                              placeholder="Precio Venta" 
-                              value={opcion.precio_venta} 
-                              onChange={e => updateOpcion(idxGrupo, idxOpcion, 'precio_venta', e.target.value)} 
-                              required readOnly={editId ? !puedeEditar : !puedeCrear} 
-                            />
-                            <div className={s.unitDisplayBox} style={{ fontSize: '10px', fontWeight: '700', color: getMarginColor(opcion.margen) }}>
-                              {opcion.margen}% NETO
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                      
-                      {(editId ? puedeEditar : puedeCrear) && (
-                        <button type="button" onClick={() => addOpcionAGrupo(idxGrupo)} className={`${s.btn} ${s.btnOutlineEditar} ${s.btnSmall}`} style={{ alignSelf: 'flex-start' }}>
-                          + AÑADIR OPCIÓN
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
+              <div className={s.flexColumnGap10} style={{ marginTop: '10px' }}>
+                {(editGrupoId ? puedeEditar : puedeCrear) && (
+                  <button type="submit" className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`} disabled={loading}>
+                    {loading ? '...' : (editGrupoId ? 'ACTUALIZAR GRUPO MAESTRO' : 'GUARDAR GRUPO MAESTRO')}
+                  </button>
+                )}
+                {editGrupoId && (
+                  <button type="button" className={`${s.btn} ${s.btnDark} ${s.btnFull}`} onClick={handleCancelGrupoClick}>
+                    {puedeEditar ? 'CANCELAR EDICIÓN' : 'CERRAR DETALLE'}
+                  </button>
+                )}
               </div>
-            </div>
-            {/* ============================================================== */}
+            </form>
+          </aside>
 
-            <div className={s.formGroup} style={{ borderTop: '1px dashed var(--color-border)', paddingTop: '15px' }}>
-              <label className={s.label}>CATEGORÍA EN MENÚ</label>
-              <SearchableSelect 
-                options={categorias}
-                value={formData.categoria}
-                valueKey="id"
-                labelKey="nombre"
-                placeholder="Seleccionar categoría..."
-                disabled={editId ? !puedeEditar : !puedeCrear}
-                onChange={(val) => setFormData({...formData, categoria: val})}
-              />
-            </div>
-
-            <div className={s.flexColumnGap10} style={{ marginTop: '10px' }}>
-              {(editId ? puedeEditar : puedeCrear) && (
-                <button type="submit" className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`} disabled={loading}>
-                  {loading ? '...' : (editId ? 'ACTUALIZAR ESTRATEGIA' : 'GUARDAR EN MENÚ')}
-                </button>
-              )}
-              
-              {editId && (
-                <button type="button" className={`${s.btn} ${s.btnDark} ${s.btnFull}`} onClick={handleCancelClick}>
-                  {puedeEditar ? 'CANCELAR EDICIÓN' : 'CERRAR DETALLE'}
-                </button>
-              )}
-            </div>
-          </form>
-        </aside>
-
-        {/* TABLA DE PRODUCTOS */}
-        <div className={`${s.adminCard} ${s.tableContainer}`}>
-          <table className={s.table} style={{ minWidth: '600px' }}>
-            <thead className={s.thead}>
-              <tr>
-                <th className={s.th}>PRODUCTO</th>
-                <th className={s.th}>COSTO</th>
-                <th className={s.th}>VENTA (CON IVA)</th>
-                <th className={s.th} style={{ textAlign: 'right' }}>ACCIONES</th>
-              </tr>
-            </thead>
-            <tbody>
-              {productos.map(p => {
-                const costoBase = p.costo_actual || 0;
-                const ventaBase = p.precio_venta || 0;
-                const netoBase = ventaBase / IVA_FACTOR;
-                const margenBase = netoBase > 0 ? (((netoBase - costoBase) / netoBase) * 100).toFixed(1) : 0;
-
-                return (
-                  <tr key={p.id} style={{ backgroundColor: editId === p.id ? 'var(--color-bg-app)' : 'transparent' }}>
+          <div className={`${s.adminCard} ${s.tableContainer}`}>
+            <table className={s.table} style={{ minWidth: '500px', width: '100%' }}>
+              <thead className={s.thead}>
+                <tr>
+                  <th className={s.th}>GRUPO MAESTRO</th>
+                  <th className={s.th}>OPCIONES (DETALLE OPERATIVO)</th>
+                  <th className={s.th} style={{textAlign:'right'}}>ACCIONES</th>
+                </tr>
+              </thead>
+              <tbody>
+                {gruposMaestros.map(g => (
+                  <tr key={g.id}>
                     <td className={s.td}>
-                      <div style={{ fontWeight: '600' }}>{p.nombre}</div>
-                      
-                      {/* 💡 Renderizado de Grupos en la Tabla */}
-                      {(p.grupos || []).map((g, i) => (
-                        <div key={i} style={{ marginTop: '5px', paddingLeft: '8px', borderLeft: '2px solid var(--color-border)' }}>
-                          <span style={{ fontSize: '10px', color: 'var(--color-text-muted)', fontWeight: 'bold' }}>
-                            {g.nombre} {g.min_seleccion > 0 ? '(Obligatorio)' : '(Opcional)'}:
-                          </span>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '2px' }}>
-                            {(g.opciones_modificadores || []).map((op, j) => {
-                              const vNeta = parseFloat(op.precio_venta) / IVA_FACTOR;
-                              // Para el costo, buscamos en subrecetasDisponibles si la tenemos a mano, si no, asumimos 0 para la vista rápida
-                              const subData = subrecetasDisponibles.find(s => s.nombre === op.subreceta_id);
-                              const cSub = subData ? subData.costo_final : 0;
-                              const mSub = vNeta > 0 ? (((vNeta - cSub) / vNeta) * 100).toFixed(1) : 0;
-
-                              return (
-                                <div key={j} className={s.miniBadge}>
-                                  {op.subreceta_id} (+${parseFloat(op.precio_venta).toFixed(2)})
-                                  <span style={{ color: getMarginColor(mSub), fontWeight: 'bold', marginLeft: '4px' }}>
-                                    {mSub}%
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
+                      <div style={{ fontWeight: '600', color: 'var(--color-text-main)' }}>{g.nombre}</div>
+                      <small className={s.textMuted}>{g.min_seleccion > 0 ? 'Obligatorio' : 'Opcional'} • Máx: {g.max_seleccion}</small>
                     </td>
-                    <td className={s.td}>${costoBase.toFixed(2)}</td>
                     <td className={s.td}>
-                      <div className={s.totalAmount} style={{ color: 'var(--color-primary)' }}>${ventaBase.toFixed(2)}</div>
-                      <div style={{ fontSize: '11px', fontWeight: '700', color: getMarginColor(margenBase) }}>
-                        {margenBase}% Margen Real
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {(g.opciones_modificadores || []).map((op, i) => {
+                          const vNeta = parseFloat(op.precio_venta) / IVA_FACTOR;
+                          const subData = subrecetasDisponibles.find(s => s.nombre === op.subreceta_id);
+                          const unidadAbrev = subData?.unidad_abreviatura || "Pz";
+                          const cSub = (subData ? subData.costo_final : 0) * (op.cantidad || 1);
+                          const mSub = vNeta > 0 ? (((vNeta - cSub) / vNeta) * 100).toFixed(1) : 0;
+
+                          return (
+                            <div key={i} style={{ fontSize: '12px', padding: '2px 0' }}>
+                              • <span style={{ fontWeight: 'bold' }}>{op.cantidad || 1} {unidadAbrev}</span> de {op.subreceta_id} (+${parseFloat(op.precio_venta).toFixed(2)}) 
+                              <span style={{ color: getMarginColor(mSub), fontWeight: 'bold', marginLeft: '5px' }}>{mSub}% Margen</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </td>
                     <td className={s.td} style={{ textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                        <button className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`} onClick={() => handleEdit(p)}>
-                          {puedeEditar ? '📝' : 'VER'}
+                        <button className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`} onClick={() => handleEditGrupo(g)}>
+                          {puedeEditar ? '📝' : '👁️'}
                         </button>
                         {puedeBorrar && (
-                          <button className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`} onClick={() => confirmDeleteProducto(p.id, p.nombre)}>
+                          <button className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`} onClick={() => confirmDeleteGrupo(g.id, g.nombre)}>
                             ❌
                           </button>
                         )}
                       </div>
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
 
-/**
- * SearchableSelect Homologado
- */
 const SearchableSelect = ({ options, value, onChange, disabled, placeholder = "Buscar...", valueKey = "id", labelKey = "nombre", formatLabel }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -342,7 +483,7 @@ const SearchableSelect = ({ options, value, onChange, disabled, placeholder = "B
   }, [value, options, valueKey, labelKey]);
 
   const filteredOptions = options.filter(opt =>
-    String(opt[labelKey]).toLowerCase().includes(searchTerm.toLowerCase())
+    String(opt[labelKey] || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -356,7 +497,7 @@ const SearchableSelect = ({ options, value, onChange, disabled, placeholder = "B
         onChange={(e) => {
           setSearchTerm(e.target.value);
           setIsOpen(true);
-          if (value) onChange(""); 
+          // 🛡️ PARCHE: Ya no llamamos a onChange("") aquí para evitar que se pierda la selección mientras escribes.
         }}
         onFocus={() => setIsOpen(true)}
         onBlur={() => {
@@ -369,12 +510,17 @@ const SearchableSelect = ({ options, value, onChange, disabled, placeholder = "B
         style={{ backgroundColor: disabled ? "var(--color-bg-muted)" : "white" }}
       />
       {isOpen && !disabled && (
-        <ul className={s.dropdownList}>
+        <ul className={s.dropdownList} style={{ zIndex: 100, maxHeight: '200px', overflowY: 'auto' }}>
           {filteredOptions.length > 0 ? filteredOptions.map((opt, index) => (
             <li 
               key={index} 
               className={s.dropdownItem} 
-              onMouseDown={(e) => { e.preventDefault(); onChange(opt[valueKey]); setSearchTerm(opt[labelKey]); setIsOpen(false); }}
+              onMouseDown={(e) => { 
+                e.preventDefault(); 
+                onChange(opt[valueKey]); 
+                setSearchTerm(opt[labelKey]); 
+                setIsOpen(false); 
+              }}
             >
               {formatLabel ? formatLabel(opt) : opt[labelKey]}
             </li>

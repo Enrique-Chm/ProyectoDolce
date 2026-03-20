@@ -1014,3 +1014,13 @@
   padding: 40px;
   color: var(--color-text-muted);
 }
+/* Para cuando el formulario está oculto */
+.fullLayout {
+  display: block; /* Ocupa todo el ancho */
+  width: 100%;
+}
+
+.fullLayout .tableContainer {
+  width: 100%;
+  max-width: 100%;
+}

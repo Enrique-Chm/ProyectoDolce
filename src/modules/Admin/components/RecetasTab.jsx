@@ -7,10 +7,16 @@ import Swal from 'sweetalert2';
 export const RecetasTab = ({ sucursalId }) => {
   const {
     recetasAgrupadas, insumos, subrecetasLista, unidades, loading, isEditing,
-    nombreReceta, setNombreReceta, isSubreceta, setIsSubreceta, ingredientes, setIngredientes,
+    nombreReceta, setNombreReceta, isSubreceta, setIsSubreceta, 
+    rendimiento, setRendimiento,
+    unidadMedidaFinal, setUnidadMedidaFinal,
+    ingredientes, setIngredientes,
     puedeCrear, puedeEditar, puedeBorrar,
     removeIngrediente, resetForm, handleEdit, handleSubmit, handleDeleteReceta
   } = useRecetasTab(sucursalId);
+
+  // 💡 LÓGICA DE VISIBILIDAD DINÁMICA
+  const mostrarFormulario = puedeCrear || isEditing;
 
   const handleCancelClick = () => {
     if (nombreReceta.trim() !== "" || ingredientes.length > 0) {
@@ -53,8 +59,9 @@ export const RecetasTab = ({ sucursalId }) => {
         {loading && <span className={s.syncBadge}>SINCRONIZANDO...</span>}
       </header>
 
-      <div className={s.splitLayout}>
-        <aside className={s.adminCard} style={{ display: puedeCrear || isEditing ? 'block' : 'none' }}>
+      {/* 💡 LAYOUT DINÁMICO: splitLayout (2 cols) o fullLayout (1 col) */}
+      <div className={mostrarFormulario ? s.splitLayout : s.fullLayout}>
+        <aside className={s.adminCard} style={{ display: mostrarFormulario ? 'block' : 'none' }}>
           <h3 className={s.cardTitle}>
             {isEditing ? (puedeEditar ? " Editando Receta" : "Ver Receta") : " Nueva Preparación"}
           </h3>
@@ -72,19 +79,51 @@ export const RecetasTab = ({ sucursalId }) => {
               />
             </div>
 
-            <label className={s.checkboxLabel}>
-              <input
-                type="checkbox"
-                className={s.checkbox}
-                checked={isSubreceta}
-                onChange={(e) => setIsSubreceta(e.target.checked)}
-                disabled={isEditing ? !puedeEditar : !puedeCrear}
-              />
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontWeight: 700 }}>¿Es Sub-receta?</span>
-                <small className={s.textMuted}>Insumo para otra receta</small>
-              </div>
-            </label>
+            <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                <label className={s.checkboxLabel} style={{ flex: 1 }}>
+                <input
+                    type="checkbox"
+                    className={s.checkbox}
+                    checked={isSubreceta}
+                    onChange={(e) => setIsSubreceta(e.target.checked)}
+                    disabled={isEditing ? !puedeEditar : !puedeCrear}
+                />
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontWeight: 700 }}>¿Es Sub-receta?</span>
+                    <small className={s.textMuted}>Insumo para otra receta</small>
+                </div>
+                </label>
+            </div>
+
+            <div className={s.formGrid} style={{ backgroundColor: 'var(--color-bg-muted)', padding: '12px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+                <div className={s.formGroup} style={{ marginBottom: 0 }}>
+                    <label className={s.label} style={{ fontSize: '10px' }}>RENDIMIENTO (CUÁNTO SALE)</label>
+                    <input
+                        type="number"
+                        step="0.001"
+                        className={s.inputField}
+                        value={rendimiento}
+                        onChange={(e) => setRendimiento(e.target.value)}
+                        required
+                        disabled={isEditing ? !puedeEditar : !puedeCrear}
+                    />
+                </div>
+                <div className={s.formGroup} style={{ marginBottom: 0 }}>
+                    <label className={s.label} style={{ fontSize: '10px' }}>UNIDAD DEL RESULTADO</label>
+                    <select 
+                        className={s.inputField}
+                        value={unidadMedidaFinal}
+                        onChange={(e) => setUnidadMedidaFinal(e.target.value)}
+                        required
+                        disabled={isEditing ? !puedeEditar : !puedeCrear}
+                    >
+                        <option value="">Seleccionar...</option>
+                        {unidades.map(u => (
+                            <option key={u.id} value={u.id}>{u.nombre} ({u.abreviatura})</option>
+                        ))}
+                    </select>
+                </div>
+            </div>
 
             <hr className={s.hr} />
 
@@ -92,7 +131,6 @@ export const RecetasTab = ({ sucursalId }) => {
               <label className={s.label} style={{ fontSize: '10px' }}>INGREDIENTES Y CANTIDADES</label>
 
               {ingredientes.map((ing, idx) => {
-                // Seleccionamos la lista a usar dependiendo del "Switch"
                 const listaActual = ing.tipo === 'insumo' ? insumos : subrecetasLista;
                 const selectedInsumo = listaActual.find(i => String(i.id) === String(ing.insumo_id));
                 const costoFilaVivo = ((selectedInsumo?.costo_unitario || 0) * (parseFloat(ing.cantidad) || 0)).toFixed(2);
@@ -104,7 +142,6 @@ export const RecetasTab = ({ sucursalId }) => {
                       <button type="button" className={`${s.btnSecondary} ${s.btnRemoveCircle} ${s.btnSmall}`} onClick={() => removeIngrediente(idx)}>X</button>
                     )}
                     
-                    {/* 💡 EL SWITCH VISUAL */}
                     <div style={{ display: 'flex', gap: '10px', marginBottom: '8px' }}>
                       <label style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
                         <input 
@@ -115,7 +152,7 @@ export const RecetasTab = ({ sucursalId }) => {
                           onChange={() => {
                             const n = [...ingredientes];
                             n[idx].tipo = 'insumo';
-                            n[idx].insumo_id = ""; // Reseteamos al cambiar
+                            n[idx].insumo_id = ""; 
                             setIngredientes(n);
                           }} 
                         />
@@ -130,7 +167,7 @@ export const RecetasTab = ({ sucursalId }) => {
                           onChange={() => {
                             const n = [...ingredientes];
                             n[idx].tipo = 'subreceta';
-                            n[idx].insumo_id = ""; // Reseteamos al cambiar
+                            n[idx].insumo_id = ""; 
                             setIngredientes(n);
                           }} 
                         />
@@ -140,7 +177,7 @@ export const RecetasTab = ({ sucursalId }) => {
 
                     <div className={s.formGroup} style={{ marginBottom: '10px' }}>
                       <SearchableSelect 
-                        options={listaActual} // 👈 Le pasamos la lista correcta
+                        options={listaActual} 
                         value={ing.insumo_id}
                         disabled={deshabilitarCampos}
                         placeholder={ing.tipo === 'insumo' ? "Buscar insumo..." : "Buscar sub-receta..."}
@@ -148,7 +185,7 @@ export const RecetasTab = ({ sucursalId }) => {
                           const n = [...ingredientes];
                           const insData = listaActual.find(i => String(i.id) === String(selectedId));
                           n[idx].insumo_id = selectedId;
-                          if (insData) n[idx].unidad_id = insData.unidad_medida || "";
+                          if (insData) n[idx].unidad_id = insData.unidad_medida_id || insData.unidad_medida || "";
                           setIngredientes(n);
                         }}
                       />
@@ -207,14 +244,14 @@ export const RecetasTab = ({ sucursalId }) => {
           </form>
         </aside>
 
-        {/* TABLA DE RECETAS */}
+        {/* TABLA DE RECETAS: Adaptada para ocupar 100% si el aside se oculta */}
         <div className={`${s.adminCard} ${s.tableContainer}`}>
-          <table className={s.table} style={{ minWidth: "800px" }}>
+          <table className={s.table} style={{ minWidth: "900px", width: "100%" }}>
             <thead className={s.thead}>
               <tr>
-                <th className={s.th} style={{ textAlign: "left" }}>PREPARACIÓN</th>
+                <th className={s.th} style={{ textAlign: "left" }}>PREPARACIÓN / RENDIMIENTO</th>
                 <th className={s.th} style={{ textAlign: "center" }}>COMPOSICIÓN</th>
-                <th className={s.th} style={{ textAlign: "center" }}>COSTO TOTAL</th>
+                <th className={s.th} style={{ textAlign: "center" }}>COSTO UNITARIO</th>
                 <th className={s.th} style={{ textAlign: "center" }}>ACCIONES</th>
               </tr>
             </thead>
@@ -222,39 +259,62 @@ export const RecetasTab = ({ sucursalId }) => {
               {recetasAgrupadas.length === 0 ? (
                 <tr><td colSpan="4" className={s.emptyState}>No hay recetas registradas.</td></tr>
               ) : (
-                recetasAgrupadas.map((r, idx) => (
-                  <tr key={idx}>
-                    <td className={s.td}>
-                      <div style={{ fontWeight: "600" }}>{r.nombre}</div>
-                      {r.subreceta && <span className={s.badge}>SUB-RECETA</span>}
-                    </td>
-                    <td className={s.td}style={{ textAlign: "center" }}>
-                      <div className={s.flexColumnGap5}>
-                        {r.detalle_ingredientes.map((ing, iidx) => (
-                          <div key={iidx} className={s.miniBadge}>
-                            • {ing.insumo}: <strong>{ing.cantidad} {ing.unidad}</strong>
-                            <span style={{ color: "var(--color-primary)", marginLeft: "5px" }}> (${(ing.costo_fila || 0).toFixed(2)})</span>
-                          </div>
-                        ))}
-                      </div>
-                    </td>
-                    <td className={s.td} style={{ textAlign: "center" }}>
-                      <div className={s.totalAmount}>${(r.costo_total_receta || 0).toFixed(2)}</div>
-                    </td>
-                    <td className={s.td} style={{ textAlign: "center" }}>
-                      <div style={{ display: "flex", gap: "5px", justifyContent: "flex-end" }}>
-                        <button className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`} onClick={() => handleEdit(r)}>
-                          {puedeEditar ? "📝" : "VER"}
-                        </button>
-                        {puedeBorrar && (
-                          <button className={`${s.btn} ${s.btnOutlineDanger} ${s.btnEditar}`} onClick={() => confirmDeleteReceta(r.nombre)}>
-                            ❌
+                recetasAgrupadas.map((r, idx) => {
+                  const unidadFinal = unidades.find(u => u.id === r.unidad_medida_final)?.abreviatura || 'Ud';
+                  const costoU = parseFloat(r.costo_unitario_final) || 0;
+
+                  return (
+                    <tr key={idx}>
+                      <td className={s.td}>
+                        <div style={{ fontWeight: "600", fontSize: '15px' }}>{r.nombre}</div>
+                        <div style={{ marginTop: '4px' }}>
+                            <span className={s.syncBadge} style={{ background: '#f3f4f6', color: '#374151' }}>
+                                Rinde: {r.rendimiento_cantidad} {unidadFinal}
+                            </span>
+                            {r.subreceta && <span className={s.badge} style={{ marginLeft: '5px' }}>SUB-RECETA</span>}
+                        </div>
+                      </td>
+                      <td className={s.td} style={{ textAlign: "center" }}>
+                        <div className={s.flexColumnGap5}>
+                          {r.detalle_ingredientes.map((ing, iidx) => (
+                            <div key={iidx} className={s.miniBadge}>
+                              • {ing.insumo}: <strong>{ing.cantidad} {ing.unidad}</strong>
+                              <span style={{ color: "var(--color-primary)", marginLeft: "5px" }}> (${(ing.costo_fila || 0).toFixed(2)})</span>
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                      <td className={s.td} style={{ textAlign: "center" }}>
+                        {/* 💡 ALINEACIÓN MEJORADA: Precio azul y unidad al lado */}
+                        <div className={s.totalAmount} style={{ 
+                          color: 'var(--color-primary)', 
+                          display: 'flex', 
+                          alignItems: 'baseline', 
+                          justifyContent: 'center', 
+                          gap: '4px' 
+                        }}>
+                            ${costoU.toFixed(2)}
+                            <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: '400' }}> / {unidadFinal}</span>
+                        </div>
+                        <div style={{ fontSize: '10px', marginTop: '2px', color: '#9ca3af' }}>
+                            Costo lote: ${(r.costo_total_receta || 0).toFixed(2)}
+                        </div>
+                      </td>
+                      <td className={s.td} style={{ textAlign: "center" }}>
+                        <div style={{ display: "flex", gap: "5px", justifyContent: "flex-end" }}>
+                          <button className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`} onClick={() => handleEdit(r)}>
+                            {puedeEditar ? "📝" : "👁️"}
                           </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                          {puedeBorrar && (
+                            <button className={`${s.btn} ${s.btnOutlineDanger} ${s.btnEditar}`} onClick={() => confirmDeleteReceta(r.nombre)}>
+                              ❌
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -265,7 +325,7 @@ export const RecetasTab = ({ sucursalId }) => {
 };
 
 /**
- * SearchableSelect Homologado (Revertido a su forma más estable)
+ * SearchableSelect Homologado (Corregido para evitar reseteos)
  */
 const SearchableSelect = ({ options, value, onChange, disabled, placeholder = "Buscar..." }) => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -277,7 +337,7 @@ const SearchableSelect = ({ options, value, onChange, disabled, placeholder = "B
   }, [value, options]);
 
   const filteredOptions = options.filter(opt =>
-    opt.nombre.toLowerCase().includes(searchTerm.toLowerCase())
+    (opt.nombre || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -291,7 +351,7 @@ const SearchableSelect = ({ options, value, onChange, disabled, placeholder = "B
         onChange={(e) => {
           setSearchTerm(e.target.value);
           setIsOpen(true);
-          if (value) onChange(""); 
+          // 🛡️ PARCHE: Ya no borramos el value inmediatamente para permitir la escritura fluida
         }}
         onFocus={() => setIsOpen(true)}
         onBlur={() => {
@@ -304,7 +364,7 @@ const SearchableSelect = ({ options, value, onChange, disabled, placeholder = "B
       />
       
       {isOpen && !disabled && (
-        <ul className={s.dropdownList}>
+        <ul className={s.dropdownList} style={{ zIndex: 100, maxHeight: '200px', overflowY: 'auto' }}>
           {filteredOptions.length > 0 ? filteredOptions.map(opt => (
             <li
               key={opt.id}

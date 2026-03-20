@@ -96,7 +96,7 @@ const AdminPage = () => {
       {/* BARRA LATERAL */}
       <aside className={s.sidebar}>
         <div className={s.sidebarHeader}>
-          <h2>CloudKitchen <span style={{ color: 'var(--color-primary)' }}>Admin</span></h2>
+          <h2>CloudKitchen <span style={{ color: 'var(--color-primary)' }}></span></h2>
         </div>
         
         <nav className={s.sidebarNav}>

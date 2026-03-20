@@ -213,7 +213,7 @@ export const ConfigTab = () => {
                       <td className={s.td} style={{ textAlign: 'right' }}>
                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                           <button className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`} onClick={() => { setCMenuEditId(c.id); setCMenuNombre(c.nombre); setCMenuColor(c.color_etiqueta); }}>
-                            {puedeEditarC ? '📝' : 'VER'}
+                            {puedeEditarC ? '📝' : '👁️'}
                           </button>
                           {puedeBorrarConfig && (
                             <button className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`} onClick={() => handleDelete('menu', c.id)}>
@@ -274,7 +274,7 @@ export const ConfigTab = () => {
                       <td className={s.td} style={{ textAlign: 'right' }}>
                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                           <button className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`} onClick={() => { setCInsumoEditId(c.id); setCInsumoNombre(c.nombre); }}>
-                            {puedeEditarC ? '📝' : 'VER'}
+                            {puedeEditarC ? '📝' : '👁️'}
                           </button>
                           {puedeBorrarConfig && (
                             <button className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`} onClick={() => handleDelete('insumos', c.id)}>
@@ -355,7 +355,7 @@ export const ConfigTab = () => {
                     <td className={s.td} style={{ textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                         <button className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`} onClick={() => { setMEditId(m.id); setMNombre(m.nombre_motivo); setMTipo(m.tipo); }}>
-                          {puedeEditarM ? '📝' : 'VER'}
+                          {puedeEditarM ? '📝' : '👁️'}
                         </button>
                         {puedeBorrarConfig && (
                           <button className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`} onClick={() => handleDelete('motivos', m.id)}>
