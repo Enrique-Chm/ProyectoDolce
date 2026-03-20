@@ -1,51 +1,66 @@
 // Archivo: src/services/empleados.service.js
 import { supabase } from '../lib/supabaseClient';
-import { hasPermission } from '../utils/checkPermiso'; // 🛡️ El guardián de la seguridad
+import { hasPermission } from '../utils/checkPermiso'; 
 
 export const empleadosService = {
   // --- USUARIOS (EQUIPO) ---
   async getUsuarios() {
-    // 🛡️ Solo personal autorizado puede ver la lista de empleados
     if (!hasPermission('ver_usuarios')) return [];
 
+    // 💡 CORRECCIÓN: Cambiamos 'sucursales' por 'cat_sucursales' según el hint del error
     const { data, error } = await supabase
       .from('usuarios_internos')
-      .select('*, roles(id, nombre_rol)')
+      .select('*,roles(id,nombre_rol),cat_sucursales(id,nombre)')
       .order('nombre', { ascending: true });
-    if (error) throw error;
+      
+    if (error) {
+        console.error("Detalle del error Supabase:", error);
+        throw error;
+    }
     return data || [];
   },
 
   async saveUsuario(payload, id = null) {
+    // 🛡️ LIMPIEZA: Eliminamos objetos de relación para que Supabase no dé error 400 al guardar
+    const cleanPayload = { ...payload };
+    delete cleanPayload.roles;
+    delete cleanPayload.sucursales;
+    delete cleanPayload.cat_sucursales; // 👈 Añadimos esta limpieza también
+
     if (id) {
-      // 🛡️ Blindaje contra edición no autorizada de personal
       if (!hasPermission('editar_usuarios')) {
-        throw new Error("Acceso denegado: No tienes permisos para gestionar (editar) el equipo.");
+        throw new Error("Acceso denegado: No tienes permisos para editar.");
       }
-      return await supabase.from('usuarios_internos').update(payload).eq('id', id);
+      const { data, error } = await supabase
+        .from('usuarios_internos')
+        .update(cleanPayload)
+        .eq('id', id)
+        .select();
+      if (error) throw error;
+      return data;
     } else {
-      // 🛡️ Blindaje contra creación no autorizada de personal
       if (!hasPermission('crear_usuarios')) {
-        throw new Error("Acceso denegado: No tienes permisos para registrar nuevo personal.");
+        throw new Error("Acceso denegado: No tienes permisos para crear.");
       }
-      return await supabase.from('usuarios_internos').insert([payload]);
+      const { data, error } = await supabase
+        .from('usuarios_internos')
+        .insert([cleanPayload])
+        .select();
+      if (error) throw error;
+      return data;
     }
   },
 
   async deleteUsuario(id) {
-    // 🛡️ Permiso específico para eliminar cuentas de acceso
     if (!hasPermission('borrar_usuarios')) {
-      throw new Error("Acceso denegado: Se requiere permiso para eliminar usuarios.");
+      throw new Error("Acceso denegado.");
     }
-
     return await supabase.from('usuarios_internos').delete().eq('id', id);
   },
 
   // --- ROLES ---
   async getRoles() {
-    // 🛡️ Leer la estructura de roles es parte de la configuración
     if (!hasPermission('ver_configuracion')) return [];
-
     const { data, error } = await supabase.from('roles').select('*').order('id', { ascending: true });
     if (error) throw error;
     return data || [];
@@ -53,26 +68,16 @@ export const empleadosService = {
 
   async saveRol(payload, id = null) {
     if (id) {
-      // 🛡️ Blindaje crítico: Modificar roles
-      if (!hasPermission('editar_configuracion')) {
-        throw new Error("Acceso denegado: No puedes modificar la estructura de roles.");
-      }
+      if (!hasPermission('editar_configuracion')) throw new Error("Acceso denegado.");
       return await supabase.from('roles').update(payload).eq('id', id).select();
     } else {
-      // 🛡️ Blindaje crítico: Crear nuevos perfiles de acceso
-      if (!hasPermission('crear_configuracion')) {
-        throw new Error("Acceso denegado: No tienes permisos para crear nuevos roles.");
-      }
+      if (!hasPermission('crear_configuracion')) throw new Error("Acceso denegado.");
       return await supabase.from('roles').insert([payload]).select();
     }
   },
 
   async deleteRol(id) {
-    // 🛡️ Protección de integridad: Borrar un rol puede dejar usuarios sin acceso
-    if (!hasPermission('borrar_configuracion')) {
-      throw new Error("Acceso denegado: No tienes facultades para eliminar roles.");
-    }
-
+    if (!hasPermission('borrar_configuracion')) throw new Error("Acceso denegado.");
     const { error } = await supabase.from('roles').delete().eq('id', id);
     if (error) throw error;
     return true;
@@ -80,30 +85,22 @@ export const empleadosService = {
 
   // --- PERMISOS Y MATRIZ ---
   async getPermisos() {
-    // 🛡️ Ver el catálogo maestro de permisos
     if (!hasPermission('ver_configuracion')) return [];
-
     const { data, error } = await supabase.from('permisos').select('*').order('clave_permiso', { ascending: true });
     if (error) throw error;
     return data || [];
   },
 
   async getIdsPermisosPorRol(rolId) {
-    // 🛡️ Ver la matriz de seguridad de un rol específico
     if (!hasPermission('ver_configuracion')) return [];
-
     const { data, error } = await supabase.from('rol_permisos').select('permiso_id').eq('rol_id', rolId);
     if (error) throw error;
     return data.map(item => item.permiso_id);
   },
 
   async actualizarPermisosRol(rolId, listaPermisosIds) {
-    // 🛡️ BLINDAJE MÁXIMO: Esta función define quién manda en el sistema
-    if (!hasPermission('editar_configuracion')) {
-      throw new Error("ALERTA DE SEGURIDAD: No tienes permiso para reconfigurar la matriz de acceso.");
-    }
-
-    // Proceso de sincronización original
+    if (!hasPermission('editar_configuracion')) throw new Error("Acceso denegado.");
+    
     await supabase.from('rol_permisos').delete().eq('rol_id', rolId);
     
     if (listaPermisosIds.length > 0) {

@@ -59,7 +59,7 @@ export const Login = ({ onLoginSuccess }) => {
       <div className={s.loginCard}>
         <div className={s.logoArea}>
           <h1 className={s.logoTitle}>
-            CloudKitchen <span className={s.logoAccent}>Home</span>
+            CloudKitchen <span className={s.logoAccent}></span>
           </h1>
           <p className={s.textMuted}>
             Panel de Gestión Operativa

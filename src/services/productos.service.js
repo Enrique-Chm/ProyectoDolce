@@ -1,11 +1,11 @@
 // Archivo: src/services/productos.service.js
 import { supabase } from '../lib/supabaseClient';
 import { hasPermission } from '../utils/checkPermiso'; // 🛡️ Importación de seguridad
+import toast from 'react-hot-toast'; // 🍞 Feedback visual
 
 export const productosService = {
   /**
    * Obtiene datos iniciales: productos, categorías, mapas de costos y Grupos de Modificadores.
-   * Actualizado para reflejar Costo Unitario, Unidades de Medida y discriminación de Sub-recetas.
    */
   async getInitialData(sucursalId) {
     try {
@@ -16,22 +16,14 @@ export const productosService = {
 
       const sId = sucursalId || 1;
 
+      // 🚀 Ejecución en paralelo para máxima velocidad
       const [prod, cat, rec, lista, grupos] = await Promise.all([
-        // 1. Productos del menú con su costo actual desde la vista
         supabase.from('vista_productos_costos').select('*').eq('sucursal_id', sId).order('nombre'),
-        
-        // 2. Categorías del menú
         supabase.from('cat_categorias_menu').select('*').order('nombre'),
-        
-        // 3. Vista de recetas completa (trae costos unitarios y totales)
         supabase.from('vista_recetas_completas').select('*').eq('sucursal_id', sId),
-        
-        // 4. Catálogo base de recetas para cruce de unidades de medida finales
         supabase.from('recetas')
           .select('nombre, subreceta, unidad_medida_final, cat_unidades_medida(nombre, abreviatura)')
           .eq('sucursal_id', sId),
-        
-        // 5. Catálogo Maestro de Grupos con sus opciones y vínculos
         supabase.from('grupos_modificadores')
           .select('id, nombre, min_seleccion, max_seleccion, opciones_modificadores(*), producto_grupos(producto_id)')
           .eq('sucursal_id', sId)
@@ -42,23 +34,20 @@ export const productosService = {
       if (grupos.error) throw grupos.error;
 
       /**
-       * 💡 MAPA DE COSTOS MAESTRO (CORREGIDO)
-       * Centralizamos la lógica de "esSubreceta" aquí para que el frontend 
-       * no falle al filtrar por tipos de receta.
+       * 💡 MAPA DE COSTOS MAESTRO
+       * Centralizamos la lógica de "esSubreceta" y unidades de medida.
        */
       const costosMap = (rec.data || []).map(r => {
-        // Buscamos la unidad de medida final definida en la receta
         const recetaExtendida = (lista.data || []).find(l => l.nombre === r.nombre);
         
-        // 🛡️ Normalización de booleano: Supabase puede devolver 't', 'f', true, false o strings.
+        // 🛡️ Normalización de booleano: Supabase maneja varios formatos para bool.
         const esSub = String(r.subreceta).toLowerCase() === 'true' || r.subreceta === true || r.subreceta === 't';
 
         return {
           nombre: r.nombre,
-          // Precio por 1 unidad de medida (Kg, Lt, Pz)
           costo_final: r.costo_unitario_final || 0, 
           unidad_abreviatura: recetaExtendida?.cat_unidades_medida?.abreviatura || 'Pz',
-          esSubreceta: esSub // 👈 Crucial para que el Hook filtre correctamente
+          esSubreceta: esSub 
         };
       });
 
@@ -71,34 +60,47 @@ export const productosService = {
       };
     } catch (error) {
       console.error("Error en productosService.getInitialData:", error);
+      toast.error("Error al sincronizar datos del menú.");
       throw error;
     }
   },
 
   /**
-   * Guarda o actualiza un producto en la tabla productosmenu (MÉTODO CLÁSICO).
+   * Guarda o actualiza un producto básico.
    */
   async saveProducto(payload, id = null) {
     if (!hasPermission('editar_productos')) {
-      return { data: null, error: { message: "Acceso denegado: No tienes facultades para modificar el menú." } };
+      toast.error("No tienes permisos para editar el menú.");
+      return { data: null, error: { message: "Acceso denegado" } };
     }
 
-    if (id) {
-      return await supabase.from('productosmenu').update(payload).eq('id', id);
+    const tId = toast.loading(id ? "Actualizando producto..." : "Creando producto...");
+    try {
+      const { data, error } = id 
+        ? await supabase.from('productosmenu').update(payload).eq('id', id).select()
+        : await supabase.from('productosmenu').insert([payload]).select();
+
+      if (error) throw error;
+      toast.success(id ? "Producto actualizado" : "Producto creado", { id: tId });
+      return { data, error: null };
+    } catch (error) {
+      toast.error("Error al guardar: " + error.message, { id: tId });
+      return { data: null, error };
     }
-    return await supabase.from('productosmenu').insert([payload]);
   },
 
   /**
-   * 💡 MÉTODO MAESTRO 1: Guarda un Grupo Maestro en el catálogo independiente.
+   * 💡 MÉTODO MAESTRO: Guarda un Grupo y sus Opciones.
    */
   async saveGrupoMaestro(grupoPayload, opcionesPayload, sucursalId, grupoId = null) {
+    const tId = toast.loading("Procesando grupo maestro...");
     try {
-      if (grupoId && !hasPermission('editar_productos')) throw new Error("Acceso denegado para modificar grupos.");
-      if (!grupoId && !hasPermission('crear_productos')) throw new Error("Acceso denegado para crear grupos.");
+      if (grupoId && !hasPermission('editar_productos')) throw new Error("Acceso denegado.");
+      if (!grupoId && !hasPermission('crear_productos')) throw new Error("Acceso denegado.");
 
       let idGenerado = grupoId;
 
+      // 1. Guardar/Actualizar Cabecera del Grupo
       if (grupoId) {
         const { error } = await supabase.from('grupos_modificadores').update(grupoPayload).eq('id', grupoId);
         if (error) throw error;
@@ -108,10 +110,12 @@ export const productosService = {
         idGenerado = data.id;
       }
 
+      // 2. Limpiar opciones viejas si es edición
       if (grupoId) {
         await supabase.from('opciones_modificadores').delete().eq('grupo_id', grupoId);
       }
 
+      // 3. Insertar nuevas opciones
       if (opcionesPayload && opcionesPayload.length > 0) {
         const opcionesToInsert = opcionesPayload.map(op => ({
           grupo_id: idGenerado,
@@ -125,31 +129,38 @@ export const productosService = {
         if (errOpciones) throw errOpciones;
       }
 
+      toast.success("Grupo maestro guardado", { id: tId });
       return { data: { id: idGenerado }, error: null };
     } catch (error) {
-      console.error("Error al guardar grupo maestro:", error);
+      toast.error("Error: " + error.message, { id: tId });
       return { data: null, error };
     }
   },
 
   /**
-   * 💡 MÉTODO MAESTRO 2: Guarda el producto y lo vincula con los IDs de los grupos existentes.
+   * 💡 MÉTODO MAESTRO: Guarda producto y vincula grupos.
    */
   async saveProductoConVinculos(productoPayload, gruposIds, sucursalId, productoId = null) {
+    const tId = toast.loading("Vinculando producto y grupos...");
     try {
-      if (productoId && !hasPermission('editar_productos')) throw new Error("Acceso denegado para modificar.");
-      if (!productoId && !hasPermission('crear_productos')) throw new Error("Acceso denegado para crear.");
+      if (productoId && !hasPermission('editar_productos')) throw new Error("Acceso denegado.");
+      if (!productoId && !hasPermission('crear_productos')) throw new Error("Acceso denegado.");
+
+      // Limpieza de payload para evitar objetos anidados
+      const cleanProd = { ...productoPayload };
+      delete cleanProd.grupos;
 
       let prodIdGenerado = productoId;
       if (productoId) {
-        const { error: errProd } = await supabase.from('productosmenu').update(productoPayload).eq('id', productoId);
+        const { error: errProd } = await supabase.from('productosmenu').update(cleanProd).eq('id', productoId);
         if (errProd) throw errProd;
       } else {
-        const { data: newProd, error: errProd } = await supabase.from('productosmenu').insert([productoPayload]).select('id').single();
+        const { data: newProd, error: errProd } = await supabase.from('productosmenu').insert([cleanProd]).select('id').single();
         if (errProd) throw errProd;
         prodIdGenerado = newProd.id;
       }
 
+      // Actualizar vínculos
       if (productoId) {
         await supabase.from('producto_grupos').delete().eq('producto_id', productoId);
       }
@@ -163,30 +174,45 @@ export const productosService = {
         if (errLinks) throw errLinks;
       }
 
+      toast.success("Producto configurado correctamente", { id: tId });
       return { data: { id: prodIdGenerado }, error: null };
     } catch (error) {
-      console.error("Error al vincular producto con grupos:", error);
+      toast.error("Error: " + error.message, { id: tId });
       return { data: null, error };
     }
   },
 
-  /**
-   * Elimina un producto por su ID.
-   */
   async deleteProducto(id) {
     if (!hasPermission('borrar_registros')) {
-      return { data: null, error: { message: "Acceso denegado." } };
+      toast.error("No tienes permisos para eliminar.");
+      return { error: "Acceso denegado" };
     }
-    return await supabase.from('productosmenu').delete().eq('id', id);
+    const tId = toast.loading("Eliminando producto...");
+    try {
+      const { error } = await supabase.from('productosmenu').delete().eq('id', id);
+      if (error) throw error;
+      toast.success("Producto eliminado", { id: tId });
+      return { error: null };
+    } catch (error) {
+      toast.error("Error al eliminar", { id: tId });
+      return { error };
+    }
   },
 
-  /**
-   * Elimina un Grupo Maestro por su ID.
-   */
   async deleteGrupo(id) {
     if (!hasPermission('borrar_registros')) {
-      return { data: null, error: { message: "Acceso denegado." } };
+      toast.error("No tienes permisos para eliminar grupos.");
+      return { error: "Acceso denegado" };
     }
-    return await supabase.from('grupos_modificadores').delete().eq('id', id);
+    const tId = toast.loading("Eliminando grupo maestro...");
+    try {
+      const { error } = await supabase.from('grupos_modificadores').delete().eq('id', id);
+      if (error) throw error;
+      toast.success("Grupo eliminado", { id: tId });
+      return { error: null };
+    } catch (error) {
+      toast.error("Error al eliminar", { id: tId });
+      return { error };
+    }
   }
 };

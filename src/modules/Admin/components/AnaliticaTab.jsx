@@ -121,7 +121,7 @@ export const AnaliticaTab = ({ sucursalId }) => {
       </div>
 
       {/* BLOQUE 2: RANKINGS Y DESEMPEÑO */}
-      <div className={s.cardsGrid} style={{ alignItems: 'start' }}>
+      <div className={s.metricsGrid} style={{ alignItems: 'start' }}>
         
         {/* TOP 5 PRODUCTOS */}
         <div className={s.adminCard} style={{ padding: '25px' }}>

@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { catUnidadesService } from '../services/catUnidades.service';
 import { hasPermission } from '../utils/checkPermiso'; // 🛡️ Blindaje de seguridad
+import toast from 'react-hot-toast'; // 🍞 Feedback visual
 
 export const useCatUnidades = () => {
   const [unidades, setUnidades] = useState([]);
@@ -24,7 +25,9 @@ export const useCatUnidades = () => {
       const data = await catUnidadesService.getAll();
       setUnidades(data);
     } catch (err) {
-      setError('Error al cargar las unidades de medida.');
+      const msg = 'Error al cargar las unidades de medida.';
+      setError(msg);
+      toast.error(msg); // Notificación simple para carga fallida
       console.error(err);
     } finally {
       setLoading(false);
@@ -42,15 +45,20 @@ export const useCatUnidades = () => {
     if (!puedeEditar) {
       const msg = 'Acceso denegado: No tienes permiso para editar unidades.';
       setError(msg);
+      toast.error(msg);
       throw new Error(msg);
     }
 
+    const tId = toast.loading("Registrando nueva unidad...");
     try {
       const nuevaUnidad = await catUnidadesService.create(unidad);
       setUnidades((prev) => [...prev, nuevaUnidad]);
+      toast.success("Unidad de medida creada con éxito", { id: tId });
       return nuevaUnidad;
     } catch (err) {
-      setError('Error al crear la unidad.');
+      const msg = 'Error al crear la unidad.';
+      setError(msg);
+      toast.error(msg, { id: tId });
       throw err;
     }
   };
@@ -61,14 +69,19 @@ export const useCatUnidades = () => {
     if (!puedeBorrar) {
       const msg = 'Acceso denegado: Se requiere permiso de borrado.';
       setError(msg);
+      toast.error(msg);
       throw new Error(msg);
     }
 
+    const tId = toast.loading("Eliminando unidad...");
     try {
       await catUnidadesService.delete(id);
       setUnidades((prev) => prev.filter(u => u.id !== id));
+      toast.success("Registro eliminado correctamente", { id: tId });
     } catch (err) {
-      setError('Error al eliminar la unidad.');
+      const msg = 'Error al eliminar la unidad.';
+      setError(msg);
+      toast.error(msg, { id: tId });
       throw err;
     }
   };

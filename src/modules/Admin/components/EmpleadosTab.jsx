@@ -281,11 +281,25 @@ export const EmpleadosTab = () => {
                 }}
               >
                 <div className={s.formGroup}>
+                  <label className={s.label} style={{ fontSize: '9px' }}>NOMBRE DEL ROL</label>
                   <input
                     className={s.inputField}
-                    placeholder="Nombre Rol"
+                    placeholder="Ej. Chef, Cajero..."
+                    value={emp.rolFormData.nombre_rol}
                     onChange={(e) =>
-                      emp.setRolFormData({ nombre_rol: e.target.value })
+                      emp.setRolFormData({ ...emp.rolFormData, nombre_rol: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div className={s.formGroup}>
+                  <label className={s.label} style={{ fontSize: '9px' }}>DESCRIPCIÓN</label>
+                  <input
+                    className={s.inputField}
+                    placeholder="¿Qué hace este rol?"
+                    value={emp.rolFormData.descripcion}
+                    onChange={(e) =>
+                      emp.setRolFormData({ ...emp.rolFormData, descripcion: e.target.value })
                     }
                     required
                   />
@@ -293,8 +307,9 @@ export const EmpleadosTab = () => {
                 <button
                   type="submit"
                   className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`}
+                  disabled={emp.loading}
                 >
-                  GUARDAR ROL
+                  {emp.loading ? 'GUARDANDO...' : 'GUARDAR ROL'}
                 </button>
               </form>
             )}
@@ -577,7 +592,7 @@ export const EmpleadosTab = () => {
                             emp.setSucursalFormData(suc);
                           }}
                         >
-                          {emp.puedeEditarSucursales ? '📝' : 'VER'}
+                          {emp.puedeEditarSucursales ? '📝' : '👁️'}
                         </button>
                         {emp.puedeBorrarSucursales && (
                           <button

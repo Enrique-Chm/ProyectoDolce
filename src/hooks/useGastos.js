@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { gastosService } from '../services/Gastos.service';
 import { sucursalesService } from '../services/Sucursales.service';
 import { hasPermission } from '../utils/checkPermiso'; // 🛡️ Blindaje de seguridad
+import toast from 'react-hot-toast'; // 🍞 Feedback visual
 
 export const useGastos = () => {
   // --- ESTADOS GLOBALES ---
@@ -43,11 +44,11 @@ export const useGastos = () => {
 
     setLoading(true);
     try {
-      // 🚀 Promise.all para cargar todo al mismo tiempo y no hacer esperar al usuario
+      // 🚀 Promise.all para cargar todo al mismo tiempo
       const [g, c, s] = await Promise.all([
         gastosService.getGastos(),
         gastosService.getCategorias(),
-        sucursalesService.getAll() // Requerido para el selector de sucursales
+        sucursalesService.getAll() 
       ]);
       
       setGastos(g);
@@ -55,6 +56,7 @@ export const useGastos = () => {
       setSucursales(s.data || []);
     } catch (e) {
       console.error("Error al cargar el módulo de finanzas:", e);
+      toast.error("Error al sincronizar datos financieros.");
     } finally {
       setLoading(false);
     }
@@ -73,17 +75,18 @@ export const useGastos = () => {
     // 🛡️ Bloqueo de acción según sea creación o edición
     const permisoRequerido = editGastoId ? puedeEditarGastos : puedeCrearGastos;
     if (!permisoRequerido) {
-      return alert(`No tienes permiso para ${editGastoId ? 'editar' : 'registrar'} gastos.`);
+      return toast.error(`No tienes permiso para ${editGastoId ? 'editar' : 'registrar'} gastos.`);
     }
 
     // Validación de campos obligatorios
     if (!gastoFormData.sucursal_id || !gastoFormData.categoria_id) {
-      return alert("Por favor selecciona una sucursal y una categoría.");
+      return toast.error("Por favor selecciona una sucursal y una categoría.");
     }
 
+    const tId = toast.loading(editGastoId ? "Actualizando registro..." : "Guardando gasto...");
     setLoading(true);
     try {
-      // Convertimos los IDs a números por seguridad y compatibilidad con la DB
+      // Convertimos los IDs a números por seguridad
       const payload = {
         ...gastoFormData,
         sucursal_id: parseInt(gastoFormData.sucursal_id),
@@ -92,11 +95,12 @@ export const useGastos = () => {
       };
 
       await gastosService.saveGasto(payload, editGastoId);
+      toast.success(editGastoId ? "Gasto actualizado" : "Gasto registrado con éxito", { id: tId });
       resetGastoForm();
       cargarDatos();
     } catch (error) {
       console.error(error);
-      alert(error.message);
+      toast.error("Error: " + error.message, { id: tId });
     } finally {
       setLoading(false);
     }
@@ -105,17 +109,19 @@ export const useGastos = () => {
   const handleDeleteGasto = async (id) => {
     // 🛡️ Bloqueo de acción
     if (!puedeBorrarGastos) {
-      return alert("Acceso denegado: No tienes facultad para borrar registros financieros.");
+      return toast.error("Acceso denegado: No tienes facultad para borrar registros financieros.");
     }
 
     if (!window.confirm("⚠️ ¿Estás seguro de eliminar este gasto? Esta acción afectará los reportes financieros.")) return;
     
+    const tId = toast.loading("Eliminando registro...");
     setLoading(true);
     try {
       await gastosService.deleteGasto(id);
+      toast.success("Registro eliminado", { id: tId });
       cargarDatos();
     } catch (error) {
-      alert(error.message);
+      toast.error("Error al eliminar: " + error.message, { id: tId });
     } finally {
       setLoading(false);
     }
@@ -141,17 +147,19 @@ export const useGastos = () => {
     
     // 🛡️ Bloqueo de acción
     if (!puedeEditarGastos) {
-      return alert("No tienes permiso para modificar las categorías de gastos.");
+      return toast.error("No tienes permiso para modificar las categorías de gastos.");
     }
 
+    const tId = toast.loading("Procesando categoría...");
     setLoading(true);
     try {
       await gastosService.saveCategoria(catFormData, editCatId);
+      toast.success(editCatId ? "Categoría actualizada" : "Categoría creada", { id: tId });
       setEditCatId(null);
       setCatFormData({ nombre: '', descripcion: '' });
       cargarDatos();
     } catch (error) {
-      alert(error.message);
+      toast.error("Error: " + error.message, { id: tId });
     } finally {
       setLoading(false);
     }
@@ -160,17 +168,19 @@ export const useGastos = () => {
   const handleDeleteCategoria = async (id) => {
     // 🛡️ Bloqueo de acción
     if (!puedeBorrarGastos) {
-      return alert("Acceso denegado: No puedes borrar catálogos.");
+      return toast.error("Acceso denegado: No puedes borrar catálogos.");
     }
 
     if (!window.confirm("¿Eliminar categoría? Asegúrate de que no haya gastos vinculados a ella.")) return;
     
+    const tId = toast.loading("Eliminando categoría...");
     setLoading(true);
     try {
       await gastosService.deleteCategoria(id);
+      toast.success("Categoría eliminada", { id: tId });
       cargarDatos();
     } catch (error) {
-      alert(error.message);
+      toast.error("Error: " + error.message, { id: tId });
     } finally {
       setLoading(false);
     }

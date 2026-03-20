@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { empleadosService } from '../services/Empleados.service';
 import { sucursalesService } from '../services/Sucursales.service';
 import { hasPermission } from '../utils/checkPermiso'; // 🛡️ Blindaje de seguridad
+import toast from 'react-hot-toast'; // 🍞 Feedback visual
 
 export const useEmpleados = () => {
   const [loading, setLoading] = useState(false);
@@ -15,17 +16,17 @@ export const useEmpleados = () => {
   const puedeVerUsuarios = hasPermission('ver_usuarios');
   const puedeCrearUsuarios = hasPermission('crear_usuarios'); 
   const puedeEditarUsuarios = hasPermission('editar_usuarios');
-  const puedeBorrarUsuarios = hasPermission('borrar_usuarios'); // 👈 Nuevo
+  const puedeBorrarUsuarios = hasPermission('borrar_usuarios'); 
   
   const puedeVerConfig = hasPermission('ver_configuracion');
   const puedeCrearConfig = hasPermission('crear_configuracion'); 
   const puedeEditarConfig = hasPermission('editar_configuracion');
-  const puedeBorrarConfig = hasPermission('borrar_configuracion'); // 👈 Nuevo
+  const puedeBorrarConfig = hasPermission('borrar_configuracion'); 
   
   const puedeVerSucursales = hasPermission('ver_sucursales');
   const puedeCrearSucursales = hasPermission('crear_sucursales'); 
   const puedeEditarSucursales = hasPermission('editar_sucursales');
-  const puedeBorrarSucursales = hasPermission('borrar_sucursales'); // 👈 Nuevo
+  const puedeBorrarSucursales = hasPermission('borrar_sucursales'); 
 
   // --- ESTADO USUARIOS ---
   const [editId, setEditId] = useState(null);
@@ -62,6 +63,7 @@ export const useEmpleados = () => {
       setSucursales(s.data || []);
     } catch (e) { 
       console.error("Error en carga de datos de empleados:", e); 
+      toast.error("Error al sincronizar datos del personal.");
     } finally { 
       setLoading(false); 
     }
@@ -73,26 +75,35 @@ export const useEmpleados = () => {
   const handleSaveUsuario = async (e) => {
     e.preventDefault();
     const tienePermiso = editId ? puedeEditarUsuarios : puedeCrearUsuarios;
-    if (!tienePermiso) return alert("No tienes permiso para gestionar usuarios.");
+    if (!tienePermiso) return toast.error("No tienes permiso para gestionar usuarios.");
 
-    const payload = { 
-      ...formData, 
-      rol_id: parseInt(formData.rol_id),
-      sucursal_id: formData.sucursal_id ? parseInt(formData.sucursal_id) : null 
-    };
-    await empleadosService.saveUsuario(payload, editId);
-    resetUserForm();
-    cargarDatos();
+    const idToast = toast.loading(editId ? "Actualizando usuario..." : "Registrando usuario...");
+    try {
+        const payload = { 
+          ...formData, 
+          rol_id: parseInt(formData.rol_id),
+          sucursal_id: formData.sucursal_id ? parseInt(formData.sucursal_id) : null 
+        };
+        await empleadosService.saveUsuario(payload, editId);
+        resetUserForm();
+        await cargarDatos();
+        toast.success(editId ? "Usuario actualizado" : "Usuario registrado", { id: idToast });
+    } catch (error) {
+        toast.error("Error al procesar usuario: " + error.message, { id: idToast });
+    }
   };
 
   const handleDeleteUsuario = async (id, nombre) => {
-    if (!puedeBorrarUsuarios) return alert("Acceso denegado para eliminar usuarios.");
+    if (!puedeBorrarUsuarios) return toast.error("Acceso denegado para eliminar usuarios.");
+    
     if (window.confirm(`¿Estás seguro de eliminar al empleado "${nombre}"?`)) {
+      const idToast = toast.loading("Eliminando empleado...");
       try {
         await empleadosService.deleteUsuario(id);
-        cargarDatos();
+        await cargarDatos();
+        toast.success("Empleado eliminado correctamente", { id: idToast });
       } catch (error) {
-        alert(error.message);
+        toast.error("Error: " + error.message, { id: idToast });
       }
     }
   };
@@ -112,7 +123,7 @@ export const useEmpleados = () => {
 
   const togglePermiso = (permisoId) => {
     if (!permisoId) return;
-    if (!puedeEditarConfig) return alert("Acceso denegado: No puedes alterar la matriz de permisos.");
+    if (!puedeEditarConfig) return toast.error("Acceso denegado: No puedes alterar la matriz.");
 
     const nuevaLista = permisosActivos.includes(permisoId) 
       ? permisosActivos.filter(id => id !== permisoId) 
@@ -122,20 +133,21 @@ export const useEmpleados = () => {
   };
 
   const guardarMatrizPermisos = async () => {
-    if (!rolSeleccionado) return alert("Selecciona un rol primero.");
-    if (!puedeEditarConfig) return alert("Acceso denegado: No puedes modificar la matriz.");
+    if (!rolSeleccionado) return toast.error("Selecciona un rol primero.");
+    if (!puedeEditarConfig) return toast.error("Acceso denegado.");
 
     setLoading(true);
+    const idToast = toast.loading("Guardando configuración de permisos...");
     try {
       const res = await empleadosService.actualizarPermisosRol(rolSeleccionado, permisosActivos);
       if (res.success) {
-        alert("✅ Matriz de permisos actualizada correctamente.");
+        toast.success("Matriz de permisos actualizada correctamente.", { id: idToast });
       } else {
-        alert("Error al guardar: " + res.error);
+        toast.error("Error al guardar: " + res.error, { id: idToast });
       }
     } catch (error) {
       console.error(error);
-      alert("Error crítico al guardar la matriz.");
+      toast.error("Error crítico al guardar la matriz.", { id: idToast });
     } finally {
       setLoading(false);
     }
@@ -144,33 +156,48 @@ export const useEmpleados = () => {
   const handleSaveRol = async (e) => {
     e.preventDefault();
     const tienePermiso = editRolId ? puedeEditarConfig : puedeCrearConfig;
-    if (!tienePermiso) return alert("No tienes permiso para modificar/crear roles.");
+    if (!tienePermiso) return toast.error("Sin permisos para modificar roles.");
 
-    await empleadosService.saveRol(rolFormData, editRolId);
-    setRolFormData({ nombre_rol: '', descripcion: '' }); setEditRolId(null); setMostrarFormRol(false);
-    cargarDatos();
+    const idToast = toast.loading("Procesando rol...");
+    try {
+        await empleadosService.saveRol(rolFormData, editRolId);
+        setRolFormData({ nombre_rol: '', descripcion: '' }); setEditRolId(null); setMostrarFormRol(false);
+        await cargarDatos();
+        toast.success(editRolId ? "Rol actualizado" : "Rol creado con éxito", { id: idToast });
+    } catch (error) {
+        toast.error("Error al guardar rol", { id: idToast });
+    }
   };
 
   // --- MÉTODOS DE SUCURSALES ---
   const handleSaveSucursal = async (e) => {
     e.preventDefault();
     const tienePermiso = editSucursalId ? puedeEditarSucursales : puedeCrearSucursales;
-    if (!tienePermiso) return alert("No tienes permiso para gestionar sucursales.");
+    if (!tienePermiso) return toast.error("Sin permisos para sucursales.");
 
-    await sucursalesService.save(sucursalFormData, editSucursalId);
-    setEditSucursalId(null); setSucursalFormData({ nombre: '', direccion: '' });
-    cargarDatos();
+    const idToast = toast.loading("Guardando sucursal...");
+    try {
+        await sucursalesService.save(sucursalFormData, editSucursalId);
+        setEditSucursalId(null); setSucursalFormData({ nombre: '', direccion: '' });
+        await cargarDatos();
+        toast.success("Sucursal guardada correctamente", { id: idToast });
+    } catch (error) {
+        toast.error("Error al guardar sucursal", { id: idToast });
+    }
   };
 
   const handleDeleteSucursal = async (id, nombre) => {
-    if (!puedeBorrarSucursales) return alert("Acceso denegado para eliminar sucursales.");
+    if (!puedeBorrarSucursales) return toast.error("Acceso denegado.");
+    
     if (window.confirm(`¿Estás seguro de eliminar la sucursal "${nombre}"?`)) {
+      const idToast = toast.loading("Eliminando sucursal...");
       try {
         const res = await sucursalesService.delete(id);
         if (res.error) throw res.error;
-        cargarDatos();
+        await cargarDatos();
+        toast.success("Sucursal eliminada", { id: idToast });
       } catch (error) {
-        alert("Error al eliminar: " + error.message);
+        toast.error("Error al eliminar: " + error.message, { id: idToast });
       }
     }
   };

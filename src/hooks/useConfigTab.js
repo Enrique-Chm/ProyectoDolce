@@ -2,15 +2,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { configService } from '../services/Config.service'; 
 import { hasPermission } from '../utils/checkPermiso';
+import toast from 'react-hot-toast'; // 🍞 Importación para feedback visual
 
 export const useConfigTab = (subTab) => {
   const [loading, setLoading] = useState(false);
 
   // 🛡️ DEFINICIÓN DE FACULTADES BASE (Blindaje de nivel Configuración)
   const puedeVerConfig = hasPermission('ver_configuracion');
-  const puedeCrearConfig = hasPermission('crear_configuracion');   // 👈 Nuevo estándar
+  const puedeCrearConfig = hasPermission('crear_configuracion');   
   const puedeEditarConfig = hasPermission('editar_configuracion');
-  const puedeBorrarConfig = hasPermission('borrar_configuracion'); // 👈 Nuevo estándar
+  const puedeBorrarConfig = hasPermission('borrar_configuracion'); 
 
   // --- ESTADOS: UNIDADES ---
   const [unidades, setUnidades] = useState([]);
@@ -33,7 +34,7 @@ export const useConfigTab = (subTab) => {
   const [mTipo, setMTipo] = useState('ENTRADA');
   const [mEditId, setMEditId] = useState(null);
 
-  // Lógica de Permisos Original (Mantenida al 100% y expandida para la separación Crear/Editar)
+  // Lógica de Permisos Original
   const puedeCrearU = puedeCrearConfig && hasPermission('ver_unidades');
   const puedeEditarU = puedeEditarConfig && hasPermission('ver_unidades');
   
@@ -69,6 +70,7 @@ export const useConfigTab = (subTab) => {
       }
     } catch (error) {
       console.error("Error crítico en useConfigTab:", error);
+      toast.error("Error al cargar la configuración.");
     } finally {
       setLoading(false);
     }
@@ -82,74 +84,89 @@ export const useConfigTab = (subTab) => {
   const handleSubmitUnidad = async (e) => {
     e.preventDefault();
     const tienePermiso = uEditId ? puedeEditarU : puedeCrearU;
-    if (!tienePermiso) return alert("Acceso Denegado: Se requiere permiso para guardar unidades de medida."); 
+    if (!tienePermiso) return toast.error("Acceso Denegado: Permisos insuficientes."); 
 
+    const tId = toast.loading("Guardando unidad...");
     const { error } = await configService.saveUnidad({ nombre: uNombre, abreviatura: uAbrev }, uEditId);
+    
     if (!error) { 
+      toast.success("Unidad guardada con éxito", { id: tId });
       resetUnidad(); 
       fetchData(); 
     } else {
-      alert("Error al guardar: " + error.message);
+      toast.error("Error: " + error.message, { id: tId });
     }
   };
 
   const handleSubmitCatMenu = async (e) => {
     e.preventDefault();
     const tienePermiso = cMenuEditId ? puedeEditarC : puedeCrearC;
-    if (!tienePermiso) return alert("Acceso Denegado: Se requiere permiso para guardar categorías de menú."); 
+    if (!tienePermiso) return toast.error("Acceso Denegado: Permisos insuficientes."); 
 
+    const tId = toast.loading("Guardando categoría...");
     const { error } = await configService.saveMenu({ nombre: cMenuNombre, color_etiqueta: cMenuColor }, cMenuEditId);
+    
     if (!error) { 
+      toast.success("Categoría de menú guardada", { id: tId });
       resetCatMenu(); 
       fetchData(); 
     } else { 
-      alert("Error al guardar: " + error.message);
+      toast.error("Error: " + error.message, { id: tId });
     }
   };
 
   const handleSubmitCatInsumo = async (e) => {
     e.preventDefault();
     const tienePermiso = cInsumoEditId ? puedeEditarC : puedeCrearC;
-    if (!tienePermiso) return alert("Acceso Denegado: Se requiere permiso para guardar categorías de insumos."); 
+    if (!tienePermiso) return toast.error("Acceso Denegado: Permisos insuficientes."); 
 
+    const tId = toast.loading("Guardando categoría...");
     const { error } = await configService.saveInsumo({ nombre: cInsumoNombre }, cInsumoEditId);
+    
     if (!error) { 
+      toast.success("Categoría de insumo guardada", { id: tId });
       resetCatInsumo(); 
       fetchData(); 
     } else { 
-      alert("Error al guardar: " + error.message);
+      toast.error("Error: " + error.message, { id: tId });
     }
   };
 
   const handleSubmitMotivo = async (e) => {
     e.preventDefault();
     const tienePermiso = mEditId ? puedeEditarM : puedeCrearM;
-    if (!tienePermiso) return alert("Acceso Denegado: Se requiere permiso para guardar motivos de ajuste."); 
+    if (!tienePermiso) return toast.error("Acceso Denegado: Permisos insuficientes."); 
 
+    const tId = toast.loading("Guardando motivo...");
     const { error } = await configService.saveMotivoInventario({ nombre_motivo: mNombre, tipo: mTipo }, mEditId);
+    
     if (!error) { 
+      toast.success("Motivo de inventario guardado", { id: tId });
       resetMotivo(); 
       fetchData(); 
     } else {
-      alert("Error al guardar: " + error.message);
+      toast.error("Error: " + error.message, { id: tId });
     }
   };
 
   // 🛡️ LÓGICA DE BORRADO AÑADIDA
   const handleDelete = async (tipo, id) => {
-    if (!puedeBorrarConfig) return alert("Acceso Denegado: Se requiere permiso para borrar en configuración.");
+    if (!puedeBorrarConfig) return toast.error("Acceso Denegado: No puedes borrar registros.");
     
     if (window.confirm("¿Estás seguro de eliminar este registro? Esta acción no se puede deshacer.")) {
-      setLoading(true);
+      const tId = toast.loading("Eliminando registro...");
       let res;
       if (tipo === 'unidades') res = await configService.deleteUnidad(id);
       if (tipo === 'menu') res = await configService.deleteMenu(id);
       if (tipo === 'insumos') res = await configService.deleteInsumo(id);
       if (tipo === 'motivos') res = await configService.deleteMotivoInventario(id);
 
-      if (res?.error) alert("Error al eliminar: " + res.error.message);
-      else fetchData();
-      setLoading(false);
+      if (res?.error) {
+        toast.error("Error al eliminar: " + res.error.message, { id: tId });
+      } else {
+        toast.success("Registro eliminado", { id: tId });
+        fetchData();
+      }
     }
   };
 
@@ -162,7 +179,7 @@ export const useConfigTab = (subTab) => {
   return {
     loading, 
     // 🛡️ Exportamos facultades
-    puedeVerConfig, puedeBorrarConfig, // Corregido el nombre aquí
+    puedeVerConfig, puedeBorrarConfig, 
     puedeCrearU, puedeEditarU, 
     puedeCrearC, puedeEditarC, 
     puedeCrearM, puedeEditarM,

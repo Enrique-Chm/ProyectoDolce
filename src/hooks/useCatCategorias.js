@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { catCategoriasService } from '../services/catCategorias.service';
 import { hasPermission } from '../utils/checkPermiso'; // 🛡️ Importación de seguridad
+import toast from 'react-hot-toast'; // 🍞 Feedback visual
 
 export const useCatCategorias = () => {
   const [categorias, setCategorias] = useState([]);
@@ -23,7 +24,9 @@ export const useCatCategorias = () => {
       const data = await catCategoriasService.getAll();
       setCategorias(data);
     } catch (err) {
-      setError('Error al cargar las categorías del menú.');
+      const msg = 'Error al cargar las categorías del menú.';
+      setError(msg);
+      toast.error(msg); // Notificación de error en carga
       console.error(err);
     } finally {
       setLoading(false);
@@ -39,15 +42,20 @@ export const useCatCategorias = () => {
     if (!puedeEditar) {
       const msg = 'No tienes permiso para crear categorías.';
       setError(msg);
+      toast.error(msg);
       throw new Error(msg);
     }
 
+    const tId = toast.loading("Creando nueva categoría...");
     try {
       const nueva = await catCategoriasService.create(categoria);
       setCategorias((prev) => [...prev, nueva]);
+      toast.success("Categoría añadida con éxito", { id: tId });
       return nueva;
     } catch (err) {
-      setError('Error al crear la categoría.');
+      const msg = 'Error al crear la categoría.';
+      setError(msg);
+      toast.error(msg, { id: tId });
       throw err;
     }
   };
@@ -57,14 +65,19 @@ export const useCatCategorias = () => {
     if (!puedeBorrar) {
       const msg = 'No tienes permiso para eliminar registros maestros.';
       setError(msg);
+      toast.error(msg);
       throw new Error(msg);
     }
 
+    const tId = toast.loading("Eliminando categoría...");
     try {
       await catCategoriasService.delete(id);
       setCategorias((prev) => prev.filter(c => c.id !== id));
+      toast.success("Categoría eliminada", { id: tId });
     } catch (err) {
-      setError('Error al eliminar la categoría.');
+      const msg = 'Error al eliminar la categoría.';
+      setError(msg);
+      toast.error(msg, { id: tId });
       throw err;
     }
   };
