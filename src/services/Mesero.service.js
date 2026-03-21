@@ -10,7 +10,8 @@ export const MeseroService = {
       return { data: [], error: { message: 'No tienes permisos para ver cuentas abiertas.' } };
     }
 
-    const { data, error } = await supabase
+    // 🔴 CORRECCIÓN: Estructura correcta de la consulta y filtrado por sucursal
+    let query = supabase
       .from('ventas')
       .select(`
         *,
@@ -19,6 +20,12 @@ export const MeseroService = {
       .in('estado', ['pendiente', 'por_cobrar'])
       .order('created_at', { ascending: false });
 
+    // Filtrar por sucursal si existe
+    if (sucursalId) {
+      query = query.eq('sucursal_id', sucursalId);
+    }
+
+    const { data, error } = await query;
     return { data, error };
   },
 
@@ -28,12 +35,19 @@ export const MeseroService = {
       return { data: [], error: { message: 'No tienes permisos para ver el historial.' } };
     }
 
-    const { data, error } = await supabase
+    // 🔴 CORRECCIÓN: Filtrado por sucursal
+    let query = supabase
       .from('ventas')
       .select('*')
       .eq('estado', 'pagado')
       .order('hora_cierre', { ascending: false })
       .limit(50);
+
+    if (sucursalId) {
+      query = query.eq('sucursal_id', sucursalId);
+    }
+
+    const { data, error } = await query;
     return { data, error };
   },
 
@@ -47,6 +61,7 @@ export const MeseroService = {
       .from('ventas')
       .update({ estado: 'por_cobrar' })
       .eq('id', ventaId);
+      
     return { success: !error, error: error?.message };
   },
 
@@ -59,23 +74,19 @@ export const MeseroService = {
     try {
       let ventaId = ventaData.id;
       
+      // 1. SI ES UNA MESA NUEVA (No tiene ID de venta previo)
       if (!ventaId) {
         const totalInicial = carrito.reduce((acc, item) => acc + (item.cantidad * item.precio_venta), 0);
         
-        // CORRECCIÓN: Quitamos los parseInt de los UUIDs.
-        // Si no tienes sucursal_id o mesero_id configurados aún, mandamos "undefined" para que Supabase los ignore.
+        // 🟡 MEJORA: Usar null en lugar de undefined para campos foráneos (UUIDs)
         const nuevaVentaPayload = {
-          usuario_id: ventaData.usuario_id || undefined, 
+          usuario_id: ventaData.usuario_id || null, 
           mesa: ventaData.mesa ? String(ventaData.mesa) : 'S/N',
           estado: 'pendiente',
           subtotal: parseFloat(totalInicial), 
-          total: parseFloat(totalInicial)
+          total: parseFloat(totalInicial),
+          sucursal_id: ventaData.sucursal_id || null
         };
-
-        // Solo agregamos sucursal_id si realmente viene un valor válido
-        if (ventaData.sucursal_id) {
-            nuevaVentaPayload.sucursal_id = ventaData.sucursal_id;
-        }
 
         const { data: nuevaVenta, error: errVenta } = await supabase
           .from('ventas')
@@ -85,12 +96,12 @@ export const MeseroService = {
           
         if (errVenta) {
           console.error("Error al crear la venta padre:", errVenta);
-          throw errVenta;
+          throw new Error(errVenta.message); // Mejor manejo de error para el catch
         }
         ventaId = nuevaVenta.id;
       }
 
-      // Preparar detalles (Aquí sí usamos parseInt para productos y cantidades, porque suelen ser enteros)
+      // 2. PREPARAR DETALLES DE LOS PRODUCTOS
       const detalles = carrito.map(item => ({
         venta_id: ventaId, 
         producto_id: parseInt(item.id),
@@ -101,37 +112,42 @@ export const MeseroService = {
         notas: item.notas || ''
       }));
 
+      // 3. INSERTAR DETALLES EN LA BASE DE DATOS
       const { error: errDetalles } = await supabase
         .from('ventas_detalle')
         .insert(detalles);
         
       if (errDetalles) {
         console.error("Error al insertar los detalles:", errDetalles);
-        throw errDetalles;
+        throw new Error(errDetalles.message);
       }
 
-      // Recalcular el total si la mesa ya existía
+      // 4. RECALCULAR EL TOTAL DE LA MESA (Si ya existía y le agregaron más cosas)
       if (ventaData.id) {
-        const { data: allDetails } = await supabase
+        const { data: allDetails, error: errCalc } = await supabase
           .from('ventas_detalle')
           .select('subtotal')
           .eq('venta_id', ventaId);
           
+        if (errCalc) throw new Error("Error al recalcular totales.");
+
         const nuevoTotal = allDetails.reduce((sum, item) => sum + item.subtotal, 0);
         
-        await supabase
+        const { error: errUpdate } = await supabase
           .from('ventas')
           .update({ 
             subtotal: parseFloat(nuevoTotal),
             total: parseFloat(nuevoTotal) 
           })
           .eq('id', ventaId);
+          
+        if (errUpdate) throw new Error("Error al actualizar el total de la mesa.");
       }
 
       return { success: true };
     } catch (error) {
       console.error("Error en procesarVenta (MeseroService):", error);
-      return { success: false, error: error.message || JSON.stringify(error) };
+      return { success: false, error: error.message || "Error desconocido al procesar la venta." };
     }
   }
 };

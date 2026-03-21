@@ -84,7 +84,7 @@
 .mesaName { 
   margin: 0; 
   font-size: 1.1rem; 
-  font-weight: 800; 
+  font-weight: 600; 
   color: var(--color-text-main); 
 }
 
@@ -117,10 +117,9 @@
 
 /* --- COMANDERO (VISTA 2) --- */
 .posGrid {
-  display: grid;
-  /* El carrito ahora ocupa 300px en lugar de 350px para dar más aire al menú */
-  grid-template-columns: 1fr 300px; 
-  gap: 20px;
+  display: block; /* Quitamos el grid de dos columnas */
+  width: 100%;
+  padding-bottom: 80px; /* Espacio para que el carrito no tape el último producto */
   position: relative;
 }
 
@@ -150,38 +149,53 @@
 .productCard:active { background: var(--color-bg-muted); }
 .productCardLocked { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
 
-/* --- AREA DEL CARRITO (SIDEBAR) --- */
+/* --- ÁREA DEL CARRITO (Ahora es un Drawer inferior) --- */
 .cartArea {
   background: var(--color-bg-card);
-  border-radius: var(--radius-card);
+  /* Posicionamiento fijo abajo */
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  
+  /* Altura inicial (solo se ve el header) */
+  height: 70px; 
+  
+  z-index: 1000;
+  box-shadow: 0 -5px 20px rgba(0,0,0,0.15);
+  border-top: 1px solid var(--color-border);
+  border-radius: 25px 25px 0 0; /* Bordes redondeados arriba */
+  
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 100px);
-  position: sticky;
-  top: 20px;
-  box-shadow: var(--shadow-md);
-  border: 1px solid var(--color-border);
   overflow: hidden;
+  transition: height 0.4s cubic-bezier(0.4, 0, 0.2, 1); /* Animación suave */
 }
-
 .cartHeader { 
-  padding: 20px; 
+  padding: 15px 25px; 
   border-bottom: 1px solid var(--color-border); 
-  cursor: pointer; 
+  cursor: pointer;
+  background: var(--color-bg-card);
+  user-select: none;
 }
 
 .dragHandle { 
-  width: 40px; 
-  height: 4px; 
+  width: 50px; 
+  height: 5px; 
   background: var(--color-border); 
-  border-radius: 2px; 
+  border-radius: 10px; 
   margin: 0 auto 10px; 
 }
 
 .cartTitle { font-size: 1.2rem; font-weight: 800; }
 
-.cartItems { flex: 1; padding: 20px; overflow-y: auto; }
-
+.cartItems {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  background: var(--color-bg-app); /* Fondo sutil para diferenciar */
+}
 .cartItem {
   margin-bottom: 15px;
   padding-bottom: 15px;
@@ -309,7 +323,10 @@
     z-index: 100;
     transition: height 0.3s ease;
   }
-  .cartExpanded { height: 80vh; }
+/* --- CUANDO SE EXPANDE LA COMANDA --- */
+.cartExpanded {
+  height: 85vh; /* Ocupa casi toda la pantalla al abrirse */
+}
 /* --- CLASES AÑADIDAS PARA ESTIMACIONES TAB --- */
 
 /* Contenedor general para las tabs */

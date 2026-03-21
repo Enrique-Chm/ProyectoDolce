@@ -20,13 +20,10 @@ export const ProductosTab = ({ sucursalId }) => {
   const {
     productos, categorias, recetasCosteadas, subrecetasDisponibles, gruposMaestros, loading,
     puedeCrear, puedeEditar, puedeBorrar,
-    // Hook: Estados y Métodos de Productos
     editProdId, prodFormData, setProdFormData, handleSubmitProducto, handleEditProd, handleDeleteProd, resetProdForm, toggleGrupoEnProducto,
-    // Hook: Estados y Métodos de Grupos Maestros
     editGrupoId, grupoFormData, setGrupoFormData, handleSubmitGrupo, handleEditGrupo, handleDeleteGrupo, resetGrupoForm, addOpcion, removeOpcion, updateOpcion
   } = useProductosTab(sucursalId);
 
-  // 💡 LÓGICA DE VISIBILIDAD DINÁMICA (Para expansión de tablas según Rol)
   const mostrarFormularioProd = puedeCrear || editProdId;
   const mostrarFormularioGrupo = puedeCrear || editGrupoId;
 
@@ -138,21 +135,47 @@ export const ProductosTab = ({ sucursalId }) => {
             <h3 className={s.cardTitle}>{editProdId ? 'Ajustar Producto' : 'Nuevo Producto'}</h3>
             
             <form onSubmit={handleSubmitProducto} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              <div className={s.formGroup}>
-                <label className={s.label}>RECETA PRINCIPAL</label>
-                <SearchableSelect 
-                  options={recetasCosteadas} 
-                  value={prodFormData.nombre} 
-                  valueKey="nombre" 
-                  labelKey="nombre"
-                  placeholder="Buscar receta costeada..."
-                  formatLabel={(opt) => `${opt.nombre} ($${opt.costo_final.toFixed(2)})`}
-                  disabled={editProdId ? !puedeEditar : !puedeCrear}
-                  onChange={(val) => {
-                    const rec = recetasCosteadas.find(r => r.nombre === val);
-                    setProdFormData({...prodFormData, nombre: val, costo_referencia: rec ? rec.costo_final : 0});
-                  }}
-                />
+              
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <div className={s.formGroup} style={{ flex: 1 }}>
+                  <label className={s.label}>RECETA PRINCIPAL</label>
+                  <SearchableSelect 
+                    options={recetasCosteadas} 
+                    value={prodFormData.nombre} 
+                    valueKey="nombre" 
+                    labelKey="nombre"
+                    placeholder="Buscar receta costeada..."
+                    formatLabel={(opt) => `${opt.nombre} ($${opt.costo_final.toFixed(2)})`}
+                    disabled={editProdId ? !puedeEditar : !puedeCrear}
+                    onChange={(val) => {
+                      const rec = recetasCosteadas.find(r => r.nombre === val);
+                      setProdFormData(prev => ({
+                        ...prev, 
+                        nombre: val, 
+                        costo_referencia: rec ? rec.costo_final : 0,
+                        precio_venta: prev.precio_venta || (rec && rec.precio_venta ? rec.precio_venta : "") 
+                      }));
+                    }}
+                  />
+                </div>
+                <div className={s.formGroup} style={{ width: '80px' }} title="Costo de la Receta">
+                  <label className={s.label}>COSTO</label>
+                  <input 
+                    type="text" 
+                    className={s.inputField}
+                    value={`$${(prodFormData.costo_referencia || 0).toFixed(2)}`}
+                    readOnly
+                    disabled
+                    style={{ 
+                      backgroundColor: "var(--color-bg-muted)", 
+                      textAlign: "center", 
+                      fontWeight: "bold",
+                      color: "var(--color-text-main)",
+                      cursor: "not-allowed",
+                      padding: "8px 4px"
+                    }}
+                  />
+                </div>
               </div>
 
               <div className={s.formGrid}>
@@ -236,10 +259,12 @@ export const ProductosTab = ({ sucursalId }) => {
           </aside>
 
           <div className={`${s.adminCard} ${s.tableContainer}`}>
-            <table className={s.table} style={{ minWidth: '600px', width: '100%' }}>
+            {/* 💡 Aumenté ligeramente el minWidth para acomodar la nueva columna */}
+            <table className={s.table} style={{ minWidth: '700px', width: '100%' }}>
               <thead className={s.thead}>
                 <tr>
                   <th className={s.th}>PRODUCTO</th>
+                  <th className={s.th}>CATEGORÍA</th> {/* 👈 NUEVA COLUMNA */}
                   <th className={s.th}>COSTO RECETA</th>
                   <th className={s.th}>VENTA (CON IVA)</th>
                   <th className={s.th} style={{ textAlign: 'right' }}>ACCIONES</th>
@@ -251,6 +276,9 @@ export const ProductosTab = ({ sucursalId }) => {
                   const ventaBase = p.precio_venta || 0;
                   const netoBase = ventaBase / IVA_FACTOR;
                   const margenBase = netoBase > 0 ? (((netoBase - costoBase) / netoBase) * 100).toFixed(1) : 0;
+                  
+                  // 💡 Buscamos el nombre de la categoría usando su ID
+                  const nombreCategoria = categorias.find(c => c.id === p.categoria)?.nombre || 'Sin categoría';
 
                   return (
                     <tr key={p.id}>
@@ -261,6 +289,12 @@ export const ProductosTab = ({ sucursalId }) => {
                             <span key={g.id} className={s.badge} style={{ background: '#e0e7ff', color: '#3730a3', fontSize: '10px' }}>+ {g.nombre}</span>
                           ))}
                         </div>
+                      </td>
+                      {/* 👈 NUEVA CELDA: CATEGORÍA */}
+                      <td className={s.td}>
+                        <span className={s.badge} style={{ background: '#f3f4f6', color: '#4b5563', fontSize: '11px', fontWeight: '500', padding: '4px 8px' }}>
+                          {nombreCategoria}
+                        </span>
                       </td>
                       <td className={s.td}>${costoBase.toFixed(2)}</td>
                       <td className={s.td}>
@@ -497,7 +531,6 @@ const SearchableSelect = ({ options, value, onChange, disabled, placeholder = "B
         onChange={(e) => {
           setSearchTerm(e.target.value);
           setIsOpen(true);
-          // 🛡️ PARCHE: Ya no llamamos a onChange("") aquí para evitar que se pierda la selección mientras escribes.
         }}
         onFocus={() => setIsOpen(true)}
         onBlur={() => {
