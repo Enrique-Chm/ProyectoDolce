@@ -1,7 +1,7 @@
 // Archivo: src/hooks/useEmpleados.js
 import { useState, useEffect, useCallback } from 'react';
-import { empleadosService } from '../services/Empleados.service';
-import { sucursalesService } from '../services/Sucursales.service';
+import { empleadosService } from '../services/empleados.service'; 
+import { sucursalesService } from '../services/Sucursales.service'; 
 import { hasPermission } from '../utils/checkPermiso'; // 🛡️ Blindaje de seguridad
 import toast from 'react-hot-toast'; // 🍞 Feedback visual
 
@@ -45,11 +45,19 @@ export const useEmpleados = () => {
   const [editSucursalId, setEditSucursalId] = useState(null);
   const [sucursalFormData, setSucursalFormData] = useState({ nombre: '', direccion: '' });
 
+  /**
+   * Carga masiva de datos respetando las facultades del usuario actual
+   */
   const cargarDatos = useCallback(async () => {
+    // Si no tiene ningún permiso de lectura, no intentamos cargar nada
     if (!puedeVerUsuarios && !puedeVerConfig && !puedeVerSucursales) return;
 
     setLoading(true);
     try {
+      /**
+       * El empleadosService ya está corregido para manejar la base de datos limpia
+       * (sin ambigüedades en roles ni cat_sucursales).
+       */
       const [u, r, p, s] = await Promise.all([
         puedeVerUsuarios ? empleadosService.getUsuarios() : [],
         puedeVerConfig ? empleadosService.getRoles() : [],
@@ -69,7 +77,9 @@ export const useEmpleados = () => {
     }
   }, [puedeVerUsuarios, puedeVerConfig, puedeVerSucursales]);
 
-  useEffect(() => { cargarDatos(); }, [cargarDatos]);
+  useEffect(() => { 
+    cargarDatos(); 
+  }, [cargarDatos]);
 
   // --- MÉTODOS DE USUARIOS ---
   const handleSaveUsuario = async (e) => {
@@ -82,13 +92,18 @@ export const useEmpleados = () => {
         const payload = { 
           ...formData, 
           rol_id: parseInt(formData.rol_id),
+          // Manejo de nulos para sucursal
           sucursal_id: formData.sucursal_id ? parseInt(formData.sucursal_id) : null 
         };
+
+        // El service se encarga de limpiar el payload de objetos anidados antes de guardar
         await empleadosService.saveUsuario(payload, editId);
+        
         resetUserForm();
         await cargarDatos();
         toast.success(editId ? "Usuario actualizado" : "Usuario registrado", { id: idToast });
     } catch (error) {
+        console.error(error);
         toast.error("Error al procesar usuario: " + error.message, { id: idToast });
     }
   };
@@ -117,13 +132,17 @@ export const useEmpleados = () => {
   const seleccionarRol = async (id) => {
     if (!puedeVerConfig) return;
     setRolSeleccionado(id);
-    const activos = await empleadosService.getIdsPermisosPorRol(id);
-    setPermisosActivos(activos);
+    try {
+      const activos = await empleadosService.getIdsPermisosPorRol(id);
+      setPermisosActivos(activos);
+    } catch (error) {
+      toast.error("No se pudieron cargar los permisos del rol.");
+    }
   };
 
   const togglePermiso = (permisoId) => {
     if (!permisoId) return;
-    if (!puedeEditarConfig) return toast.error("Acceso denegado: No puedes alterar la matriz.");
+    if (!puedeEditarConfig) return toast.error("Acceso denegado: No tienes facultades para alterar la matriz.");
 
     const nuevaLista = permisosActivos.includes(permisoId) 
       ? permisosActivos.filter(id => id !== permisoId) 
@@ -161,7 +180,9 @@ export const useEmpleados = () => {
     const idToast = toast.loading("Procesando rol...");
     try {
         await empleadosService.saveRol(rolFormData, editRolId);
-        setRolFormData({ nombre_rol: '', descripcion: '' }); setEditRolId(null); setMostrarFormRol(false);
+        setRolFormData({ nombre_rol: '', descripcion: '' }); 
+        setEditRolId(null); 
+        setMostrarFormRol(false);
         await cargarDatos();
         toast.success(editRolId ? "Rol actualizado" : "Rol creado con éxito", { id: idToast });
     } catch (error) {
@@ -173,16 +194,20 @@ export const useEmpleados = () => {
   const handleSaveSucursal = async (e) => {
     e.preventDefault();
     const tienePermiso = editSucursalId ? puedeEditarSucursales : puedeCrearSucursales;
-    if (!tienePermiso) return toast.error("Sin permisos para sucursales.");
+    if (!tienePermiso) return toast.error("Sin permisos para gestionar sucursales.");
 
     const idToast = toast.loading("Guardando sucursal...");
     try {
-        await sucursalesService.save(sucursalFormData, editSucursalId);
-        setEditSucursalId(null); setSucursalFormData({ nombre: '', direccion: '' });
+        // 💡 Manejo de errores actualizado para el nuevo Service
+        const res = await sucursalesService.save(sucursalFormData, editSucursalId);
+        if (res.error) throw res.error;
+
+        setEditSucursalId(null); 
+        setSucursalFormData({ nombre: '', direccion: '' });
         await cargarDatos();
         toast.success("Sucursal guardada correctamente", { id: idToast });
     } catch (error) {
-        toast.error("Error al guardar sucursal", { id: idToast });
+        toast.error("Error al guardar sucursal: " + error.message, { id: idToast });
     }
   };
 
@@ -193,7 +218,7 @@ export const useEmpleados = () => {
       const idToast = toast.loading("Eliminando sucursal...");
       try {
         const res = await sucursalesService.delete(id);
-        if (res.error) throw res.error;
+        if (res.error) throw res.error; 
         await cargarDatos();
         toast.success("Sucursal eliminada", { id: idToast });
       } catch (error) {
@@ -209,14 +234,36 @@ export const useEmpleados = () => {
     permisos: puedeVerConfig ? permisos : [], 
     sucursales: puedeVerSucursales ? sucursales : [],
     
-    rolSeleccionado, permisosActivos, seleccionarRol, togglePermiso,
+    rolSeleccionado, 
+    permisosActivos, 
+    seleccionarRol, 
+    togglePermiso,
     guardarMatrizPermisos, 
     
-    formData, setFormData, editId, setEditId, handleSaveUsuario, handleDeleteUsuario, resetUserForm,
-    rolFormData, setRolFormData, mostrarFormRol, setMostrarFormRol, editRolId, setEditRolId, handleSaveRol,
-    sucursalFormData, setSucursalFormData, editSucursalId, setEditSucursalId, handleSaveSucursal, handleDeleteSucursal,
+    formData, 
+    setFormData, 
+    editId, 
+    setEditId, 
+    handleSaveUsuario, 
+    handleDeleteUsuario, 
+    resetUserForm,
+
+    rolFormData, 
+    setRolFormData, 
+    mostrarFormRol, 
+    setMostrarFormRol, 
+    editRolId, 
+    setEditRolId, 
+    handleSaveRol,
+
+    sucursalFormData, 
+    setSucursalFormData, 
+    editSucursalId, 
+    setEditSucursalId, 
+    handleSaveSucursal, 
+    handleDeleteSucursal,
     
-    // 🛡️ Exportamos todas las facultades
+    // 🛡️ Exportamos todas las facultades para control de UI
     puedeVerUsuarios, puedeCrearUsuarios, puedeEditarUsuarios, puedeBorrarUsuarios,
     puedeVerConfig, puedeCrearConfig, puedeEditarConfig, puedeBorrarConfig,
     puedeVerSucursales, puedeCrearSucursales, puedeEditarSucursales, puedeBorrarSucursales,

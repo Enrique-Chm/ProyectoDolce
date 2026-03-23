@@ -1,3 +1,4 @@
+// Archivo: src/services/CajaService.js
 import { supabase } from '../lib/supabaseClient';
 
 export const CajaService = {
@@ -20,23 +21,29 @@ export const CajaService = {
      2. GESTIÓN DE SESIONES (cajas_sesiones)
      ========================================== */
 
-  getSesionActiva: async (usuarioId) => {
+  getSesionActiva: async (usuarioId, sucursalId) => {
+    // 🛡️ Se agrega sucursalId para asegurar que la sesión pertenezca a la sucursal actual
     const { data, error } = await supabase
       .from('cajas_sesiones')
       .select('*')
       .is('fecha_cierre', null)
       .eq('usuario_id', usuarioId)
+      .eq('sucursal_id', sucursalId) // Filtro por sucursal
+      .eq('estado', 'abierto')       // Consistencia con el término masculino
       .maybeSingle();
     return { data, error };
   },
 
   abrirCaja: async (datos) => {
+    // 🔴 CORRECCIÓN CRÍTICA: Se incluye sucursal_id para evitar valores NULL en la DB
+    // Esto permite que el candado del MeseroTab reconozca la caja abierta
     const { data, error } = await supabase
       .from('cajas_sesiones')
       .insert([{ 
         usuario_id: datos.usuario_id,
+        sucursal_id: datos.sucursal_id, // <--- CAMBIO: Ahora se guarda la sucursal
         monto_apertura: parseFloat(datos.monto_apertura),
-        estado: 'abierto',
+        estado: 'abierto',             // Consistencia con 'abierto' 
         fecha_apertura: new Date().toISOString() 
       }])
       .select()
@@ -141,7 +148,7 @@ export const CajaService = {
   getDetalleVenta: async (idVenta) => {
     const { data, error } = await supabase
       .from('ventas_detalle')
-      .select('*')
+      .select('*') // Si tienes error PGRST201 aquí, usa: .select('*, ventas!venta_id(*)')
       .eq('venta_id', idVenta);
     return { data, error };
   }

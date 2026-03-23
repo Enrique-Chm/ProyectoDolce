@@ -1,6 +1,6 @@
 // Archivo: src/hooks/useInventarios.js
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { inventarioService } from '../services/Inventario.service';
+import { inventarioService } from '../services/inventario.service';
 import { hasPermission } from '../utils/checkPermiso'; // 🛡️ Blindaje de seguridad
 import toast from 'react-hot-toast'; // 🍞 Feedback visual
 
@@ -21,9 +21,12 @@ export const useInventarios = (sucursalId) => {
   // --- ESTADOS DE UI ---
   const [searchTerm, setSearchTerm] = useState('');
   const [conteos, setConteos] = useState({}); // Lo que se escribe en los inputs
-  const [auditados, setAuditados] = useState([]); // Memoria de filas verdes
-  const [filtroAuditoria, setFiltroAuditoria] = useState('todos'); // Combobox
+  const [auditados, setAuditados] = useState([]); // Memoria de filas auditadas
+  const [filtroAuditoria, setFiltroAuditoria] = useState('todos'); // Filtro de tabla
 
+  /**
+   * Carga inicial de datos de inventario enriquecidos con stock en vivo
+   */
   const cargarDatos = useCallback(async () => {
     if (!sucursalId) return;
     
@@ -34,27 +37,39 @@ export const useInventarios = (sucursalId) => {
     }
 
     setLoading(true);
+    setError(null);
     try {
       const hoy = new Date().toISOString().split('T')[0];
-      const [dataInsumos, dataMotivos, dataEnVivo] = await Promise.all([
+      
+      // Lanzamos peticiones en paralelo para optimizar velocidad
+      // El service ya está corregido para manejar joins cat_categoria_insumos y cat_unidades_medida
+      const [dataInsumos, dataMotivos, responseEnVivo] = await Promise.all([
         inventarioService.getInsumos(sucursalId),
         inventarioService.getMotivos(),
         inventarioService.calcularContraste(sucursalId, hoy, hoy)
       ]);
 
+      // Verificamos si hubo error en el objeto de respuesta del motor de contraste
+      if (responseEnVivo.error) throw new Error(responseEnVivo.error);
+
       const insumosEnriquecidos = (dataInsumos || []).map(insumo => {
-        const datosHoy = dataEnVivo?.data?.find(d => d.id === insumo.id);
+        // Buscamos el stock esperado calculado por el motor de contraste para hoy
+        // Se busca por ID para mayor precisión
+        const datosHoy = responseEnVivo.data?.find(d => d.id === insumo.id);
+        
         return {
           ...insumo,
           stock_fisico: insumo.caja_master, 
-          stock_estimado: datosHoy ? datosHoy.stock_esperado : insumo.caja_master 
+          // Si no hay datos de hoy (compras/ventas), el stock estimado es igual al actual de DB
+          stock_estimado: datosHoy ? parseFloat(datosHoy.stock_esperado) : parseFloat(insumo.caja_master) 
         };
       });
 
       setInsumos(insumosEnriquecidos);
       setMotivosCatalogo(dataMotivos || []);
     } catch (err) {
-      const msg = "Fallo al sincronizar con el catálogo.";
+      console.error("Error en cargarDatos:", err);
+      const msg = "Fallo al sincronizar con el catálogo de inventarios.";
       setError(msg);
       toast.error(msg);
     } finally {
@@ -68,19 +83,19 @@ export const useInventarios = (sucursalId) => {
       const data = await inventarioService.getMovimientos(sucursalId);
       setMovimientos(data || []);
     } catch (err) {
-      console.error(err);
+      console.error("Error al cargar movimientos:", err);
     }
   }, [sucursalId, puedeVer]);
 
-  // --- FILTROS DE DATOS ---
+  // --- FILTROS DE DATOS CON MEMOIZACIÓN ---
   const insumosFiltrados = useMemo(() => {
     if (!puedeVer) return [];
     
     const term = searchTerm.toLowerCase().trim();
     if (!term) return insumos;
     return insumos.filter(i => 
-      i.nombre.toLowerCase().includes(term) || 
-      i.categoria?.toLowerCase().includes(term)
+      (i.nombre?.toLowerCase() || '').includes(term) || 
+      (i.categoria?.toLowerCase() || '').includes(term)
     );
   }, [insumos, searchTerm, puedeVer]);
 
@@ -95,9 +110,8 @@ export const useInventarios = (sucursalId) => {
     });
   }, [contrasteData, filtroAuditoria, auditados, puedeVer]);
 
-  // --- LÓGICA DE NEGOCIO: REGISTRO MANUAL ---
+  // --- LÓGICA DE NEGOCIO: REGISTRO MANUAL DE KARDEX ---
   const procesarNuevoMovimiento = async (nuevoMov, insumoSeleccionado, usuarioId) => {
-    // 🛡️ BLINDAJE
     if (!puedeCrear) {
         toast.error("Acceso denegado: No tienes permiso para registrar movimientos.");
         return { success: false };
@@ -112,6 +126,7 @@ export const useInventarios = (sucursalId) => {
     const factor = nuevoMov.tipo === 'ENTRADA' ? 1 : -1;
     const stockDespues = stockAntes + (cantidadAfectada * factor);
 
+    // Validación de seguridad para evitar stocks negativos
     if (stockDespues < 0) {
       const msg = `Stock insuficiente. Tienes ${stockAntes} ${insumoSeleccionado.unidad}.`;
       toast.error(msg);
@@ -132,6 +147,7 @@ export const useInventarios = (sucursalId) => {
         sucursal_id: sucursalId,
         created_at: new Date().toISOString()
       });
+
       if (!success) throw new Error(err);
 
       await Promise.all([cargarDatos(), cargarMovimientos()]);
@@ -145,10 +161,12 @@ export const useInventarios = (sucursalId) => {
     }
   };
 
+  /**
+   * Genera el reporte de contraste para un rango de fechas
+   */
   const generarContraste = useCallback(async (fechaInicio, fechaFin) => {
     if (!sucursalId || !fechaInicio || !fechaFin) return;
     
-    // 🛡️ BLINDAJE
     if (!puedeVer) {
       toast.error("Acceso denegado a reportes de auditoría.");
       return;
@@ -160,11 +178,13 @@ export const useInventarios = (sucursalId) => {
     setFiltroAuditoria('todos');
     
     try {
-      const { data, error: err } = await inventarioService.calcularContraste(sucursalId, fechaInicio, fechaFin);
-      if (err) throw err;
-      setContrasteData(data || []);
+      const response = await inventarioService.calcularContraste(sucursalId, fechaInicio, fechaFin);
+      if (response.error) throw new Error(response.error);
+      
+      setContrasteData(response.data || []);
       toast.success("Reporte de contraste generado", { id: tId });
     } catch (err) {
+      console.error("Error al generar contraste:", err);
       toast.error("No se pudo generar el reporte.", { id: tId });
       setError("No se pudo generar el reporte de auditoría.");
     } finally {
@@ -172,25 +192,28 @@ export const useInventarios = (sucursalId) => {
     }
   }, [sucursalId, puedeVer]);
 
+  /**
+   * Aplica un ajuste de auditoría (ajuste de stock físico real)
+   */
   const guardarConteoFisico = async (filaAuditoria, conteoFisico, usuarioId, fechaInicio, fechaFin) => {
-    // 🛡️ BLINDAJE
     if (!puedeEditar) {
         toast.error("Acceso denegado: Se requiere permiso para auditar.");
         return { success: false };
     }
 
-    if (!conteoFisico && conteoFisico !== 0) {
+    // El 0 es un valor válido para conteo, por eso validamos contra vacío/NaN
+    if (conteoFisico === '' || conteoFisico === null || isNaN(conteoFisico)) {
         toast.error("Ingresa un conteo físico válido.");
         return { success: false };
     }
 
-    const tId = toast.loading(`Auditando ${filaAuditoria.nombre}...`);
+    const tId = toast.loading(`Auditando ${filaAuditoria.insumo}...`);
     setLoading(true);
     try {
       const params = {
         sucursal_id: sucursalId,
         insumo_id: filaAuditoria.id,
-        stock_esperado: filaAuditoria.stock_esperado, 
+        stock_esperado: parseFloat(filaAuditoria.stock_esperado), 
         conteo_fisico: Number(conteoFisico),
         usuario_id: usuarioId
       };
@@ -198,11 +221,15 @@ export const useInventarios = (sucursalId) => {
       const { success, error: err } = await inventarioService.aplicarAuditoriaInsumo(params);
       if (!success) throw new Error(err);
 
+      // Limpiamos el input local de ese insumo
       setConteos(prev => ({ ...prev, [filaAuditoria.id]: '' }));
+      
+      // Marcamos como auditado en la vista actual (para pintar la fila)
       if (!auditados.includes(filaAuditoria.id)) {
         setAuditados(prev => [...prev, filaAuditoria.id]);
       }
 
+      // Refrescamos toda la data para asegurar consistencia tras el ajuste
       await Promise.all([
         cargarDatos(),
         cargarMovimientos(),
@@ -212,6 +239,7 @@ export const useInventarios = (sucursalId) => {
       toast.success("Ajuste de inventario aplicado", { id: tId });
       return { success: true };
     } catch (err) {
+      console.error("Error al guardar conteo:", err);
       toast.error("Error al auditar: " + err.message, { id: tId });
       return { success: false, error: err.message };
     } finally {
@@ -221,6 +249,7 @@ export const useInventarios = (sucursalId) => {
 
   const actualizarConteo = (id, valor) => setConteos(prev => ({ ...prev, [id]: valor }));
 
+  // Efecto de carga inicial al montar el componente o cambiar sucursal
   useEffect(() => {
     if (sucursalId) {
       cargarDatos();
@@ -230,8 +259,8 @@ export const useInventarios = (sucursalId) => {
 
   return {
     // Datos blindados de salida
-    insumos: puedeVer ? insumos : [],               
-    insumosFiltrados,     
+    insumos: puedeVer ? insumos : [],               
+    insumosFiltrados,     
     movimientos: puedeVer ? movimientos : [],
     motivosCatalogo: puedeVer ? motivosCatalogo : [],
     contrasteData: puedeVer ? contrasteData : [],

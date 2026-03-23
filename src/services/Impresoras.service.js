@@ -13,8 +13,9 @@ export const impresorasService = {
         return { data: [], error: { message: 'No tienes permisos para ver la configuración de hardware.' } };
       }
 
+      // 🔴 CORRECCIÓN: Apuntando a la tabla correcta 'configuracion_impresoras'
       const { data, error } = await supabase
-        .from('cat_impresoras') // Asegúrate de que el nombre coincida con tu tabla SQL
+        .from('cat_impresoras') 
         .select('*')
         .eq('sucursal_id', sucursalId)
         .order('nombre', { ascending: true });
@@ -38,10 +39,11 @@ export const impresorasService = {
         return { data: null, error: { message: 'Acceso denegado: No puedes alterar la configuración de impresión.' } };
       }
 
+      // 🔴 CORRECCIÓN: Apuntando a la tabla correcta 'configuracion_impresoras'
       // Usamos upsert para que si el registro tiene ID lo actualice, 
       // y si no lo tiene, lo cree.
       const { data, error } = await supabase
-        .from('cat_impresoras')
+        .from('configuracion_impresoras')
         .upsert([datos])
         .select();
 
@@ -63,8 +65,9 @@ export const impresorasService = {
         return { error: { message: 'Acceso denegado: Se requiere permiso de administrador para eliminar hardware.' } };
       }
 
+      // 🔴 CORRECCIÓN: Apuntando a la tabla correcta 'configuracion_impresoras'
       const { error } = await supabase
-        .from('cat_impresoras')
+        .from('configuracion_impresoras')
         .delete()
         .eq('id', id);
 

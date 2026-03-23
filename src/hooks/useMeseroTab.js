@@ -26,6 +26,29 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
     setView('cuentas');
   }, []);
 
+  /**
+   * 🔒 HELPER: Candado proactivo
+   * Verifica si hay una caja abierta antes de permitir acciones de salón
+   */
+  const verificarCajaAntesDeAccion = async () => {
+    setLoading(true);
+    try {
+      // El servicio ahora busca 'abierto' (masculino) para coincidir con tu DB
+      const { abierta } = await MeseroService.verificarCajaAbierta(sucursalId);
+      if (!abierta) {
+        alert("⚠️ Se necesita abrir turno en caja.");
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error("Error al verificar caja:", error);
+      alert("Error técnico al verificar estado de caja.");
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const cargarCuentas = useCallback(async () => {
     if (!puedeVerVentas || !sucursalId) return;
     setLoading(true);
@@ -92,12 +115,30 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
     if (view === 'historial') cargarHistorial();
   }, [view, cargarHistorial]);
   
-  const seleccionarCuenta = (venta = null) => {
+  /**
+   * 🛡️ Acción: Nueva Mesa (con candado proactivo)
+   */
+  const iniciarNuevaMesa = async () => {
+    if (!puedeCrearVentas) return;
+    const cajaLista = await verificarCajaAntesDeAccion();
+    if (cajaLista) {
+      setMesaInput("");
+      setView("mesas");
+    }
+  };
+
+  /**
+   * 🛡️ Acción: Seleccionar Mesa existente (con candado proactivo)
+   */
+  const seleccionarCuenta = async (venta = null) => {
     if (!puedeVerVentas) return;
-    setVentaActiva(venta);
-    setMesaInput(venta?.mesa || '');
-    setCarrito([]); 
-    setView('menu');
+    const cajaLista = await verificarCajaAntesDeAccion();
+    if (cajaLista) {
+      setVentaActiva(venta);
+      setMesaInput(venta?.mesa || '');
+      setCarrito([]); 
+      setView('menu');
+    }
   };
 
   const agregarAlCarrito = (p) => {
@@ -212,7 +253,8 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
     categorias: puedeVerVentas ? categorias : [],
     carrito, setCarrito,
     loading,
-    seleccionarCuenta,
+    seleccionarCuenta, // Exportada con validación
+    iniciarNuevaMesa,  // Exportada con validación
     agregarAlCarrito,
     eliminarDelCarrito,
     actualizarNota,

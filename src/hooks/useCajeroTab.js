@@ -4,7 +4,8 @@ import { CajaService } from "../services/Caja.service";
 import { hasPermission } from "../utils/checkPermiso"; // 🛡️ Importación de seguridad
 import Swal from "sweetalert2";
 
-export const useCajeroTab = (usuarioId) => {
+// 🔴 ACTUALIZACIÓN: Ahora recibe sucursalId para vincular el turno correctamente
+export const useCajeroTab = (usuarioId, sucursalId) => {
   const [loading, setLoading] = useState(true);
   const [sesionActiva, setSesionActiva] = useState(null);
   const [movimientos, setMovimientos] = useState([]);
@@ -39,7 +40,8 @@ export const useCajeroTab = (usuarioId) => {
       }
 
       // 2. Obtener sesión activa
-      const { data: sesion } = await CajaService.getSesionActiva(usuarioId);
+      // 🔴 ACTUALIZACIÓN: Se envía sucursalId para filtrar correctamente
+      const { data: sesion } = await CajaService.getSesionActiva(usuarioId, sucursalId);
       setSesionActiva(sesion);
 
       if (sesion) {
@@ -58,7 +60,7 @@ export const useCajeroTab = (usuarioId) => {
     } finally {
       setLoading(false);
     }
-  }, [usuarioId, puedeVer]); // 🛡️ Dependencia de seguridad agregada
+  }, [usuarioId, sucursalId, puedeVer]); // 🛡️ sucursalId agregada como dependencia
 
   useEffect(() => {
     cargarDatosCaja();
@@ -83,8 +85,8 @@ export const useCajeroTab = (usuarioId) => {
       return Swal.fire("Acceso denegado", "No tienes facultades para iniciar turnos de caja.", "error");
     }
 
-    if (!usuarioId) {
-      return Swal.fire("Error", "No se detectó el ID del usuario cajero", "error");
+    if (!usuarioId || !sucursalId) {
+      return Swal.fire("Error", "Faltan datos de usuario o sucursal para abrir caja.", "error");
     }
 
     const montoNum = parseFloat(monto);
@@ -92,8 +94,10 @@ export const useCajeroTab = (usuarioId) => {
       return Swal.fire("Error", "Ingresa un monto de apertura válido", "error");
     }
 
+    // 🔴 ACTUALIZACIÓN: Se incluye sucursal_id en el payload para evitar el NULL en la DB
     const { data, error } = await CajaService.abrirCaja({
       usuario_id: usuarioId,
+      sucursal_id: sucursalId, // <--- Este campo es el que "abre" el candado del mesero
       monto_apertura: montoNum,
     });
 

@@ -259,12 +259,11 @@ export const ProductosTab = ({ sucursalId }) => {
           </aside>
 
           <div className={`${s.adminCard} ${s.tableContainer}`}>
-            {/* 💡 Aumenté ligeramente el minWidth para acomodar la nueva columna */}
             <table className={s.table} style={{ minWidth: '700px', width: '100%' }}>
               <thead className={s.thead}>
                 <tr>
                   <th className={s.th}>PRODUCTO</th>
-                  <th className={s.th}>CATEGORÍA</th> {/* 👈 NUEVA COLUMNA */}
+                  <th className={s.th}>CATEGORÍA</th>
                   <th className={s.th}>COSTO RECETA</th>
                   <th className={s.th}>VENTA (CON IVA)</th>
                   <th className={s.th} style={{ textAlign: 'right' }}>ACCIONES</th>
@@ -277,7 +276,6 @@ export const ProductosTab = ({ sucursalId }) => {
                   const netoBase = ventaBase / IVA_FACTOR;
                   const margenBase = netoBase > 0 ? (((netoBase - costoBase) / netoBase) * 100).toFixed(1) : 0;
                   
-                  // 💡 Buscamos el nombre de la categoría usando su ID
                   const nombreCategoria = categorias.find(c => c.id === p.categoria)?.nombre || 'Sin categoría';
 
                   return (
@@ -290,7 +288,6 @@ export const ProductosTab = ({ sucursalId }) => {
                           ))}
                         </div>
                       </td>
-                      {/* 👈 NUEVA CELDA: CATEGORÍA */}
                       <td className={s.td}>
                         <span className={s.badge} style={{ background: '#f3f4f6', color: '#4b5563', fontSize: '11px', fontWeight: '500', padding: '4px 8px' }}>
                           {nombreCategoria}

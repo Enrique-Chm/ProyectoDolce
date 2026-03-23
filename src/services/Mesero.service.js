@@ -4,18 +4,31 @@ import { hasPermission } from '../utils/checkPermiso'; // 🛡️ Importación d
 
 export const MeseroService = {
   
+  // 🛡️ Función para verificar estado de caja antes de cualquier acción (preventivo)
+  verificarCajaAbierta: async (sucursalId) => {
+    const { data, error } = await supabase
+      .from('cajas_sesiones')
+      .select('id')
+      .eq('sucursal_id', sucursalId)
+      .eq('estado', 'abierto') // ✅ Corregido a 'abierto' (masculino) según DB
+      .maybeSingle();
+    
+    if (error) return { abierta: false, error };
+    return { abierta: !!data, sesionId: data?.id, error: null };
+  },
+
   getCuentasAbiertas: async (sucursalId) => {
     // 🛡️ Blindaje: Solo personal con permiso de lectura de ventas
     if (!hasPermission('ver_ventas')) {
       return { data: [], error: { message: 'No tienes permisos para ver cuentas abiertas.' } };
     }
 
-    // 🔴 CORRECCIÓN: Estructura correcta de la consulta y filtrado por sucursal
+    // 🔴 CORRECCIÓN: Se agrega !venta_id para resolver la ambigüedad de relaciones detectada por PostgREST
     let query = supabase
       .from('ventas')
       .select(`
         *,
-        ventas_detalle (*)
+        ventas_detalle!venta_id (*)
       `)
       .in('estado', ['pendiente', 'por_cobrar'])
       .order('created_at', { ascending: false });
@@ -76,16 +89,24 @@ export const MeseroService = {
       
       // 1. SI ES UNA MESA NUEVA (No tiene ID de venta previo)
       if (!ventaId) {
+        // 🔒 VALIDACIÓN DE CAJA (Backend Safety): Buscar sesión abierta para la sucursal 
+        const { abierta, sesionId, error: errSesion } = await MeseroService.verificarCajaAbierta(ventaData.sucursal_id);
+
+        if (errSesion || !abierta) {
+          throw new Error("No se puede abrir la mesa: No hay una sesión de caja abierta en esta sucursal.");
+        }
+
         const totalInicial = carrito.reduce((acc, item) => acc + (item.cantidad * item.precio_venta), 0);
         
-        // 🟡 MEJORA: Usar null en lugar de undefined para campos foráneos (UUIDs)
+        // 🟡 MEJORA: Se incluye id_sesion_caja obligatorio para trazabilidad 
         const nuevaVentaPayload = {
           usuario_id: ventaData.usuario_id || null, 
           mesa: ventaData.mesa ? String(ventaData.mesa) : 'S/N',
           estado: 'pendiente',
           subtotal: parseFloat(totalInicial), 
           total: parseFloat(totalInicial),
-          sucursal_id: ventaData.sucursal_id || null
+          sucursal_id: ventaData.sucursal_id || null,
+          id_sesion_caja: sesionId // <--- Relación obligatoria con la caja
         };
 
         const { data: nuevaVenta, error: errVenta } = await supabase
@@ -96,7 +117,7 @@ export const MeseroService = {
           
         if (errVenta) {
           console.error("Error al crear la venta padre:", errVenta);
-          throw new Error(errVenta.message); // Mejor manejo de error para el catch
+          throw new Error(errVenta.message); 
         }
         ventaId = nuevaVenta.id;
       }
@@ -109,7 +130,7 @@ export const MeseroService = {
         precio_unitario: parseFloat(item.precio_venta),
         costo_unitario_historico: parseFloat(item.costo_actual || 0), 
         subtotal: parseFloat(item.cantidad * item.precio_venta),
-        notas: item.notas || ''
+        notes: item.notas || ''
       }));
 
       // 3. INSERTAR DETALLES EN LA BASE DE DATOS

@@ -207,13 +207,14 @@ export const EmpleadosTab = () => {
                           fontWeight: "bold",
                         }}
                       >
-                        {emp.sucursales.find((suc) => suc.id === u.sucursal_id)
-                          ?.nombre || "Sin Sucursal"}
+                        {/* 💡 LECTURA CORRECTA DE LA RELACIÓN */}
+                        {u.cat_sucursales?.nombre || "Sin Sucursal"}
                       </small>
                     </td>
                     <td className={s.td}>
                       <span className={s.badge}>
-                        {u.roles?.nombre_rol?.toUpperCase()}
+                        {/* 💡 LECTURA CORRECTA DE LA RELACIÓN */}
+                        {u.roles?.nombre_rol?.toUpperCase() || "SIN ROL"}
                       </span>
                     </td>
                     <td className={s.td} style={{ textAlign: "right" }}>
@@ -222,7 +223,10 @@ export const EmpleadosTab = () => {
                           className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`}
                           onClick={() => {
                             emp.setEditId(u.id);
-                            emp.setFormData(u);
+                            emp.setFormData({
+                                ...u,
+                                password_hash: '' // No cargar el hash por seguridad
+                            });
                           }}
                         >
                           {emp.puedeEditarUsuarios ? '📝' : 'VER'}

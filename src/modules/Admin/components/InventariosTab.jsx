@@ -1,14 +1,14 @@
 // Archivo: src/modules/Admin/components/InventariosTab.jsx
 import React, { useState, useMemo, useEffect } from 'react';
-import { useInventarios } from "../../../hooks/useInventariosTab"; 
+import { useInventarios } from "../../../hooks/useInventariosTab"; // ✅ Ruta y nombre corregidos
 import s from "../AdminPage.module.css"; 
 
 const InventariosTab = ({ sucursalId, usuarioId }) => {
-  // Consumimos estados, métodos y las nuevas banderas de seguridad del hook
+  // Consumimos estados, métodos y las banderas de seguridad del hook sincronizado
   const { 
-    insumos,              
+    insumos,               
     insumosFiltrados,     
-    searchTerm, setSearchTerm,          
+    searchTerm, setSearchTerm,           
     movimientos, 
     motivosCatalogo,
     contrasteData, 
@@ -20,7 +20,7 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
     procesarNuevoMovimiento, 
     generarContraste,
     guardarConteoFisico,
-    puedeVer, puedeCrear, puedeEditar // 🛡️ Banderas de seguridad extraídas
+    puedeVer, puedeCrear, puedeEditar 
   } = useInventarios(sucursalId);
 
   // --- ESTADOS VISUALES ---
@@ -32,8 +32,14 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
   
   const [nuevoMov, setNuevoMov] = useState({ insumo_id: '', tipo: 'ENTRADA', cantidad: '', motivo: '' });
 
-  const insumoSeleccionado = useMemo(() => insumos?.find(i => i.id === Number(nuevoMov.insumo_id)), [insumos, nuevoMov.insumo_id]);
-  const motivosDisponibles = useMemo(() => motivosCatalogo?.filter(m => m.tipo === nuevoMov.tipo) || [], [motivosCatalogo, nuevoMov.tipo]);
+  // Memorización para optimizar el filtrado de motivos según el tipo de operación
+  const insumoSeleccionado = useMemo(() => 
+    insumos?.find(i => i.id === Number(nuevoMov.insumo_id)), 
+  [insumos, nuevoMov.insumo_id]);
+
+  const motivosDisponibles = useMemo(() => 
+    motivosCatalogo?.filter(m => m.tipo === nuevoMov.tipo) || [], 
+  [motivosCatalogo, nuevoMov.tipo]);
 
   // --- HANDLERS ---
   const handleSubmitMovimiento = async (e) => {
@@ -45,10 +51,10 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
     const res = await procesarNuevoMovimiento(nuevoMov, insumoSeleccionado, usuarioId);
     
     if (res.success) {
-      alert("Movimiento guardado.");
+      alert("Movimiento de almacén guardado correctamente.");
       setNuevoMov({ insumo_id: '', tipo: 'ENTRADA', cantidad: '', motivo: '' });
     } else {
-      alert(res.error);
+      alert(res.error || "Error al procesar el movimiento.");
     }
   };
 
@@ -56,22 +62,27 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
     // 🛡️ Bloqueo de seguridad: Auditar requiere permiso de edición
     if (!puedeEditar) return; 
     const valorFisico = conteos[row.id];
+    
     if (valorFisico === undefined || valorFisico === '') {
-      return alert("Por favor ingresa el peso/conteo que marca la báscula.");
+      return alert("Por favor ingresa el peso o conteo físico real.");
     }
 
-    if (window.confirm(`¿Confirmas que físicamente hay ${valorFisico} ${row.unidad} de ${row.insumo}?`)) {
+    if (window.confirm(`¿Confirmas que el stock real de ${row.insumo} es ${valorFisico} ${row.unidad}?`)) {
       const res = await guardarConteoFisico(row, valorFisico, usuarioId, filtroFechas.inicio, filtroFechas.fin);
-      if (!res.success) alert("Error al guardar: " + res.error);
+      if (!res.success) alert("Error al procesar auditoría: " + res.error);
     }
   };
 
+  // 🛡️ Pantalla de bloqueo si no hay permisos de lectura
+  if (!puedeVer) return <div className={s.emptyState}>No tienes permisos para acceder al inventario.</div>;
+
   return (
-<div className={s.tabWrapper}>
-    {/* SECCIÓN CABECERA: Misma estructura que Caja */}
-    <div className={s.pageHeader}>
-      <h2 className={s.pageTitle}>Inventarios</h2>
-    </div>
+    <div className={s.tabWrapper}>
+      {/* SECCIÓN CABECERA */}
+      <div className={s.pageHeader}>
+        <h2 className={s.pageTitle}>Gestión de Inventarios</h2>
+      </div>
+
       {/* Navegación de Sub-pestañas */}
       <nav className={s.tabNav}>
         <button 
@@ -90,19 +101,19 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
           className={`${s.tabButton} ${activeSubTab === 'contraste' ? s.activeTabButton : ''}`} 
           onClick={() => setActiveSubTab('contraste')}
         >
-           CIERRE DE TURNO
+           AUDITORÍA / CIERRE
         </button>
       </nav>
 
       <div className={activeSubTab === 'contraste' ? "" : s.splitLayout}>
         
-        {/* PANEL DE MOVIMIENTO MANUAL (SIDEBAR) - Solo editable si tiene permiso */}
+        {/* PANEL LATERAL DE MOVIMIENTO MANUAL */}
         {activeSubTab !== 'contraste' && (
           <aside className={s.adminCard}>
             <h3 className={s.cardTitle}>
-              {puedeCrear ? 'Nuevo Movimiento' : 'Consulta de Insumo'}
+              {puedeCrear ? 'Registrar Movimiento' : 'Detalles de Insumo'}
             </h3>
-            <form onSubmit={handleSubmitMovimiento} className={s.loginForm}>
+            <form onSubmit={handleSubmitMovimiento}>
               
               <div className={s.formGroup}>
                 <label className={s.label}>INSUMO</label>
@@ -111,14 +122,14 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                   value={nuevoMov.insumo_id}
                   valueKey="id"
                   labelKey="nombre"
-                  placeholder=" Buscar producto..."
-                  formatLabel={(opt) => `${opt.nombre} (Stock: ${opt.stock_fisico} ${opt.unidad})`}
+                  placeholder=" Buscar insumo..."
+                  formatLabel={(opt) => `${opt.nombre} (Saldo: ${opt.stock_fisico} ${opt.unidad})`}
                   disabled={loading || !puedeCrear}
                   onChange={(val) => setNuevoMov({...nuevoMov, insumo_id: val})}
                 />
               </div>
 
-              <div className={s.formGridAsym}>
+              <div className={s.formGridAsym} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <div className={s.formGroup}>
                   <label className={s.label}>OPERACIÓN</label>
                   <select 
@@ -147,32 +158,36 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                 </div>
               </div>
 
-              <div className={s.formGroup}>
+              <div className={s.formGroup} style={{ marginTop: '15px' }}>
                 <label className={s.label}>MOTIVO</label>
                 <select 
                   className={s.inputField}
                   value={nuevoMov.motivo} 
-                  disabled={!puedeCrear}
+                  disabled={!puedeCrear || !nuevoMov.tipo}
                   style={{ backgroundColor: !puedeCrear ? "var(--color-bg-muted)" : "white" }}
                   onChange={(e) => setNuevoMov({...nuevoMov, motivo: e.target.value})} 
                   required
                 >
                   <option value="">-- Selecciona Motivo --</option>
-                  {motivosDisponibles.map(m => <option key={m.id} value={m.nombre_motivo}>{m.nombre_motivo}</option>)}
+                  {motivosDisponibles.map(m => (
+                    <option key={m.id} value={m.nombre_motivo}>{m.nombre_motivo}</option>
+                  ))}
                 </select>
-                <small className={s.helperText}>
-                   {insumoSeleccionado ? `UNIDAD: ${insumoSeleccionado.unidad}` : 'Selecciona un insumo para ver la U.M.'}
-                </small>
+                {insumoSeleccionado && (
+                  <small className={s.helperText} style={{ display: 'block', marginTop: '5px', color: 'var(--color-primary)' }}>
+                    Unidad de medida: <strong>{insumoSeleccionado.unidad}</strong>
+                  </small>
+                )}
               </div>
 
               {puedeCrear && (
                 <button 
                   type="submit" 
                   className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`} 
-                  style={{ marginTop: '10px' }}
+                  style={{ marginTop: '20px' }}
                   disabled={loading}
                 >
-                  {loading ? 'GUARDANDO...' : 'CONFIRMAR MOVIMIENTO'}
+                  {loading ? 'PROCESANDO...' : 'GUARDAR EN KARDEX'}
                 </button>
               )}
             </form>
@@ -181,60 +196,62 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
 
         <div className={s.flexColumnGap20}>
           
-          {/* VISTA: EXISTENCIAS */}
+          {/* TABLA: EXISTENCIAS ACTUALES */}
           {activeSubTab === 'stock' && (
             <div className={`${s.adminCard} ${s.tableContainer}`}>
               <div className={s.tableHeader}>
                 <input 
                   type="text" 
                   className={s.inputField}
-                  placeholder=" Filtrar existencias..." 
+                  placeholder=" Filtrar por nombre o categoría..." 
                   value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} 
                 />
               </div>
-              <table className={s.table} style={{ minWidth: '700px' }}>
+              <table className={s.table}>
                 <thead className={s.thead}>
                   <tr>
                     <th className={s.th}>INSUMO</th>
-                    <th className={s.th}>STOCK FÍSICO</th>
-                    <th className={s.th} style={{ color: 'var(--color-primary)' }}>ESTIMADO</th>
+                    <th className={s.th}>STOCK FÍSICO (DB)</th>
+                    <th className={s.th} style={{ color: 'var(--color-primary)' }}>ESTIMADO HOY</th>
                     <th className={s.th}>U.M.</th>
                     <th className={s.th}>CATEGORÍA</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {insumosFiltrados.map(insumo => (
-                    <tr key={insumo.id}>
-                      <td className={s.td} style={{ fontWeight: '700' }}>{insumo.nombre}</td>
-                      <td className={`${s.td} ${s.textMuted}`} style={{ fontWeight: '700' }}>{insumo.stock_fisico}</td>
-                      <td className={`${s.td} ${s.textPrimary}`} style={{ fontWeight: '800' }}>{insumo.stock_estimado}</td>
-                      <td className={`${s.td} ${s.textMuted}`}>{insumo.unidad}</td>
-                      <td className={s.td}>
-                        <span className={s.badge}>
-                          {insumo.categoria?.toUpperCase()}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {insumosFiltrados.length === 0 ? (
+                    <tr><td colSpan="5" className={s.emptyState}>No hay insumos que coincidan.</td></tr>
+                  ) : (
+                    insumosFiltrados.map(insumo => (
+                      <tr key={insumo.id}>
+                        <td className={s.td} style={{ fontWeight: '700' }}>{insumo.nombre}</td>
+                        <td className={`${s.td} ${s.textMuted}`} style={{ fontWeight: '700' }}>{insumo.stock_fisico}</td>
+                        <td className={`${s.td} ${s.textPrimary}`} style={{ fontWeight: '800' }}>{insumo.stock_estimado}</td>
+                        <td className={s.td}>{insumo.unidad}</td>
+                        <td className={s.td}>
+                          <span className={s.badge}>{insumo.categoria?.toUpperCase()}</span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
           )}
 
-          {/* VISTA: CIERRE DE TURNO (AUDITORÍA) */}
+          {/* TABLA: AUDITORÍA DE CIERRE (CONTRASTE) */}
           {activeSubTab === 'contraste' && (
             <div className={`${s.adminCard} ${s.tableContainer}`}>
-              <div className={s.auditHeader}>
+              <div className={s.auditHeader} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px', flexWrap: 'wrap', gap: '15px' }}>
                 <div>
                   <h3 className={s.cardTitle} style={{ margin: 0 }}>Auditoría y Cierre</h3>
                   {contrasteData.length > 0 && (
-                    <div style={{ fontSize: '12px', marginTop: '5px', fontWeight: '700' }} className={auditados.length === contrasteData.length ? s.textSuccess : s.textPrimary}>
+                    <div style={{ fontSize: '13px', marginTop: '5px', fontWeight: '700' }} className={auditados.length === contrasteData.length ? s.textSuccess : s.textPrimary}>
                       Progreso: {auditados.length} de {contrasteData.length}
                     </div>
                   )}
                 </div>
 
-                <div className={s.auditFilters}>
+                <div className={s.auditFilters} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                   <select 
                     className={s.inputSmall}
                     value={filtroAuditoria} 
@@ -242,6 +259,7 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                   >
                     <option value="todos"> Todos</option>
                     <option value="pendientes"> Pendientes</option>
+                    <option value="auditados"> Auditados</option>
                   </select>
                   <input type="date" className={s.inputSmall} value={filtroFechas.inicio} onChange={(e) => setFiltroFechas({...filtroFechas, inicio: e.target.value})} />
                   <input type="date" className={s.inputSmall} value={filtroFechas.fin} onChange={(e) => setFiltroFechas({...filtroFechas, fin: e.target.value})} />
@@ -251,67 +269,70 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                 </div>
               </div>
 
-              <table className={s.table} style={{ minWidth: '850px' }}>
+              <table className={s.table}>
                 <thead className={s.thead}>
                   <tr>
                     <th className={s.th}>INSUMO</th>
-                    <th className={s.th}>ESPERADO</th>
+                    <th className={s.th}>SISTEMA (ESPERADO)</th>
                     <th className={s.th}>VENTAS (-)</th>
-                    <th className={s.th} style={{ backgroundColor: '#fff7ed' }}>FÍSICO</th>
+                    <th className={s.th} style={{ backgroundColor: 'var(--color-bg-muted)' }}>FÍSICO REAL</th>
                     <th className={s.th}>DIFERENCIA</th>
                     <th className={s.th} style={{ textAlign: 'right' }}>ACCIÓN</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {contrasteDataFiltrado.map((row) => {
-                    const inputVal = conteos[row.id];
-                    const tieneConteo = inputVal !== undefined && inputVal !== '';
-                    const diferenciaReal = tieneConteo ? (parseFloat(inputVal) - parseFloat(row.stock_esperado)).toFixed(2) : '-';
-                    const yaAuditado = auditados.includes(row.id);
-                    
-                    // Clase de color para la diferencia
-                    let difColorClass = '';
-                    if (tieneConteo) {
-                      if (parseFloat(diferenciaReal) < 0) difColorClass = s.textDanger;
-                      else if (parseFloat(diferenciaReal) > 0) difColorClass = s.textSuccess;
-                    }
+                  {contrasteDataFiltrado.length === 0 ? (
+                    <tr><td colSpan="6" className={s.emptyState}>Genera un balance para comenzar la auditoría.</td></tr>
+                  ) : (
+                    contrasteDataFiltrado.map((row) => {
+                      const inputVal = conteos[row.id];
+                      const tieneConteo = inputVal !== undefined && inputVal !== '';
+                      const diferenciaReal = tieneConteo ? (parseFloat(inputVal) - parseFloat(row.stock_esperado)).toFixed(2) : '-';
+                      const yaAuditado = auditados.includes(row.id);
+                      
+                      let difColorClass = '';
+                      if (tieneConteo) {
+                        if (parseFloat(diferenciaReal) < 0) difColorClass = s.textDanger;
+                        else if (parseFloat(diferenciaReal) > 0) difColorClass = s.textSuccess;
+                      }
 
-                    return (
-                      <tr key={row.id} className={yaAuditado ? s.rowAudited : ''}>
-                        <td className={s.td} style={{ fontWeight: '700' }}>{row.insumo}</td>
-                        <td className={s.td} style={{ fontWeight: '700' }}>{row.stock_esperado} <small>{row.unidad}</small></td>
-                        <td className={`${s.td} ${s.textDanger}`} style={{ fontWeight: '700' }}>{row.vendido !== '0.00' ? `-${row.vendido}` : '0.00'}</td>
-                        <td className={s.td} style={{ backgroundColor: yaAuditado ? 'transparent' : '#fff7ed', padding: '15px' }}>
-                          <input 
-                            type="number" 
-                            className={s.tableInputCenter}
-                            placeholder="0.00"
-                            value={conteos[row.id] || ''}
-                            readOnly={!puedeEditar || yaAuditado}
-                            onChange={(e) => actualizarConteo(row.id, e.target.value)} 
-                          />
-                        </td>
-                        <td className={`${s.td} ${difColorClass}`} style={{ fontWeight: '900' }}>
-                          {tieneConteo ? (parseFloat(diferenciaReal) > 0 ? `+${diferenciaReal}` : diferenciaReal) : '-'}
-                        </td>
-                        <td className={s.td} style={{ textAlign: 'right' }}>
-                          <button 
-                            className={yaAuditado ? `${s.btn} ${s.btnSuccess} ${s.btnSmall}` : `${s.btn} ${s.btnPrimary} ${s.btnSmall}`}
-                            onClick={() => handleGuardarConteo(row)}
-                            disabled={loading || !tieneConteo || !puedeEditar || yaAuditado}
-                          >
-                            {yaAuditado ? 'OK' : 'GUARDAR'}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                      return (
+                        <tr key={row.id} className={yaAuditado ? s.rowAudited : ''} style={{ opacity: yaAuditado ? 0.6 : 1 }}>
+                          <td className={s.td} style={{ fontWeight: '700' }}>{row.insumo}</td>
+                          <td className={s.td} style={{ fontWeight: '700' }}>{row.stock_esperado} <small>{row.unidad}</small></td>
+                          <td className={`${s.td} ${s.textDanger}`} style={{ fontWeight: '700' }}>{row.vendido !== '0.00' ? `-${row.vendido}` : '0.00'}</td>
+                          <td className={s.td} style={{ backgroundColor: yaAuditado ? 'transparent' : 'var(--color-bg-muted)', padding: '15px' }}>
+                            <input 
+                              type="number" 
+                              className={s.tableInputCenter}
+                              placeholder="0.00"
+                              value={conteos[row.id] || ''}
+                              readOnly={!puedeEditar || yaAuditado}
+                              onChange={(e) => actualizarConteo(row.id, e.target.value)} 
+                            />
+                          </td>
+                          <td className={`${s.td} ${difColorClass}`} style={{ fontWeight: '900' }}>
+                            {tieneConteo ? (parseFloat(diferenciaReal) > 0 ? `+${diferenciaReal}` : diferenciaReal) : '-'}
+                          </td>
+                          <td className={s.td} style={{ textAlign: 'right' }}>
+                            <button 
+                              className={yaAuditado ? `${s.btn} ${s.btnSuccess} ${s.btnSmall}` : `${s.btn} ${s.btnPrimary} ${s.btnSmall}`}
+                              onClick={() => handleGuardarConteo(row)}
+                              disabled={loading || !tieneConteo || yaAuditado}
+                            >
+                              {yaAuditado ? 'OK' : 'GUARDAR'}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
           )}
 
-          {/* VISTA: HISTORIAL MOVIMIENTOS */}
+          {/* TABLA: HISTORIAL DE MOVIMIENTOS */}
           {activeSubTab === 'movimientos' && (
             <div className={`${s.adminCard} ${s.tableContainer}`}>
               <div className={s.tableHeader}>
@@ -323,20 +344,24 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                     <th className={s.th}>FECHA</th>
                     <th className={s.th}>INSUMO</th>
                     <th className={s.th}>TIPO</th>
-                    <th className={s.th}>CANT.</th>
+                    <th className={s.th}>CANTIDAD</th>
                     <th className={s.th}>MOTIVO</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {movimientos?.map(m => (
-                    <tr key={m.id}>
-                      <td className={`${s.td} ${s.textMuted}`} style={{ fontSize: '12px' }}>{new Date(m.created_at).toLocaleString()}</td>
-                      <td className={s.td} style={{ fontWeight: '700' }}>{m.insumo?.nombre}</td>
-                      <td className={`${s.td} ${m.tipo === 'ENTRADA' ? s.textSuccess : s.textDanger}`} style={{ fontWeight: '800' }}>{m.tipo}</td>
-                      <td className={s.td} style={{ fontWeight: '700' }}>{m.cantidad_afectada}</td>
-                      <td className={`${s.td} ${s.textMuted}`} style={{ fontSize: '13px' }}>{m.motivo}</td>
-                    </tr>
-                  ))}
+                  {movimientos.length === 0 ? (
+                    <tr><td colSpan="5" className={s.emptyState}>No hay registros de movimientos.</td></tr>
+                  ) : (
+                    movimientos.map(m => (
+                      <tr key={m.id}>
+                        <td className={`${s.td} ${s.textMuted}`} style={{ fontSize: '12px' }}>{new Date(m.created_at).toLocaleString()}</td>
+                        <td className={s.td} style={{ fontWeight: '700' }}>{m.insumo?.nombre}</td>
+                        <td className={`${s.td} ${m.tipo === 'ENTRADA' ? s.textSuccess : s.textDanger}`} style={{ fontWeight: '800' }}>{m.tipo}</td>
+                        <td className={s.td} style={{ fontWeight: '700' }}>{m.cantidad_afectada}</td>
+                        <td className={`${s.td} ${s.textMuted}`} style={{ fontSize: '13px' }}>{m.motivo}</td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -350,7 +375,7 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
 export default InventariosTab;
 
 /**
- * SUB-COMPONENTE: SearchableSelect 
+ * COMPONENTE INTERNO: SearchableSelect 
  */
 const SearchableSelect = ({ 
   options, 
@@ -375,7 +400,7 @@ const SearchableSelect = ({
   }, [value, options, valueKey, labelKey]);
 
   const filteredOptions = options.filter(opt =>
-    String(opt[labelKey]).toLowerCase().includes(searchTerm.toLowerCase())
+    (opt[labelKey] || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -386,7 +411,7 @@ const SearchableSelect = ({
         value={searchTerm}
         disabled={disabled}
         placeholder={placeholder}
-        style={{ backgroundColor: disabled ? "var(--color-bg-app)" : "white" }}
+        style={{ backgroundColor: disabled ? "var(--color-bg-muted)" : "white" }}
         onChange={(e) => {
           setSearchTerm(e.target.value);
           setIsOpen(true);
@@ -404,7 +429,7 @@ const SearchableSelect = ({
       />
       
       {isOpen && !disabled && (
-        <ul className={s.dropdownList}>
+        <ul className={s.dropdownList} style={{ position: 'absolute', zIndex: 100, width: '100%', maxHeight: '200px', overflowY: 'auto' }}>
           {filteredOptions.length > 0 ? filteredOptions.map((opt, index) => (
             <li
               key={index}
@@ -420,7 +445,7 @@ const SearchableSelect = ({
             </li>
           )) : (
             <li className={s.dropdownItem} style={{ color: 'var(--color-text-muted)' }}>
-              No se encontraron coincidencias...
+              Sin resultados...
             </li>
           )}
         </ul>

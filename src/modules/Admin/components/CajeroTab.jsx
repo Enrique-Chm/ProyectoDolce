@@ -9,7 +9,8 @@ import { formatCurrency } from "../../../utils/formatCurrency";
 import Swal from "sweetalert2";
 import { hasPermission } from "../../../utils/checkPermiso"; 
 
-const CajeroTab = ({ usuarioId }) => {
+// 🔴 ACTUALIZACIÓN: Recibe sucursalId como prop
+const CajeroTab = ({ usuarioId, sucursalId }) => {
   // 🛡️ SEGURIDAD INTERNA (RBAC)
   const puedeEditarCaja = hasPermission('editar_ventas');
 
@@ -28,6 +29,7 @@ const CajeroTab = ({ usuarioId }) => {
   const [montoApertura, setMontoApertura] = useState("");
 
   // 2. Hook de Lógica
+  // 🔴 ACTUALIZACIÓN: Pasamos sucursalId al hook para que abra el "candado" del mesero
   const {
     sesionActiva,
     loading,
@@ -38,13 +40,15 @@ const CajeroTab = ({ usuarioId }) => {
     abrirTurno,
     cerrarTurno,
     registrarMovimientoEfectivo,
-  } = useCajeroTab(usuarioId);
+  } = useCajeroTab(usuarioId, sucursalId);
 
   // 3. Carga de Cuentas Pendientes (Meseros)
   const cargarCuentas = async () => {
     try {
+      // Filtramos por sucursal para que el cajero solo cobre lo de su tienda
       const { data } = await CajaService.getVentasPendientes();
-      setCuentasPendientes(data || []);
+      const filtradas = (data || []).filter(v => v.sucursal_id === sucursalId);
+      setCuentasPendientes(filtradas);
     } catch (error) {
       console.error("Error al obtener cuentas:", error);
     }
@@ -56,7 +60,7 @@ const CajeroTab = ({ usuarioId }) => {
       const interval = setInterval(cargarCuentas, 30000);
       return () => clearInterval(interval);
     }
-  }, [sesionActiva]);
+  }, [sesionActiva, sucursalId]);
 
   // 4. Lógica de Cobro Directo con Modal Dinámico
   const manejarCobro = async (venta) => {
@@ -221,262 +225,251 @@ const CajeroTab = ({ usuarioId }) => {
   if (loading) return <div className={s.emptyState}>Sincronizando caja...</div>;
 
   return (
-<div className={s.tabWrapper}>
-    {/* SECCIÓN CABECERA: Limpia y sin etiquetas duplicadas */}
-    <div className={s.pageHeader}>
-      <h2 className={s.pageTitle}>Gestión de Caja</h2>
-      {/* Aquí podrías poner un botón de "Abrir Turno" si quisieras */}
-    </div>
+    <div className={s.tabWrapper}>
+        <div className={s.pageHeader}>
+          <h2 className={s.pageTitle}>Gestión de Caja</h2>
+        </div>
 
-      {/* --- NAVEGACIÓN HOMOLOGADA --- */}
-      <nav className={s.tabNav}>
-        {["COBRAR", "MOVIMIENTOS", "TURNO Y ARQUEO", "HISTORIAL"].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveSubTab(tab)}
-            className={`${s.tabButton} ${activeSubTab === tab ? s.activeTabButton : ""}`}
-          >
-            {tab}
-          </button>
-        ))}
-      </nav>
+        <nav className={s.tabNav}>
+          {["COBRAR", "MOVIMIENTOS", "TURNO Y ARQUEO", "HISTORIAL"].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveSubTab(tab)}
+              className={`${s.tabButton} ${activeSubTab === tab ? s.activeTabButton : ""}`}
+            >
+              {tab}
+            </button>
+          ))}
+        </nav>
 
-      {/* --- VISTA: COBRAR --- */}
-      {activeSubTab === "COBRAR" && (
-        <div className={s.adminCard}>
-          {!sesionActiva ? (
-            <div className={s.emptyState}>Debes abrir un turno para cobrar cuentas.</div>
-          ) : (
-            <div className={stylesPOS.productGrid}>
-              {cuentasPendientes.length === 0 ? (
-                <div className={s.emptyState}>No hay cuentas pendientes.</div>
-              ) : (
-                cuentasPendientes.map((venta) => (
-                  <div
-                    key={venta.id}
-                    className={`${stylesPOS.mesaCard} ${stylesCaja.mesaCardCustom}`}
-                    onClick={() => manejarCobro(venta)}
-                  >
-                    <div className={stylesPOS.flexBetween}>
-                      <span className={stylesPOS.mesaName}>Mesa {venta.mesa || "S/N"}</span>
-                      <span className={venta.estado === "por_cobrar" ? stylesPOS.mesaBadgeCobrar : stylesPOS.mesaBadge}>
-                        {venta.estado === "por_cobrar" ? "Por Cobrar" : "Pendiente"}
-                      </span>
+        {activeSubTab === "COBRAR" && (
+          <div className={s.adminCard}>
+            {!sesionActiva ? (
+              <div className={s.emptyState}>Debes abrir un turno para cobrar cuentas.</div>
+            ) : (
+              <div className={stylesPOS.productGrid}>
+                {cuentasPendientes.length === 0 ? (
+                  <div className={s.emptyState}>No hay cuentas pendientes en esta sucursal.</div>
+                ) : (
+                  cuentasPendientes.map((venta) => (
+                    <div
+                      key={venta.id}
+                      className={`${stylesPOS.mesaCard} ${stylesCaja.mesaCardCustom}`}
+                      onClick={() => manejarCobro(venta)}
+                    >
+                      <div className={stylesPOS.flexBetween}>
+                        <span className={stylesPOS.mesaName}>Mesa {venta.mesa || "S/N"}</span>
+                        <span className={venta.estado === "por_cobrar" ? stylesPOS.mesaBadgeCobrar : stylesPOS.mesaBadge}>
+                          {venta.estado === "por_cobrar" ? "Por Cobrar" : "Abierta"}
+                        </span>
+                      </div>
+                      <div className={stylesPOS.mesaTotal}>{formatCurrency(venta.total)}</div>
+                      <button className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`} style={{ marginTop: '10px' }}>
+                        {puedeEditarCaja ? "COBRAR" : "VER DETALLE"}
+                      </button>
                     </div>
-                    <div className={stylesPOS.mesaTotal}>{formatCurrency(venta.total)}</div>
-                    <button className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`} style={{ marginTop: '10px' }}>
-                      {puedeEditarCaja ? "COBRAR" : "VER DETALLE"}
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* --- VISTA: MOVIMIENTOS --- */}
-      {activeSubTab === "MOVIMIENTOS" && (
-        <div className={s.splitLayout}>
-          {!sesionActiva ? (
-            <div className={s.emptyState} style={{ gridColumn: '1/-1' }}>
-              Debes abrir un turno en "TURNO Y ARQUEO" para registrar y ver movimientos.
-            </div>
-          ) : (
-            <>
-              {/* Formulario lateral */}
-              <aside className={s.adminCard} style={{ opacity: puedeEditarCaja ? 1 : 0.6 }}>
-                <h3 className={s.cardTitle}>Nuevo Movimiento</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                  <div className={s.formGroup}>
-                    <label className={s.label}>Tipo de Flujo</label>
-                    <select
-                      className={s.inputField}
-                      value={tipoSeleccionado}
-                      disabled={!puedeEditarCaja}
-                      onChange={(e) => {
-                        setTipoSeleccionado(e.target.value);
-                        setMovData({ ...movData, motivoId: "" });
-                      }}
-                    >
-                      <option value="">-- Seleccione Tipo --</option>
-                      {tiposDisponibles.map(tipo => <option key={tipo} value={tipo}>{tipo.toUpperCase()}</option>)}
-                    </select>
-                  </div>
-
-                  <div className={s.formGroup}>
-                    <label className={s.label}>Motivo</label>
-                    <select
-                      className={s.inputField}
-                      value={movData.motivoId}
-                      onChange={e => setMovData({ ...movData, motivoId: e.target.value })}
-                      disabled={tipoSeleccionado === "" || !puedeEditarCaja}
-                    >
-                      <option value="">-- Seleccione un motivo --</option>
-                      {getMotivosPorTipo(tipoSeleccionado).map(m => <option key={m.id} value={m.id}>{m.nombre_motivo}</option>)}
-                    </select>
-                  </div>
-
-                  <div className={s.formGroup}>
-                    <label className={s.label}>Monto ($)</label>
-                    <input
-                      type="number"
-                      className={s.inputField}
-                      placeholder="0.00"
-                      value={movData.monto}
-                      readOnly={!puedeEditarCaja}
-                      onChange={e => setMovData({ ...movData, monto: e.target.value })}
-                    />
-                  </div>
-
-                  <div className={s.formGroup}>
-                    <label className={s.label}>Comentario Adicional</label>
-                    <textarea
-                      className={s.inputField}
-                      style={{ resize: 'vertical', minHeight: '80px' }}
-                      placeholder="Opcional..."
-                      value={movData.comentario}
-                      readOnly={!puedeEditarCaja}
-                      onChange={e => setMovData({ ...movData, comentario: e.target.value })}
-                    />
-                  </div>
-
-                  {puedeEditarCaja && (
-                    <button className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`} onClick={guardarMovimiento}>
-                      REGISTRAR MOVIMIENTO
-                    </button>
-                  )}
-                </div>
-              </aside>
-
-              {/* Bitácora de movimientos */}
-              <div className={`${s.adminCard} ${s.tableContainer}`}>
-                <h3 className={s.cardTitle} style={{ padding: '20px' }}>Bitácora del Turno Actual</h3>
-                <table className={s.table}>
-                  <thead className={s.thead}>
-                    <tr>
-                      <th className={s.th}>HORA</th>
-                      <th className={s.th}>CONCEPTO</th>
-                      <th className={s.th} style={{ textAlign: 'right' }}>MONTO</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {movimientos.map((m) => {
-                      const esIngreso = ["ingreso", "entrada", "venta"].includes(m.tipo?.toLowerCase().trim());
-                      return (
-                        <tr key={m.id}>
-                          <td className={s.td}>{new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
-                          <td className={s.td} style={{ fontWeight: '700' }}>{m.motivo}</td>
-                          <td className={s.td} style={{ textAlign: 'right', fontWeight: '600', color: esIngreso ? 'var(--color-success)' : 'var(--color-danger)' }}>
-                            {esIngreso ? "+" : "-"}{formatCurrency(m.monto)}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                  ))
+                )}
               </div>
-            </>
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        )}
 
-      {/* --- VISTA: TURNO Y ARQUEO --- */}
-      {activeSubTab === "TURNO Y ARQUEO" && (
-        <div className={s.fadeIn}>
-          {!sesionActiva ? (
-            <div className={`${s.adminCard}`} style={{ maxWidth: '500px', margin: '40px auto', textAlign: 'center', padding: '40px' }}>
-              <div style={{ fontSize: '4rem', marginBottom: '20px' }}>💵</div>
-              <h2 className={s.cardTitle} style={{ fontSize: '1.8rem' }}>Caja Cerrada</h2>
-              <p className={s.textMuted} style={{ marginBottom: '30px' }}>Ingresa el monto de fondo de caja para iniciar la jornada.</p>
-              
-              <div className={s.formGroup} style={{ textAlign: 'left' }}>
-                <label className={s.label}>Fondo de Caja ($)</label>
-                <input
-                  type="number"
-                  className={s.inputField}
-                  style={{ fontSize: '1.5rem', textAlign: 'center', height: '60px' }}
-                  value={montoApertura}
-                  readOnly={!puedeEditarCaja}
-                  onChange={e => setMontoApertura(e.target.value)}
-                  placeholder="0.00"
-                />
+        {activeSubTab === "MOVIMIENTOS" && (
+          <div className={s.splitLayout}>
+            {!sesionActiva ? (
+              <div className={s.emptyState} style={{ gridColumn: '1/-1' }}>
+                Debes abrir un turno en "TURNO Y ARQUEO" para registrar y ver movimientos.
               </div>
-              {puedeEditarCaja ? (
-                <button className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`} style={{ padding: '20px', fontSize: '1.1rem', marginTop: '20px' }} onClick={() => abrirTurno(montoApertura)}>
-                  INICIAR JORNADA
-                </button>
-              ) : (
-                <div className={s.badgeDanger} style={{ marginTop: '20px' }}>Requiere permisos para abrir caja.</div>
-              )}
-            </div>
-          ) : (
-            <div className={s.splitLayout}>
-              {/* Info Turno */}
-              <div className={s.adminCard}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                  <h3 className={s.cardTitle} style={{ margin: 0 }}>Turno Activo</h3>
-                  <span className={s.badgeSuccess}>● ABIERTA</span>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-bg-muted)', paddingBottom: '10px' }}>
-                      <span className={s.label}>Apertura:</span>
-                      <span style={{ fontWeight: '700' }}>{new Date(sesionActiva.fecha_apertura).toLocaleString()}</span>
-                   </div>
-                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-bg-muted)', paddingBottom: '10px' }}>
-                      <span className={s.label}>Fondo Inicial:</span>
-                      <span style={{ fontWeight: '600', color: 'var(--color-primary)' }}>{formatCurrency(sesionActiva.monto_apertura)}</span>
-                   </div>
-                </div>
-              </div>
+            ) : (
+              <>
+                <aside className={s.adminCard} style={{ opacity: puedeEditarCaja ? 1 : 0.6 }}>
+                  <h3 className={s.cardTitle}>Nuevo Movimiento</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    <div className={s.formGroup}>
+                      <label className={s.label}>Tipo de Flujo</label>
+                      <select
+                        className={s.inputField}
+                        value={tipoSeleccionado}
+                        disabled={!puedeEditarCaja}
+                        onChange={(e) => {
+                          setTipoSeleccionado(e.target.value);
+                          setMovData({ ...movData, motivoId: "" });
+                        }}
+                      >
+                        <option value="">-- Seleccione Tipo --</option>
+                        {tiposDisponibles.map(tipo => <option key={tipo} value={tipo}>{tipo.toUpperCase()}</option>)}
+                      </select>
+                    </div>
 
-              {/* Formulario Arqueo */}
-              <div className={s.adminCard} style={{ opacity: puedeEditarCaja ? 1 : 0.6 }}>
-                <h3 className={s.cardTitle}>Arqueo de Caja</h3>
-                <p className={s.textMuted} style={{ fontSize: '13px', marginBottom: '20px' }}>Ingresa el efectivo físico total en el cajón.</p>
-                <div className={s.formGroup}>
-                  <label className={s.label}>Efectivo en Cajón ($)</label>
+                    <div className={s.formGroup}>
+                      <label className={s.label}>Motivo</label>
+                      <select
+                        className={s.inputField}
+                        value={movData.motivoId}
+                        onChange={e => setMovData({ ...movData, motivoId: e.target.value })}
+                        disabled={tipoSeleccionado === "" || !puedeEditarCaja}
+                      >
+                        <option value="">-- Seleccione un motivo --</option>
+                        {getMotivosPorTipo(tipoSeleccionado).map(m => <option key={m.id} value={m.id}>{m.nombre_motivo}</option>)}
+                      </select>
+                    </div>
+
+                    <div className={s.formGroup}>
+                      <label className={s.label}>Monto ($)</label>
+                      <input
+                        type="number"
+                        className={s.inputField}
+                        placeholder="0.00"
+                        value={movData.monto}
+                        readOnly={!puedeEditarCaja}
+                        onChange={e => setMovData({ ...movData, monto: e.target.value })}
+                      />
+                    </div>
+
+                    <div className={s.formGroup}>
+                      <label className={s.label}>Comentario Adicional</label>
+                      <textarea
+                        className={s.inputField}
+                        style={{ resize: 'vertical', minHeight: '80px' }}
+                        placeholder="Opcional..."
+                        value={movData.comentario}
+                        readOnly={!puedeEditarCaja}
+                        onChange={e => setMovData({ ...movData, comentario: e.target.value })}
+                      />
+                    </div>
+
+                    {puedeEditarCaja && (
+                      <button className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`} onClick={guardarMovimiento}>
+                        REGISTRAR MOVIMIENTO
+                      </button>
+                    )}
+                  </div>
+                </aside>
+
+                <div className={`${s.adminCard} ${s.tableContainer}`}>
+                  <h3 className={s.cardTitle} style={{ padding: '20px' }}>Bitácora del Turno Actual</h3>
+                  <table className={s.table}>
+                    <thead className={s.thead}>
+                      <tr>
+                        <th className={s.th}>HORA</th>
+                        <th className={s.th}>CONCEPTO</th>
+                        <th className={s.th} style={{ textAlign: 'right' }}>MONTO</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {movimientos.map((m) => {
+                        const esIngreso = ["ingreso", "entrada", "venta"].includes(m.tipo?.toLowerCase().trim());
+                        return (
+                          <tr key={m.id}>
+                            <td className={s.td}>{new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
+                            <td className={s.td} style={{ fontWeight: '700' }}>{m.motivo}</td>
+                            <td className={s.td} style={{ textAlign: 'right', fontWeight: '600', color: esIngreso ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                              {esIngreso ? "+" : "-"}{formatCurrency(m.monto)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {activeSubTab === "TURNO Y ARQUEO" && (
+          <div className={s.fadeIn}>
+            {!sesionActiva ? (
+              <div className={`${s.adminCard}`} style={{ maxWidth: '500px', margin: '40px auto', textAlign: 'center', padding: '40px' }}>
+                <div style={{ fontSize: '4rem', marginBottom: '20px' }}>💵</div>
+                <h2 className={s.cardTitle} style={{ fontSize: '1.8rem' }}>Caja Cerrada</h2>
+                <p className={s.textMuted} style={{ marginBottom: '30px' }}>Inicia jornada en la sucursal asignada.</p>
+                
+                <div className={s.formGroup} style={{ textAlign: 'left' }}>
+                  <label className={s.label}>Fondo de Caja ($)</label>
                   <input
                     type="number"
                     className={s.inputField}
-                    style={{ fontSize: '1.5rem', fontWeight: '600' }}
-                    value={montoArqueo}
+                    style={{ fontSize: '1.5rem', textAlign: 'center', height: '60px' }}
+                    value={montoApertura}
                     readOnly={!puedeEditarCaja}
-                    onChange={e => setMontoArqueo(e.target.value)}
+                    onChange={e => setMontoApertura(e.target.value)}
                     placeholder="0.00"
                   />
                 </div>
-                {puedeEditarCaja && (
-                  <button className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`} style={{ marginTop: '20px', padding: '15px' }} onClick={() => cerrarTurno(montoArqueo)}>
-                    🔒 CERRAR CAJA Y ARQUEAR
+                {puedeEditarCaja ? (
+                  <button className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`} style={{ padding: '20px', fontSize: '1.1rem', marginTop: '20px' }} onClick={() => abrirTurno(montoApertura)}>
+                    INICIAR JORNADA
                   </button>
+                ) : (
+                  <div className={s.badgeDanger} style={{ marginTop: '20px' }}>Requiere permisos para abrir caja.</div>
                 )}
               </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* --- VISTA: HISTORIAL --- */}
-      {activeSubTab === "HISTORIAL" && (
-        <div className={s.adminCard} style={{ padding: '20px' }}>
-          <div className={stylesPOS.historyGrid}>
-            {historial.map((h) => (
-              <div key={h.id} className={`${stylesPOS.historyCard} ${stylesCaja.historyCardRelative}`}>
-                <button onClick={() => imprimirReporte(h)} className={stylesCaja.printBtn} title="Imprimir Corte">🖨️</button>
-                <div>
-                  <span className={s.label}>ID Sesión: #{h.id?.toString().slice(-5)}</span>
-                  <div style={{ fontWeight: '600', fontSize: '1.1rem' }}>{new Date(h.fecha_apertura).toLocaleDateString()}</div>
+            ) : (
+              <div className={s.splitLayout}>
+                <div className={s.adminCard}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <h3 className={s.cardTitle} style={{ margin: 0 }}>Turno Activo</h3>
+                    <span className={s.badgeSuccess}>● ABIERTO</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-bg-muted)', paddingBottom: '10px' }}>
+                        <span className={s.label}>Apertura:</span>
+                        <span style={{ fontWeight: '700' }}>{new Date(sesionActiva.fecha_apertura).toLocaleString()}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-bg-muted)', paddingBottom: '10px' }}>
+                        <span className={s.label}>Fondo Inicial:</span>
+                        <span style={{ fontWeight: '600', color: 'var(--color-primary)' }}>{formatCurrency(sesionActiva.monto_apertura)}</span>
+                      </div>
+                  </div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '1.2rem', fontWeight: '900', color: 'var(--color-primary)' }}>{formatCurrency(h.monto_cierre_real || 0)}</div>
-                  <span className={h.diferencia < 0 ? s.badgeDanger : s.badgeSuccess}>DIF: {formatCurrency(h.diferencia)}</span>
+
+                <div className={s.adminCard} style={{ opacity: puedeEditarCaja ? 1 : 0.6 }}>
+                  <h3 className={s.cardTitle}>Arqueo de Caja</h3>
+                  <p className={s.textMuted} style={{ fontSize: '13px', marginBottom: '20px' }}>Ingresa el efectivo físico total en el cajón.</p>
+                  <div className={s.formGroup}>
+                    <label className={s.label}>Efectivo en Cajón ($)</label>
+                    <input
+                      type="number"
+                      className={s.inputField}
+                      style={{ fontSize: '1.5rem', fontWeight: '600' }}
+                      value={montoArqueo}
+                      readOnly={!puedeEditarCaja}
+                      onChange={e => setMontoArqueo(e.target.value)}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  {puedeEditarCaja && (
+                    <button className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`} style={{ marginTop: '20px', padding: '15px' }} onClick={() => cerrarTurno(montoArqueo)}>
+                      🔒 CERRAR CAJA Y ARQUEAR
+                    </button>
+                  )}
                 </div>
               </div>
-            ))}
+            )}
           </div>
-        </div>
-      )}
+        )}
+
+        {activeSubTab === "HISTORIAL" && (
+          <div className={s.adminCard} style={{ padding: '20px' }}>
+            <div className={stylesPOS.historyGrid}>
+              {historial.map((h) => (
+                <div key={h.id} className={`${stylesPOS.historyCard} ${stylesCaja.historyCardRelative}`}>
+                  <button onClick={() => imprimirReporte(h)} className={stylesCaja.printBtn} title="Imprimir Corte">🖨️</button>
+                  <div>
+                    <span className={s.label}>ID Sesión: #{h.id?.toString().slice(-5)}</span>
+                    <div style={{ fontWeight: '600', fontSize: '1.1rem' }}>{new Date(h.fecha_apertura).toLocaleDateString()}</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '1.2rem', fontWeight: '900', color: 'var(--color-primary)' }}>{formatCurrency(h.monto_cierre_real || 0)}</div>
+                    <span className={h.diferencia < 0 ? s.badgeDanger : s.badgeSuccess}>DIF: {formatCurrency(h.diferencia)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
     </div>
   );
 };
