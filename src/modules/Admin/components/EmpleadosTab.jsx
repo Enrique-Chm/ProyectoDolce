@@ -191,7 +191,7 @@ export const EmpleadosTab = () => {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
               <h3 className={s.cardTitle} style={{ margin: 0 }}>Roles</h3>
               {emp.puedeCrearConfig && (
-                <button className={`${s.btn} ${s.btnSec} ${s.btnSmall}`} style={{ padding: "4px 10px" }} onClick={() => emp.setMostrarFormRol(!emp.mostrarFormRol)}>
+                <button className={`${s.btn} ${s.btnSuccess} ${s.btnSmall}`} style={{ padding: "4px 10px" }} onClick={() => emp.setMostrarFormRol(!emp.mostrarFormRol)}>
                   + Rol
                 </button>
               )}
@@ -253,10 +253,10 @@ export const EmpleadosTab = () => {
                 <div className={s.miniTabsWrapper}>
                   <nav className={s.miniTabNav}>
                     {[
-                      { id: 'SERVICIO', label: '📍 SALÓN Y CAJA' },
-                      { id: 'FINANZAS', label: '💰 FINANZAS' },
-                      { id: 'ALMACEN', label: '📦 INVENTARIOS' },
-                      { id: 'ADMIN', label: '⚙️ CONFIGURACIÓN' }
+                      { id: 'SERVICIO', label: ' SALÓN Y CAJA' },
+                      { id: 'FINANZAS', label: ' FINANZAS' },
+                      { id: 'ALMACEN', label: ' INVENTARIOS' },
+                      { id: 'ADMIN', label: ' CONFIGURACIÓN' }
                     ].map(tab => (
                       <button
                         key={tab.id} onClick={() => setActivePermisoTab(tab.id)}
@@ -302,10 +302,10 @@ export const EmpleadosTab = () => {
                                 {mostrarEncabezado && (
                                   <tr className={s.tableRowCategory}>
                                     <td colSpan="5">
-                                      {m.cat === 'SERVICIO' && '📍 Área de Salón y Meseros'}
-                                      {m.cat === 'FINANZAS' && '💰 Control de Caja y Gastos'}
-                                      {m.cat === 'ALMACEN'  && '📦 Inventarios y Costeo'}
-                                      {m.cat === 'ADMIN'    && '⚙️ Configuración del Sistema'}
+                                      {m.cat === 'SERVICIO' && ' Área de Salón y Meseros'}
+                                      {m.cat === 'FINANZAS' && ' Control de Caja y Gastos'}
+                                      {m.cat === 'ALMACEN'  && ' Inventarios y Costeo'}
+                                      {m.cat === 'ADMIN'    && ' Configuración del Sistema'}
                                       {!m.cat && 'MÓDULOS DE SISTEMA'}
                                     </td>
                                   </tr>

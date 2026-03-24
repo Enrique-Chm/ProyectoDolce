@@ -19,7 +19,7 @@
   display: flex; 
   justify-content: space-between; 
   align-items: center; 
-  margin-bottom: 25px; 
+  margin-bottom: 20px; 
 }
 
 .sectionTitle {
@@ -47,29 +47,24 @@
   background: var(--color-bg-card); 
   color: var(--color-text-muted); 
   border: 1px solid var(--color-border); 
-  padding: 12px 24px; 
+  padding: 10px 20px; 
   border-radius: var(--radius-button); 
+  font-weight: 700;
   cursor: pointer; 
-}
-
-.btnBackNav { 
-  font-weight: 800; 
-  color: var(--color-primary); 
-  border-color: var(--color-primary); 
 }
 
 /* --- MONITOR DE SALÓN (VISTA 0) --- */
 .productGrid {
   display: grid;
-  /* Aumentamos el tamaño mínimo de la tarjeta de 160px a 180px para mejor respuesta táctil */
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 15px;
+  /* Bajamos a 130px para que entren 2 o más columnas fluidas */
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
 }
 
 .mesaCard {
   background: var(--color-bg-card);
   border-radius: var(--radius-card);
-  padding: 20px;
+  padding: 15px;
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-sm);
   cursor: pointer;
@@ -81,373 +76,216 @@
   border-color: var(--color-primary); 
 }
 
-.mesaName { 
-  margin: 0; 
-  font-size: 1.1rem; 
-  font-weight: 600; 
-  color: var(--color-text-main); 
-}
-
-.mesaBadge { 
-  background: #dcfce7; /* Verde claro éxito */
-  color: #166534; 
-  padding: 4px 8px; 
-  border-radius: var(--radius-ui); 
-  font-size: 10px; 
-  font-weight: 800; 
-  text-transform: uppercase; 
-}
-
-.mesaBadgeCobrar { 
-  background: #fef3c7; /* Ámbar claro advertencia */
-  color: #92400e; 
-  padding: 4px 8px; 
-  border-radius: var(--radius-ui); 
-  font-size: 10px; 
-  font-weight: 800; 
-  text-transform: uppercase; 
-}
-
-.mesaTotal { 
-  margin-top: 15px; 
-  font-size: 1.5rem; 
-  font-weight: 900; 
-  color: var(--color-primary); 
-}
+.mesaName { margin: 0; font-size: 1.1rem; font-weight: 600; color: var(--color-text-main); }
+.mesaBadge { background: #dcfce7; color: #166534; padding: 4px 8px; border-radius: var(--radius-ui); font-size: 10px; font-weight: 800; text-transform: uppercase; }
+.mesaBadgeCobrar { background: #fef3c7; color: #92400e; padding: 4px 8px; border-radius: var(--radius-ui); font-size: 10px; font-weight: 800; text-transform: uppercase; }
+.mesaTotal { margin-top: 10px; font-size: 1.3rem; font-weight: 900; color: var(--color-primary); }
 
 /* --- COMANDERO (VISTA 2) --- */
 .posGrid {
-  display: block; /* Quitamos el grid de dos columnas */
+  display: block;
   width: 100%;
-  padding-bottom: 80px; /* Espacio para que el carrito no tape el último producto */
+  padding-bottom: 90px; /* Espacio extra para el drawer inferior */
   position: relative;
 }
 
 .menuArea { background: transparent; }
 
 .categoryBlock h4 {
-  margin: 25px 0 15px;
+  margin: 15px 0 10px;
   text-transform: uppercase;
   letter-spacing: 1px;
   color: var(--color-text-muted);
-  font-size: 12px;
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .productCard {
   background: var(--color-bg-card);
-  padding: 15px;
+  padding: 12px;
   border-radius: var(--radius-card);
   border: 1px solid var(--color-border);
-  font-weight: 700;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  min-height: 80px;
+  min-height: auto;
   cursor: pointer;
+  box-shadow: var(--shadow-sm);
 }
 
-.productCard:active { background: var(--color-bg-muted); }
+.productCardName {
+  font-weight: 800; 
+  font-size: 0.95rem;
+  line-height: 1.2;
+  color: var(--color-text-main);
+}
+
+.productCardPrice {
+  color: var(--color-primary); 
+  margin-top: 8px; 
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+
+.productCard:active { background: var(--color-bg-muted); transform: scale(0.98); }
 .productCardLocked { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
 
-/* --- ÁREA DEL CARRITO (Ahora es un Drawer inferior) --- */
+/* --- ÁREA DEL CARRITO (Drawer inferior) --- */
 .cartArea {
   background: var(--color-bg-card);
-  /* Posicionamiento fijo abajo */
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  bottom: 0; left: 0; right: 0;
   width: 100%;
-  
-  /* Altura inicial (solo se ve el header) */
   height: 70px; 
-  
   z-index: 1000;
   box-shadow: 0 -5px 20px rgba(0,0,0,0.15);
   border-top: 1px solid var(--color-border);
-  border-radius: 25px 25px 0 0; /* Bordes redondeados arriba */
-  
-  display: flex;
-  flex-direction: column;
+  border-radius: 20px 20px 0 0;
+  display: flex; flex-direction: column;
   overflow: hidden;
-  transition: height 0.4s cubic-bezier(0.4, 0, 0.2, 1); /* Animación suave */
+  transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
 }
+
+.cartExpanded { height: 85vh; }
+
 .cartHeader { 
-  padding: 15px 25px; 
+  padding: 12px 25px; 
   border-bottom: 1px solid var(--color-border); 
   cursor: pointer;
   background: var(--color-bg-card);
   user-select: none;
 }
 
-.dragHandle { 
-  width: 50px; 
-  height: 5px; 
-  background: var(--color-border); 
-  border-radius: 10px; 
-  margin: 0 auto 10px; 
-}
-
-.cartTitle { font-size: 1.2rem; font-weight: 800; }
-
-.cartItems {
-  flex: 1;
-  padding: 20px;
-  overflow-y: auto;
-  background: var(--color-bg-app); /* Fondo sutil para diferenciar */
-}
-.cartItem {
-  margin-bottom: 15px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid var(--color-bg-muted);
-}
-
-.cartItemName { font-size: 14px; }
+.dragHandle { width: 40px; height: 5px; background: var(--color-border); border-radius: 10px; margin: 0 auto 8px; }
+.cartTitle { font-size: 1.1rem; font-weight: 800; }
+.cartItems { flex: 1; padding: 15px; overflow-y: auto; background: var(--color-bg-app); }
+.cartItem { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--color-bg-muted); }
+.cartItemName { font-size: 13px; }
 .cartItemQty { color: var(--color-primary); margin-right: 5px; }
 
 .inputNota {
-  width: 100%;
-  margin-top: 8px;
-  padding: 8px;
-  border: 1px solid var(--color-bg-muted);
-  border-radius: var(--radius-ui);
-  font-size: 12px;
-  background: var(--color-bg-muted);
+  width: 100%; margin-top: 8px; padding: 8px;
+  border: 1px solid var(--color-border); border-radius: var(--radius-ui);
+  font-size: 12px; background: white;
 }
 
-.btnRemoveItem { 
-  background: #fee2e2; 
-  color: var(--color-danger); 
-  border: none; 
-  border-radius: 6px; 
-  padding: 4px 8px; 
-  cursor: pointer; 
-}
-
-/* --- FOOTER DEL CARRITO --- */
-.cartFooter { 
-  padding: 20px; 
-  background: var(--color-bg-muted); 
-  border-top: 1px solid var(--color-border); 
-}
-
-.summaryBox { margin-bottom: 15px; }
-.summaryLabel { font-weight: 700; color: var(--color-text-muted); }
-.summaryValue { font-size: 1.4rem; font-weight: 900; color: var(--color-text-main); }
-
-.btnOrder {
-  width: 100%;
-  padding: 16px;
-  border-radius: var(--radius-button);
-  border: none;
-  font-weight: 800;
-  cursor: pointer;
-  background: var(--color-success);
-  color: var(--color-text-white);
-  transition: all 0.2s;
-}
-
-.btnDelete { background: var(--color-danger); }
+.btnRemoveItem { background: #fee2e2; color: var(--color-danger); border: none; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-weight: bold;}
+.cartFooter { padding: 15px 20px; background: var(--color-bg-card); border-top: 1px solid var(--color-border); box-shadow: 0 -4px 10px rgba(0,0,0,0.05); }
+.summaryBox { margin-bottom: 10px; }
+.summaryLabel { font-weight: 700; color: var(--color-text-muted); font-size: 0.9rem;}
+.summaryValue { font-size: 1.3rem; font-weight: 900; color: var(--color-text-main); }
+.btnOrder { width: 100%; padding: 14px; border-radius: var(--radius-button); border: none; font-weight: 800; cursor: pointer; background: var(--color-success); color: var(--color-text-white); font-size: 1rem; }
 
 /* --- IDENTIFICAR MESA --- */
-.mesaSelectorManual {
-  max-width: 400px;
-  margin: 100px auto;
-  text-align: center;
-}
-
-.mesaInput {
-  width: 100%;
-  font-size: 3rem;
-  text-align: center;
-  padding: 20px;
-  border-radius: var(--radius-card);
-  border: 3px solid var(--color-primary);
-  margin-bottom: 20px;
-  font-weight: 900;
-  background: var(--color-bg-card);
-  color: var(--color-text-main);
-}
-
-.btnEmpezarOrden {
-  width: 100%;
-  padding: 20px;
-  background: var(--color-primary);
-  color: var(--color-text-white);
-  border: none;
-  border-radius: var(--radius-button);
-  font-size: 1.2rem;
-  font-weight: 800;
-  cursor: pointer;
-}
+.mesaSelectorManual { max-width: 400px; margin: 60px auto; text-align: center; }
+.mesaInput { width: 100%; font-size: 2.5rem; text-align: center; padding: 15px; border-radius: var(--radius-card); border: 3px solid var(--color-primary); margin-bottom: 20px; font-weight: 900; }
+.btnEmpezarOrden { width: 100%; padding: 18px; background: var(--color-primary); color: white; border: none; border-radius: var(--radius-button); font-size: 1.1rem; font-weight: 800; cursor: pointer; }
 
 /* --- HISTORIAL --- */
 .historyGrid { display: flex; flex-direction: column; gap: 10px; }
-.historyCard {
-  background: var(--color-bg-card);
-  padding: 15px 20px;
-  border-radius: var(--radius-card);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border: 1px solid var(--color-border);
-}
-
+.historyCard { background: var(--color-bg-card); padding: 15px; border-radius: var(--radius-card); display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--color-border); }
 .historyCardAmount { font-weight: 900; font-size: 1.2rem; color: var(--color-success); }
 .historyCardTime { font-size: 11px; color: var(--color-text-muted); }
-
-/* --- ESTADOS VACÍOS --- */
 .emptyStateBox { padding: 40px; text-align: center; color: var(--color-text-muted); }
 .emptyCartText { text-align: center; padding: 40px; color: var(--color-text-muted); font-size: 13px; }
 
-/* --- RESPONSIVE MOBILE --- */
-@media (max-width: 1024px) {
-  .posGrid {
-    grid-template-columns: 1fr 280px;
-    gap: 15px;
+/* =========================================
+   MÓDULO DE CAJA (Vistas exclusivas de Cajero)
+   ========================================= */
+.mesaCardCustom { border-left: 5px solid var(--color-primary); }
+.textareaCustom { min-height: 60px; resize: none; padding-top: 10px; }
+.tdMonto { padding: 12px; text-align: right; font-weight: 800; }
+.textGreen { color: #10b981; }
+.textRed { color: #ef4444; }
+
+/* Tarjeta de Apertura de Caja */
+.cajaCerradaCard { display: flex; flex-direction: column; align-items: center; padding: 60px 20px; text-align: center; }
+.cashIcon { background: var(--color-bg-app); width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; margin-bottom: 20px; }
+.cajaCerradaTitle { font-size: 1.8rem; font-weight: 900; margin-bottom: 10px; color: var(--color-text-main); }
+.cajaCerradaDesc { color: var(--color-text-muted); margin-bottom: 30px; max-width: 350px; }
+.cajaCerradaFormWrapper { width: 100%; max-width: 350px; }
+.cajaCerradaLabel { display: block; text-align: left; margin-bottom: 8px; }
+.cajaCerradaInput { font-size: 2rem; text-align: center; height: 70px; margin-bottom: 20px; font-weight: 700; color: var(--color-primary); }
+.cajaCerradaBtn { padding: 18px; font-size: 1.1rem; font-weight: 800; }
+
+/* Resumen de Turno y Arqueo */
+.turnoAbiertoGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; }
+.turnoActivoCard { border-top: 4px solid var(--color-primary); }
+.turnoHeaderRow { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px; }
+.turnoTitle { font-size: 1.2rem; font-weight: 800; margin: 0; }
+.dataList { display: flex; flex-direction: column; gap: 15px; }
+.dataRow { display: flex; justify-content: space-between; padding-bottom: 15px; border-bottom: 1px solid var(--color-border); }
+.dataLabel { color: var(--color-text-muted); font-weight: 600; }
+.dataValue { font-weight: 700; }
+.fondoRow { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+.fondoValue { font-size: 1.5rem; font-weight: 900; color: var(--color-primary); }
+
+/* Tarjeta Roja de Cierre */
+.arqueoCard { border-top: 4px solid #ef4444; display: flex; flex-direction: column; justify-content: center; }
+.arqueoTitle { font-size: 1.2rem; font-weight: 800; margin-bottom: 10px; }
+.arqueoDesc { color: var(--color-text-muted); font-size: 0.9rem; margin-bottom: 20px; }
+.arqueoInput { font-size: 2rem; height: 70px; margin-bottom: 20px; font-weight: 800; text-align: right; }
+.arqueoBtn { background: #ef4444 !important; padding: 18px; font-size: 1.1rem; font-weight: 800; margin-top: auto; color: white; border: none; cursor: pointer; border-radius: var(--radius-button);}
+
+/* Elementos de Historial */
+.historyCardRelative { position: relative; }
+.printBtn { position: absolute; top: 1px; right: 1px; background: white; border: 1px solid var(--color-border); border-radius: 25px; padding: 3px 3px; cursor: pointer; font-size: 12px; box-shadow: var(--shadow-sm); transition: all 0.2s; }
+.printBtn:hover { transform: scale(1.05); }
+.historyDate { font-weight: 700; font-size: 1.1rem;}
+.historyRightBox { text-align: right; margin-top: 10px; display: flex; flex-direction: column; align-items: flex-end; gap: 5px;}
+
+/* =========================================
+   📱 RESPONSIVE MOBILE EXTREMO
+   ========================================= */
+@media (max-width: 600px) {
+  .posContainer { padding: 10px; }
+  
+  .productGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
   }
-} 
-  .posGrid {
-  display: grid;
-  /* El carrito ahora ocupa 300px en lugar de 350px para dar más aire al menú */
-  grid-template-columns: 1fr 300px; 
-  gap: 20px;
-  position: relative;
+  
+  .mesaCard {
+    padding: 12px;
+    min-width: 0; /* Truco para evitar que la tarjeta desborde el Grid */
+    word-wrap: break-word;
+  }
+
+  .mesaBadge, .mesaBadgeCobrar {
+    white-space: normal; /* Permite que el texto baje a otra línea si no cabe */
+    font-size: 8px;
+    padding: 4px;
+  }
+
+  .productCard { padding: 10px; }
+  .productCardName { font-size: 0.85rem; }
+  .productCardPrice { font-size: 0.9rem; }
+  
+  .headerRow { margin-bottom: 10px; }
+  .sectionTitle { font-size: 1.4rem; }
+
+  /* Aseguramos que los botones de las tabs se puedan scrollear sin romper la pantalla */
+  .tabNav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
+
+@media (min-width: 1024px) {
+  /* En PC o Tablets grandes, volvemos a mostrar el carrito a la derecha en lugar de abajo */
+  .posGrid {
+    display: grid;
+    grid-template-columns: 1fr 320px; 
+    gap: 20px;
+    padding-bottom: 0;
+  }
   .cartArea {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 80px; /* Colapsado */
-    z-index: 100;
-    transition: height 0.3s ease;
+    position: sticky;
+    top: 20px;
+    height: calc(100vh - 120px);
+    border-radius: var(--radius-card);
+    border: 1px solid var(--color-border);
   }
-/* --- CUANDO SE EXPANDE LA COMANDA --- */
-.cartExpanded {
-  height: 85vh; /* Ocupa casi toda la pantalla al abrirse */
-}
-/* --- CLASES AÑADIDAS PARA ESTIMACIONES TAB --- */
-
-/* Contenedor general para las tabs */
-.tabWrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-/* Header seccion con titulo y tarjeta de estadisticas */
-.headerSection {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 15px;
-}
-
-.headerSection h2 {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: var(--color-text-main);
-  margin: 0;
-  min-width: 250px;
-}
-
-/* Tarjeta destacada (ej. Inversión Estimada) */
-.statCard {
-  padding: 10px 20px;
-  border-left: 6px solid #10b981; /* Verde success */
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  flex: 1;
-  max-width: 300px;
-  min-width: 200px;
-}
-
-.statLabel {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-}
-
-.statValue {
-  font-size: 1.8rem;
-  font-weight: 900;
-  color: #10b981; /* Verde success */
-}
-
-/* Badge pequeño para conteo en tabs */
-.badgeCount {
-  background-color: var(--color-danger);
-  color: white;
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 10px;
-}
-
-/* Input pequeño para tablas */
-.tableInput {
-  width: 60px;
-  padding: 5px;
-  border-radius: 4px;
-  border: 1px solid var(--color-primary);
-  box-sizing: border-box;
-}
-
-/* Grid para tarjetas (Lista de Mandado) */
-.cardsGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 15px;
-}
-
-.cardFlex {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 20px;
-  gap: 15px;
-  height: 100%;
-  box-sizing: border-box;
-}
-
-.cardFlexTitle {
-  font-size: 1.1rem;
-  color: var(--color-text-main);
-}
-
-.cardFlexSubtitle {
-  margin: 5px 0 0;
-  font-size: 12px;
-  color: var(--color-text-muted);
-  font-weight: 600;
-}
-
-.readOnlyNotice {
-  text-align: center;
-  font-size: 12px;
-  color: var(--color-text-muted);
-  font-style: italic;
-  padding: 10px;
-  background-color: var(--color-bg-muted);
-  border-radius: var(--radius-ui);
-}
-
-/* Ajuste del botón para que ocupe el 100% de la tarjeta */
-.btnSuccessFull {
-  background-color: #10b981;
-  color: white;
-  border: none;
-  padding: 12px 15px;
-  font-weight: 800;
-  width: 100%;
-  border-radius: var(--radius-button);
-  cursor: pointer;
-  transition: filter 0.2s;
-}
-
-.btnSuccessFull:hover {
-  filter: brightness(1.1);
+  .dragHandle { display: none; } /* Ocultamos la barrita de arrastrar en PC */
 }

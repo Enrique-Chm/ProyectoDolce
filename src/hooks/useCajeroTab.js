@@ -11,24 +11,29 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
   const [historial, setHistorial] = useState([]);
   const [motivosCatalogo, setMotivosCatalogo] = useState([]);
   const [tiposDisponibles, setTiposDisponibles] = useState([]);
+  
+  // Centralizamos el estado de las cuentas directamente en el Hook
+  const [cuentasPendientes, setCuentasPendientes] = useState([]);
+  const [cuentasCobradas, setCuentasCobradas] = useState([]);
 
-  // 🛡️ DEFINICIÓN DE FACULTADES
+  // 🛡️ DEFINICIÓN DE FACULTADES: Basado en los permisos de Ventas/Caja
   const puedeVer = hasPermission("ver_ventas");
   const puedeEditar = hasPermission("editar_ventas");
 
   /**
-   * Sincronización global de datos de caja
+   * Sincronización global de datos de caja (Sesión y Catálogos)
    */
   const cargarDatosCaja = useCallback(async () => {
-    // 🛡️ BLINDAJE: Si no puede ver, detenemos la carga
-    if (!puedeVer) {
+    // 🛡️ BLINDAJE ESTRICTO: 
+    // Evitamos el error 400 en Supabase. Si sucursalId no es válido o es undefined, abortamos.
+    if (!puedeVer || !sucursalId || isNaN(sucursalId)) {
       setLoading(false);
       return;
     }
 
     setLoading(true);
     try {
-      // 1. Cargar catálogo de motivos
+      // 1. Cargar catálogo de motivos (Entradas/Salidas manuales)
       const { data: catData } = await CajaService.getMotivosInventario();
       setMotivosCatalogo(catData || []);
 
@@ -38,8 +43,8 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
         setTiposDisponibles(tiposUnicos);
       }
 
-      // 2. Obtener sesión activa
-      const { data: sesion } = await CajaService.getSesionActiva(usuarioId, sucursalId);
+      // 2. Obtener sesión activa de la sucursal
+      const { data: sesion } = await CajaService.getSesionActiva(sucursalId);
       setSesionActiva(sesion);
 
       if (sesion) {
@@ -50,8 +55,7 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
         setMovimientos([]); 
       }
 
-      // 4. Cargar historial de sesiones cerradas
-      // 🛡️ FIX MULTITIENDA: Pasamos sucursalId para no ver historiales de otras sucursales
+      // 4. Cargar historial de sesiones cerradas de la sucursal (para la pestaña Historial)
       const { data: hist } = await CajaService.getHistorialSesiones(sucursalId);
       setHistorial(hist || []);
     } catch (error) {
@@ -59,14 +63,51 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
     } finally {
       setLoading(false);
     }
-  }, [usuarioId, sucursalId, puedeVer]); 
-
-  useEffect(() => {
-    cargarDatosCaja();
-  }, [cargarDatosCaja]);
+  }, [sucursalId, puedeVer]); 
 
   /**
-   * Filtra los motivos del catálogo según el tipo seleccionado
+   * 💡 CARGAR CUENTAS FILTRADAS POR TURNO
+   */
+  const cargarCuentas = useCallback(async () => {
+    // 🛡️ BLINDAJE ESTRICTO DE IDs
+    if (!puedeVer || !sucursalId || isNaN(sucursalId) || !sesionActiva?.id) return;
+
+    try {
+      // 1. Cargar Pendientes del turno actual
+      const { data: pendientes } = await CajaService.getVentasPendientes(sucursalId, sesionActiva.id);
+      setCuentasPendientes(pendientes || []);
+
+      // 2. Cargar Cobradas del turno actual
+      const { data: cobradas } = await CajaService.getVentasCobradas(sucursalId, sesionActiva.id);
+      setCuentasCobradas(cobradas || []);
+    } catch (error) {
+      console.error("Error al obtener cuentas del salón:", error);
+    }
+  }, [sucursalId, puedeVer, sesionActiva?.id]);
+
+  // Carga inicial de datos base (Sesión)
+  useEffect(() => {
+    // Asegurarnos de que el sucursalId es válido antes de lanzar el efecto
+    if (sucursalId && !isNaN(sucursalId)) {
+        cargarDatosCaja();
+    }
+  }, [cargarDatosCaja, sucursalId]);
+
+  // 💡 Polling automático: Refresca las mesas cada 30 segundos mientras el turno esté abierto
+  useEffect(() => {
+    if (sesionActiva?.id && sucursalId && !isNaN(sucursalId)) {
+      cargarCuentas();
+      const interval = setInterval(cargarCuentas, 30000); 
+      return () => clearInterval(interval);
+    } else {
+      // Si se cierra la sesión, limpiamos las listas de la vista "Cobrar"
+      setCuentasPendientes([]);
+      setCuentasCobradas([]);
+    }
+  }, [sesionActiva?.id, sucursalId, cargarCuentas]);
+
+  /**
+   * Filtra los motivos del catálogo según el tipo seleccionado (Ingreso/Egreso)
    */
   const getMotivosPorTipo = (tipo) => {
     if (!tipo) return [];
@@ -76,16 +117,15 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
   };
 
   /**
-   * Abre un nuevo turno
+   * Inicia un nuevo turno de caja
    */
   const abrirTurno = async (monto) => {
-    // 🛡️ BLINDAJE: Verificación de permiso de edición
     if (!puedeEditar) {
       return Swal.fire("Acceso denegado", "No tienes facultades para iniciar turnos de caja.", "error");
     }
 
     if (!usuarioId || !sucursalId) {
-      return Swal.fire("Error", "Faltan datos de usuario o sucursal para abrir caja.", "error");
+      return Swal.fire("Error", "Faltan datos de sesión para abrir caja.", "error");
     }
 
     const montoNum = parseFloat(monto);
@@ -94,32 +134,31 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
     }
 
     const { data, error } = await CajaService.abrirCaja({
-      usuario_id: usuarioId,
+      usuario_id: usuarioId, // Guardamos quién abrió la caja
       sucursal_id: sucursalId, 
       monto_apertura: montoNum,
     });
 
     if (error) {
       console.error("Error al abrir caja:", error);
-      Swal.fire("Error", `No se pudo abrir la caja: ${error.message || 'Verifica la conexión'}`, "error");
+      Swal.fire("Error", `No se pudo abrir la caja: ${error.message}`, "error");
     } else {
       setSesionActiva(data);
       await cargarDatosCaja();
-      Swal.fire("Éxito", "Turno iniciado", "success");
+      Swal.fire("Éxito", "Turno de caja iniciado correctamente", "success");
     }
   };
 
   /**
-   * Registra un ingreso o egreso de dinero
+   * Registra una entrada o salida de efectivo manual
    */
   const registrarMovimientoEfectivo = async (tipo, monto, motivoNombre) => {
-    // 🛡️ BLINDAJE: Verificación de permiso de edición
     if (!puedeEditar) {
-      return Swal.fire("Acceso denegado", "No tienes permiso para registrar movimientos de dinero.", "error");
+      return Swal.fire("Acceso denegado", "No tienes permiso para registrar movimientos.", "error");
     }
 
     if (!sesionActiva) {
-      return Swal.fire("Atención", "Debes abrir un turno para registrar movimientos.", "warning");
+      return Swal.fire("Atención", "Debes abrir un turno primero.", "warning");
     }
 
     const montoNum = parseFloat(monto);
@@ -129,28 +168,26 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
 
     const { error } = await CajaService.registrarMovimiento({
       turno_id: sesionActiva.id,
-      usuario_id: usuarioId,
+      usuario_id: usuarioId, // Guardamos quién hizo el movimiento
       tipo: tipo?.toLowerCase().trim(),
       monto: montoNum,
       motivo: motivoNombre,
     });
 
     if (error) {
-      console.error("Error al registrar movimiento:", error);
-      Swal.fire("Error", `No se pudo guardar el movimiento: ${error.message}`, "error");
+      Swal.fire("Error", `No se pudo guardar: ${error.message}`, "error");
     } else {
       await cargarDatosCaja();
-      Swal.fire("Registrado", "Movimiento guardado con éxito", "success");
+      Swal.fire("Registrado", "Movimiento de efectivo guardado", "success");
     }
   };
 
   /**
-   * Arqueo adaptado para leer "entrada" y "salida"
+   * Proceso de Arqueo y Cierre de Turno
    */
   const cerrarTurno = async (montoCierre) => {
-    // 🛡️ BLINDAJE: Solo personal autorizado cierra caja
     if (!puedeEditar) {
-      return Swal.fire("Acceso denegado", "No tienes permiso para realizar el arqueo de cierre.", "error");
+      return Swal.fire("Acceso denegado", "No tienes permiso para cerrar caja.", "error");
     }
 
     const montoCierreNum = parseFloat(montoCierre);
@@ -158,7 +195,7 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
       return Swal.fire("Error", "Ingresa el monto físico contado", "error");
     }
 
-    // 🛡️ FIX MULTITIENDA: Pasamos sucursalId para no sumar ventas de otras sucursales
+    // 🛡️ Obtener ventas reales en efectivo de la DB para esta sucursal
     const { totalVentas } = await CajaService.getTotalesEfectivoSesion(sesionActiva.fecha_apertura, sucursalId);
     
     const ingresos = movimientos
@@ -179,16 +216,19 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
     const diferencia = montoCierreNum - montoEsperado;
 
     const confirm = await Swal.fire({
-      title: "¿Confirmar Arqueo?",
+      title: "¿Finalizar Turno?",
       html: `
-        <div style="text-align: left;">
-            <p>Monto Esperado: <b>$${montoEsperado.toFixed(2)}</b></p>
-            <p>Diferencia: <b style="color: ${diferencia < 0 ? "#ef4444" : "#10b981"}">$${diferencia.toFixed(2)}</b></p>
+        <div style="text-align: left; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <p style="margin-bottom: 5px;">Monto Esperado: <b>$${montoEsperado.toFixed(2)}</b></p>
+            <p style="margin-bottom: 0;">Diferencia: <b style="color: ${diferencia < 0 ? "#ef4444" : "#10b981"}">$${diferencia.toFixed(2)}</b></p>
         </div>
+        <p style="margin-top: 15px; font-size: 0.9rem; color: #64748b;">Esta acción cerrará el turno y no podrá revertirse.</p>
       `,
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "Cerrar Turno",
+      confirmButtonText: "Confirmar Arqueo y Cerrar",
+      cancelButtonText: "Revisar de nuevo",
+      confirmButtonColor: "#2563eb"
     });
 
     if (confirm.isConfirmed) {
@@ -199,14 +239,21 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
       });
 
       if (error) {
-        console.error("Error al cerrar turno:", error);
-        Swal.fire("Error", "No se pudo procesar el cierre en la base de datos.", "error");
+        Swal.fire("Error", "Error al guardar el cierre en la base de datos.", "error");
       } else {
         setSesionActiva(null);
         await cargarDatosCaja();
-        Swal.fire("Cerrado", "La caja ha sido cerrada correctamente", "success");
+        Swal.fire("Turno Finalizado", "La caja ha sido cerrada y el arqueo registrado.", "success");
       }
     }
+  };
+
+  /**
+   * Función para refrescar toda la data manual (Ej. tras un cobro exitoso)
+   */
+  const refrescarTodo = async () => {
+    await cargarDatosCaja();
+    if (sesionActiva) await cargarCuentas();
   };
 
   return {
@@ -216,11 +263,14 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
     historial: puedeVer ? historial : [],
     motivosCatalogo,
     tiposDisponibles,
+    cuentasPendientes,
+    cuentasCobradas,
     getMotivosPorTipo,
     abrirTurno,
     cerrarTurno,
     registrarMovimientoEfectivo,
-    refrescarTodo: cargarDatosCaja,
+    refrescarTodo,
+    cargarCuentas,
     puedeVer,
     puedeEditar
   };

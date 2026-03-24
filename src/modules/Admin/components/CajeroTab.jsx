@@ -1,106 +1,76 @@
 // Archivo: src/modules/Admin/components/CajeroTab.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useCajeroTab } from "../../../hooks/useCajeroTab";
-import { CajaService } from "../../../services/Caja.service";
-import s from "../AdminPage.module.css"; 
-import stylesPOS from "./MeseroTab.module.css";
-import stylesCaja from "./CajeroTab.module.css";
+import { CajaService } from "../../../services/Caja.service"; 
+import stylesAdmin from "../AdminPage.module.css"; 
+import s from "./MeseroTab.module.css"; // UNIFICADO: Usamos el mismo CSS que el mesero
 import { formatCurrency } from "../../../utils/formatCurrency";
 import Swal from "sweetalert2";
 import { hasPermission } from "../../../utils/checkPermiso"; 
 
-// 🔴 ACTUALIZACIÓN: Recibe sucursalId como prop
-const CajeroTab = ({ usuarioId, sucursalId }) => {
+export const CajeroTab = ({ usuarioId, sucursalId }) => {
   // 🛡️ SEGURIDAD INTERNA (RBAC)
   const puedeEditarCaja = hasPermission('editar_ventas');
 
   // 1. Estados de Navegación y Formularios
   const [activeSubTab, setActiveSubTab] = useState("COBRAR");
-  const [cuentasPendientes, setCuentasPendientes] = useState([]);
-
   const [tipoSeleccionado, setTipoSeleccionado] = useState("");
-  const [movData, setMovData] = useState({
-    motivoId: "",
-    monto: "",
-    comentario: "",
-  });
-
+  const [movData, setMovData] = useState({ motivoId: "", monto: "", comentario: "" });
   const [montoArqueo, setMontoArqueo] = useState("");
   const [montoApertura, setMontoApertura] = useState("");
 
-  // 2. Hook de Lógica
-  // 🔴 ACTUALIZACIÓN: Pasamos sucursalId al hook para que abra el "candado" del mesero
+  // 2. Hook de Lógica Centralizada
+  // 💡 Extraemos cuentasPendientes y cuentasCobradas directamente del Hook
   const {
-    sesionActiva,
-    loading,
-    movimientos,
-    historial,
+    sesionActiva, 
+    loading, 
+    movimientos, 
+    historial, 
     tiposDisponibles,
-    getMotivosPorTipo,
-    abrirTurno,
-    cerrarTurno,
-    registrarMovimientoEfectivo,
+    cuentasPendientes, 
+    cuentasCobradas,   
+    getMotivosPorTipo, 
+    abrirTurno, 
+    cerrarTurno, 
+    registrarMovimientoEfectivo, 
+    refrescarTodo
   } = useCajeroTab(usuarioId, sucursalId);
 
-  // 3. Carga de Cuentas Pendientes (Meseros)
-  const cargarCuentas = async () => {
-    try {
-      // Filtramos por sucursal para que el cajero solo cobre lo de su tienda
-      const { data } = await CajaService.getVentasPendientes();
-      const filtradas = (data || []).filter(v => v.sucursal_id === sucursalId);
-      setCuentasPendientes(filtradas);
-    } catch (error) {
-      console.error("Error al obtener cuentas:", error);
-    }
-  };
-
-  useEffect(() => {
-    if (sesionActiva) {
-      cargarCuentas();
-      const interval = setInterval(cargarCuentas, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [sesionActiva, sucursalId]);
-
-  // 4. Lógica de Cobro Directo con Modal Dinámico
+  // 3. Lógica de Cobro Directo con Calculadora de Cambio
   const manejarCobro = async (venta) => {
-    if (!puedeEditarCaja) {
-      return Swal.fire("Acceso Denegado", "No tienes permisos para procesar cobros.", "warning");
-    }
+    if (!puedeEditarCaja) return Swal.fire("Acceso Denegado", "No tienes permisos para procesar cobros.", "warning");
 
-    const totalVenta = venta.total || 0;
+    const totalVenta = parseFloat(venta.total) || 0;
 
     const { value: resultado, isConfirmed } = await Swal.fire({
       title: `Cobrar Mesa ${venta.mesa || "S/N"}`,
       html: `
         <div style="text-align: left; font-size: 1.1rem; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px;">
-            <span style="color: #666;">Total a cobrar:</span> <br/>
-            <strong style="font-size: 2rem; color: var(--color-primary);">${formatCurrency(totalVenta)}</strong>
+            <span style="color: #666;">Total a liquidar:</span> <br/>
+            <strong style="font-size: 2.2rem; color: #2563eb;">${formatCurrency(totalVenta)}</strong>
         </div>
-        
         <div style="display: flex; flex-direction: column; gap: 15px; text-align: left;">
             <div>
                 <label style="font-weight: bold; font-size: 0.9rem; color: #555;">Método de Pago:</label>
                 <select id="swal-metodo" class="swal2-select" style="width: 100%; margin: 5px 0 0 0; font-size: 1.1rem; padding: 10px;">
-                    <option value="efectivo">Efectivo</option>
-                    <option value="tarjeta">Tarjeta</option>
-                    <option value="transferencia">Transferencia</option>
+                    <option value="efectivo">💵 Efectivo</option>
+                    <option value="tarjeta">💳 Tarjeta (Débito/Crédito)</option>
+                    <option value="transferencia">📱 Transferencia / SPEI</option>
                 </select>
             </div>
             <div>
                 <label style="font-weight: bold; font-size: 0.9rem; color: #555;">Monto Recibido ($):</label>
-                <input id="swal-monto" type="number" step="0.5" class="swal2-input" placeholder="0.00" style="width: 100%; margin: 5px 0 0 0; font-size: 1.5rem; text-align: right; padding: 10px; box-sizing: border-box; background: #f9fafb;" />
+                <input id="swal-monto" type="number" step="0.01" class="swal2-input" placeholder="0.00" style="width: 100%; margin: 5px 0 0 0; font-size: 1.8rem; text-align: right; padding: 10px; box-sizing: border-box; font-weight: 800;" />
             </div>
-            
-            <div id="swal-cambio-container" style="text-align: center; font-size: 1.3rem; font-weight: 600; margin-top: 15px; padding: 15px; background: #fee2e2; border-radius: 8px; color: #ef4444;">
+            <div id="swal-cambio-container" style="text-align: center; font-size: 1.4rem; font-weight: 700; margin-top: 15px; padding: 15px; background: #fef2f2; border-radius: 8px; color: #dc2626; border: 1px solid #fecaca;">
                 Falta: ${formatCurrency(totalVenta)}
             </div>
         </div>
       `,
       showCancelButton: true,
-      confirmButtonText: "CONFIRMAR PAGO",
-      confirmButtonColor: "#10b981",
-      cancelButtonText: "Cancelar",
+      confirmButtonText: "FINALIZAR VENTA",
+      confirmButtonColor: "#059669",
+      cancelButtonText: "Volver",
       didOpen: () => {
         const montoInput = Swal.getPopup().querySelector("#swal-monto");
         const cambioContainer = Swal.getPopup().querySelector("#swal-cambio-container");
@@ -108,7 +78,7 @@ const CajeroTab = ({ usuarioId, sucursalId }) => {
 
         metodoSelect.addEventListener("change", () => {
           if (metodoSelect.value !== "efectivo") {
-            montoInput.value = totalVenta;
+            montoInput.value = totalVenta.toFixed(2);
             montoInput.dispatchEvent(new Event("input"));
           }
         });
@@ -118,24 +88,26 @@ const CajeroTab = ({ usuarioId, sucursalId }) => {
           const diferencia = recibido - totalVenta;
 
           if (diferencia < 0) {
-            cambioContainer.style.background = "#fee2e2";
-            cambioContainer.style.color = "#ef4444";
-            cambioContainer.innerHTML = `Falta: $${Math.abs(diferencia).toFixed(2)}`;
+            cambioContainer.style.background = "#fef2f2";
+            cambioContainer.style.color = "#dc2626";
+            cambioContainer.style.borderColor = "#fecaca";
+            cambioContainer.innerHTML = `Faltan: $${Math.abs(diferencia).toFixed(2)}`;
           } else {
-            cambioContainer.style.background = "#d1fae5";
-            cambioContainer.style.color = "#059669";
-            cambioContainer.innerHTML = `Cambio a entregar: $${diferencia.toFixed(2)}`;
+            cambioContainer.style.background = "#f0fdf4";
+            cambioContainer.style.color = "#16a34a";
+            cambioContainer.style.borderColor = "#bbf7d0";
+            cambioContainer.innerHTML = `Cambio: $${diferencia.toFixed(2)}`;
           }
         });
 
-        setTimeout(() => montoInput.focus(), 100);
+        setTimeout(() => montoInput.focus(), 200);
       },
       preConfirm: () => {
         const metodo = Swal.getPopup().querySelector("#swal-metodo").value;
         const recibido = parseFloat(Swal.getPopup().querySelector("#swal-monto").value) || 0;
 
         if (recibido < totalVenta) {
-          Swal.showValidationMessage(`Pago incompleto. Faltan $${(totalVenta - recibido).toFixed(2)}`);
+          Swal.showValidationMessage(`El pago es insuficiente. Faltan $${(totalVenta - recibido).toFixed(2)}`);
           return false;
         }
 
@@ -151,210 +123,240 @@ const CajeroTab = ({ usuarioId, sucursalId }) => {
 
       if (!error) {
         Swal.fire({
-          icon: "success",
-          title: "¡Cobro Exitoso!",
-          text: `Cambio entregado: $${(resultado.recibido - totalVenta).toFixed(2)}`,
-          timer: 2000,
-          showConfirmButton: false,
+          icon: "success", title: "Venta Pagada", text: `Cambio: $${(resultado.recibido - totalVenta).toFixed(2)}`,
+          timer: 2500, showConfirmButton: false,
         });
-        cargarCuentas();
+        refrescarTodo(); // Refresca las listas automáticamente
       } else {
-        Swal.fire("Error", "No se pudo registrar el pago", "error");
+        Swal.fire("Error", "No se pudo cerrar la venta en el servidor", "error");
       }
     }
   };
 
-  // 5. Lógica para Guardar Movimiento
   const guardarMovimiento = async () => {
     if (!puedeEditarCaja) return;
-
     const motivosFiltrados = getMotivosPorTipo(tipoSeleccionado);
     const motivo = motivosFiltrados.find(m => m.id === parseInt(movData.motivoId));
 
-    if (!motivo || !movData.monto) {
-      return Swal.fire("Error", "Selecciona un motivo e ingresa el monto", "error");
-    }
+    if (!motivo || !movData.monto) return Swal.fire("Atención", "Selecciona un motivo y el monto exacto", "warning");
 
-    const descFinal = movData.comentario
-      ? `${motivo.nombre_motivo}: ${movData.comentario}`
-      : motivo.nombre_motivo;
+    const descFinal = movData.comentario ? `${motivo.nombre_motivo}: ${movData.comentario}` : motivo.nombre_motivo;
 
     await registrarMovimientoEfectivo(tipoSeleccionado, movData.monto, descFinal);
     setMovData({ motivoId: "", monto: "", comentario: "" });
     setTipoSeleccionado("");
   };
 
-  // 6. Reporte de corte
   const imprimirReporte = (sesion) => {
     const ventanaPrint = window.open('', '_blank');
-    const ingresosNetos = sesion.monto_cierre_esperado - sesion.monto_apertura;
+    const ingresosNetos = parseFloat(sesion.monto_cierre_esperado) - parseFloat(sesion.monto_apertura);
 
     ventanaPrint.document.write(`
       <html>
         <head>
-          <title>Corte de Caja #${sesion.id}</title>
+          <title>Corte Turno #${sesion.id.toString().slice(-5)}</title>
           <style>
-            body { font-family: 'Courier New', Courier, monospace; padding: 20px; color: #000; font-size: 14px; max-width: 300px; margin: auto; }
-            h2 { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 20px; font-size: 18px; }
-            .row { display: flex; justify-content: space-between; margin-bottom: 6px; }
-            .total { font-weight: bold; border-top: 1px dashed #000; padding-top: 10px; margin-top: 10px; font-size: 16px; }
-            .firma-box { text-align: center; margin-top: 50px; }
+            body { font-family: 'Courier New', monospace; padding: 10px; font-size: 12px; width: 280px; }
+            .header { text-align: center; border-bottom: 1px dashed #000; margin-bottom: 10px; }
+            .row { display: flex; justify-content: space-between; margin: 4px 0; }
+            .total { font-weight: bold; border-top: 1px solid #000; padding-top: 5px; margin-top: 10px; }
+            .footer { text-align: center; margin-top: 30px; font-size: 10px; }
           </style>
         </head>
         <body>
-          <h2>REPORTE DE CAJA</h2>
-          <div class="row"><span>ID Sesión:</span> <span>#${sesion.id}</span></div>
-          <div class="row"><span>Apertura:</span> <span>${new Date(sesion.fecha_apertura).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span></div>
-          <br/>
-          <div class="row"><span>Fondo Inicial:</span> <span>${formatCurrency(sesion.monto_apertura)}</span></div>
-          <div class="row"><span>Ventas y Movs:</span> <span>${formatCurrency(ingresosNetos)}</span></div>
-          <div class="row total"><span>TOTAL ESPERADO:</span> <span>${formatCurrency(sesion.monto_cierre_esperado)}</span></div>
-          <div class="row"><span>Efectivo Real:</span> <span>${formatCurrency(sesion.monto_cierre_real)}</span></div>
-          <br/>
-          <div class="row" style="font-weight: bold; color: ${sesion.diferencia < 0 ? 'red' : 'black'};">
-            <span>Diferencia:</span> <span>${formatCurrency(sesion.diferencia)}</span>
+          <div class="header">
+            <h3>CORTE DE CAJA</h3>
+            <p>Sucursal ID: ${sucursalId}<br/>Turno: ${new Date(sesion.fecha_apertura).toLocaleDateString()}</p>
           </div>
-          <div class="firma-box"><p>_______________________</p><p>Firma del Cajero</p></div>
-          <script>window.onload = function() { window.print(); setTimeout(function(){ window.close(); }, 500); }</script>
+          <div class="row"><span>Apertura:</span> <span>${formatCurrency(sesion.monto_apertura)}</span></div>
+          <div class="row"><span>Ventas/Movs:</span> <span>+${formatCurrency(ingresosNetos)}</span></div>
+          <div class="row total"><span>ESPERADO:</span> <span>${formatCurrency(sesion.monto_cierre_esperado)}</span></div>
+          <div class="row"><span>CONTADO:</span> <span>${formatCurrency(sesion.monto_cierre_real)}</span></div>
+          <div class="row" style="font-weight:bold; color:${sesion.diferencia < 0 ? 'red' : 'black'}">
+            <span>DIFERENCIA:</span> <span>${formatCurrency(sesion.diferencia)}</span>
+          </div>
+          <div class="footer"><p>_______________________</p><p>Firma Responsable</p></div>
+          <script>window.print(); setTimeout(() => window.close(), 500);</script>
         </body>
       </html>
     `);
     ventanaPrint.document.close();
   };
 
-  if (loading) return <div className={s.emptyState}>Sincronizando caja...</div>;
+  // Lógica de separación de cuentas para la vista
+  const mesasPorCobrar = cuentasPendientes.filter(v => v.estado === 'por_cobrar');
+  const mesasActivas = cuentasPendientes.filter(v => v.estado !== 'por_cobrar');
+
+  if (loading) return <div className={stylesAdmin.emptyState}>Sincronizando estado de caja...</div>;
 
   return (
-    <div className={s.tabWrapper}>
-        <div className={s.pageHeader}>
-          <h2 className={s.pageTitle}>Gestión de Caja</h2>
+    <div className={stylesAdmin.tabWrapper}>
+        <div className={stylesAdmin.pageHeader}>
+          <h2 className={stylesAdmin.pageTitle}>Panel de Cajero</h2>
         </div>
 
-        <nav className={s.tabNav}>
+        <nav className={stylesAdmin.tabNav}>
           {["COBRAR", "MOVIMIENTOS", "TURNO Y ARQUEO", "HISTORIAL"].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveSubTab(tab)}
-              className={`${s.tabButton} ${activeSubTab === tab ? s.activeTabButton : ""}`}
+              className={`${stylesAdmin.tabButton} ${activeSubTab === tab ? stylesAdmin.activeTabButton : ""}`}
             >
               {tab}
             </button>
           ))}
         </nav>
 
+        {/* --- SUBTAB: COBRAR --- */}
         {activeSubTab === "COBRAR" && (
-          <div className={s.adminCard}>
+          <div className={stylesAdmin.adminCard}>
             {!sesionActiva ? (
-              <div className={s.emptyState}>Debes abrir un turno para cobrar cuentas.</div>
+              <div className={stylesAdmin.emptyState}>El turno está cerrado. Ve a "TURNO Y ARQUEO" para iniciar.</div>
             ) : (
-              <div className={stylesPOS.productGrid}>
-                {cuentasPendientes.length === 0 ? (
-                  <div className={s.emptyState}>No hay cuentas pendientes en esta sucursal.</div>
+              <>
+                {cuentasPendientes.length === 0 && cuentasCobradas.length === 0 ? (
+                  <div className={stylesAdmin.emptyState}>No hay cuentas activas ni historial reciente en este turno.</div>
                 ) : (
-                  cuentasPendientes.map((venta) => (
-                    <div
-                      key={venta.id}
-                      className={`${stylesPOS.mesaCard} ${stylesCaja.mesaCardCustom}`}
-                      onClick={() => manejarCobro(venta)}
-                    >
-                      <div className={stylesPOS.flexBetween}>
-                        <span className={stylesPOS.mesaName}>Mesa {venta.mesa || "S/N"}</span>
-                        <span className={venta.estado === "por_cobrar" ? stylesPOS.mesaBadgeCobrar : stylesPOS.mesaBadge}>
-                          {venta.estado === "por_cobrar" ? "Por Cobrar" : "Abierta"}
-                        </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+                    
+                    {/* 🛎️ SECCIÓN 1: MESAS POR COBRAR (PRIORIDAD ALTA) */}
+                    {mesasPorCobrar.length > 0 && (
+                      <div>
+                        <h3 className={stylesAdmin.cardTitle} style={{ marginBottom: '15px', color: 'var(--color-warning)' }}>
+                           🛎️ Por Cobrar
+                        </h3>
+                        <div className={s.productGrid}>
+                          {mesasPorCobrar.map((venta) => (
+                            <div 
+                              key={venta.id} 
+                              className={`${s.mesaCard} ${s.mesaCardCustom}`} 
+                              onClick={() => manejarCobro(venta)} 
+                              style={{ borderLeftColor: 'var(--color-warning)' }}
+                            >
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start' }}>
+                                <span className={s.mesaName}>Mesa {venta.mesa}</span>
+                                <span className={s.mesaBadgeCobrar} style={{ textAlign: 'center' }}>
+                                  POR COBRAR
+                                </span>
+                              </div>
+                              <div className={s.mesaTotal} style={{ marginTop: '15px' }}>{formatCurrency(venta.total)}</div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      <div className={stylesPOS.mesaTotal}>{formatCurrency(venta.total)}</div>
-                      <button className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`} style={{ marginTop: '10px' }}>
-                        {puedeEditarCaja ? "COBRAR" : "VER DETALLE"}
-                      </button>
-                    </div>
-                  ))
+                    )}
+
+                    {/* ⏳ SECCIÓN 2: MESAS ACTIVAS / CONSUMIENDO */}
+                    {mesasActivas.length > 0 && (
+                      <div>
+                        <h3 className={stylesAdmin.cardTitle} style={{ marginBottom: '15px', color: 'var(--color-text-muted)', borderTop: mesasPorCobrar.length > 0 ? '1px dashed var(--color-border)' : 'none', paddingTop: mesasPorCobrar.length > 0 ? '20px' : '0' }}>
+                          ⏳ Abiertas
+                        </h3>
+                        <div className={s.productGrid}>
+                          {mesasActivas.map((venta) => (
+                            <div 
+                              key={venta.id} 
+                              className={`${s.mesaCard} ${s.mesaCardCustom}`} 
+                              onClick={() => manejarCobro(venta)} 
+                              style={{ opacity: 0.9 }}
+                            >
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start' }}>
+                                <span className={s.mesaName}>Mesa {venta.mesa}</span>
+                                <span className={s.mesaBadge} style={{ textAlign: 'center' }}>
+                                  CONSUMIENDO
+                                </span>
+                              </div>
+                              <div className={s.mesaTotal} style={{ marginTop: '15px' }}>{formatCurrency(venta.total)}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ✅ SECCIÓN 3: MESAS COBRADAS EN ESTE TURNO */}
+                    {cuentasCobradas.length > 0 && (
+                      <div>
+                        <h3 className={stylesAdmin.cardTitle} style={{ marginBottom: '15px', color: 'var(--color-success)', borderTop: (mesasPorCobrar.length > 0 || mesasActivas.length > 0) ? '1px dashed var(--color-border)' : 'none', paddingTop: '20px' }}>
+                          ✅ Cobradas en este Turno
+                        </h3>
+                        <div className={s.productGrid}>
+                          {cuentasCobradas.map((venta) => (
+                            <div 
+                              key={venta.id} 
+                              className={`${s.mesaCard} ${s.mesaCardCustom}`} 
+                              style={{ borderLeftColor: 'var(--color-success)', opacity: 0.7, cursor: 'default' }}
+                            >
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start' }}>
+                                <span className={s.mesaName}>Mesa {venta.mesa}</span>
+                                <span className={stylesAdmin.badgeSuccess} style={{ textAlign: 'center' }}>
+                                  LIQUIDADA
+                                </span>
+                              </div>
+                              <div className={s.mesaTotal} style={{ marginTop: '15px' }}>{formatCurrency(venta.total)}</div>
+                              <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '10px' }}>
+                                Hora: {new Date(venta.hora_cierre).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                  </div>
                 )}
-              </div>
+              </>
             )}
           </div>
         )}
 
+        {/* --- SUBTAB: MOVIMIENTOS --- */}
         {activeSubTab === "MOVIMIENTOS" && (
-          <div className={s.splitLayout}>
+          <div className={stylesAdmin.splitLayout}>
             {!sesionActiva ? (
-              <div className={s.emptyState} style={{ gridColumn: '1/-1' }}>
-                Debes abrir un turno en "TURNO Y ARQUEO" para registrar y ver movimientos.
-              </div>
+              <div className={stylesAdmin.emptyState} style={{ gridColumn: '1/-1' }}>Acción no disponible sin turno abierto.</div>
             ) : (
               <>
-                <aside className={s.adminCard} style={{ opacity: puedeEditarCaja ? 1 : 0.6 }}>
-                  <h3 className={s.cardTitle}>Nuevo Movimiento</h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                    <div className={s.formGroup}>
-                      <label className={s.label}>Tipo de Flujo</label>
-                      <select
-                        className={s.inputField}
-                        value={tipoSeleccionado}
-                        disabled={!puedeEditarCaja}
-                        onChange={(e) => {
-                          setTipoSeleccionado(e.target.value);
-                          setMovData({ ...movData, motivoId: "" });
-                        }}
-                      >
-                        <option value="">-- Seleccione Tipo --</option>
-                        {tiposDisponibles.map(tipo => <option key={tipo} value={tipo}>{tipo.toUpperCase()}</option>)}
-                      </select>
-                    </div>
-
-                    <div className={s.formGroup}>
-                      <label className={s.label}>Motivo</label>
-                      <select
-                        className={s.inputField}
-                        value={movData.motivoId}
-                        onChange={e => setMovData({ ...movData, motivoId: e.target.value })}
-                        disabled={tipoSeleccionado === "" || !puedeEditarCaja}
-                      >
-                        <option value="">-- Seleccione un motivo --</option>
-                        {getMotivosPorTipo(tipoSeleccionado).map(m => <option key={m.id} value={m.id}>{m.nombre_motivo}</option>)}
-                      </select>
-                    </div>
-
-                    <div className={s.formGroup}>
-                      <label className={s.label}>Monto ($)</label>
-                      <input
-                        type="number"
-                        className={s.inputField}
-                        placeholder="0.00"
-                        value={movData.monto}
-                        readOnly={!puedeEditarCaja}
-                        onChange={e => setMovData({ ...movData, monto: e.target.value })}
-                      />
-                    </div>
-
-                    <div className={s.formGroup}>
-                      <label className={s.label}>Comentario Adicional</label>
-                      <textarea
-                        className={s.inputField}
-                        style={{ resize: 'vertical', minHeight: '80px' }}
-                        placeholder="Opcional..."
-                        value={movData.comentario}
-                        readOnly={!puedeEditarCaja}
-                        onChange={e => setMovData({ ...movData, comentario: e.target.value })}
-                      />
-                    </div>
-
-                    {puedeEditarCaja && (
-                      <button className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`} onClick={guardarMovimiento}>
-                        REGISTRAR MOVIMIENTO
-                      </button>
-                    )}
+                <aside className={stylesAdmin.adminCard} style={{ opacity: puedeEditarCaja ? 1 : 0.6 }}>
+                  <h3 className={stylesAdmin.cardTitle}>Entrada / Salida de Efectivo</h3>
+                  <div className={stylesAdmin.formGroup}>
+                    <label className={stylesAdmin.label}>Tipo de Flujo</label>
+                    <select className={stylesAdmin.inputField} value={tipoSeleccionado} disabled={!puedeEditarCaja} onChange={(e) => { setTipoSeleccionado(e.target.value); setMovData({ ...movData, motivoId: "" }); }}>
+                      <option value="">-- Seleccione --</option>
+                      {tiposDisponibles.map(tipo => <option key={tipo} value={tipo}>{tipo.toUpperCase()}</option>)}
+                    </select>
                   </div>
+
+                  <div className={stylesAdmin.formGroup}>
+                    <label className={stylesAdmin.label}>Concepto</label>
+                    <select className={stylesAdmin.inputField} value={movData.motivoId} onChange={e => setMovData({ ...movData, motivoId: e.target.value })} disabled={!tipoSeleccionado || !puedeEditarCaja}>
+                      <option value="">-- Seleccione Motivo --</option>
+                      {getMotivosPorTipo(tipoSeleccionado).map(m => <option key={m.id} value={m.id}>{m.nombre_motivo}</option>)}
+                    </select>
+                  </div>
+
+                  <div className={stylesAdmin.formGroup}>
+                    <label className={stylesAdmin.label}>Monto ($)</label>
+                    <input type="number" className={stylesAdmin.inputField} placeholder="0.00" value={movData.monto} readOnly={!puedeEditarCaja} onChange={e => setMovData({ ...movData, monto: e.target.value })} />
+                  </div>
+
+                  <div className={stylesAdmin.formGroup}>
+                    <label className={stylesAdmin.label}>Observaciones</label>
+                    <textarea className={`${stylesAdmin.inputField} ${s.textareaCustom}`} placeholder="Ej. Pago a proveedor..." value={movData.comentario} onChange={e => setMovData({ ...movData, comentario: e.target.value })} />
+                  </div>
+
+                  <button className={`${stylesAdmin.btn} ${stylesAdmin.btnPrimary} ${stylesAdmin.btnFull}`} onClick={guardarMovimiento} disabled={!puedeEditarCaja}>
+                    REGISTRAR MOVIMIENTO
+                  </button>
                 </aside>
 
-                <div className={`${s.adminCard} ${s.tableContainer}`}>
-                  <h3 className={s.cardTitle} style={{ padding: '20px' }}>Bitácora del Turno Actual</h3>
-                  <table className={s.table}>
-                    <thead className={s.thead}>
+                <div className={`${stylesAdmin.adminCard} ${stylesAdmin.tableContainer}`}>
+                  <h3 className={stylesAdmin.cardTitle} style={{ padding: '20px' }}>Bitácora de Caja (Turno Actual)</h3>
+                  <table className={stylesAdmin.table}>
+                    <thead className={stylesAdmin.thead}>
                       <tr>
-                        <th className={s.th}>HORA</th>
-                        <th className={s.th}>CONCEPTO</th>
-                        <th className={s.th} style={{ textAlign: 'right' }}>MONTO</th>
+                        <th className={stylesAdmin.th}>HORA</th>
+                        <th className={stylesAdmin.th}>CONCEPTO</th>
+                        <th className={stylesAdmin.th} style={{ textAlign: 'right' }}>MONTO</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -362,9 +364,9 @@ const CajeroTab = ({ usuarioId, sucursalId }) => {
                         const esIngreso = ["ingreso", "entrada", "venta"].includes(m.tipo?.toLowerCase().trim());
                         return (
                           <tr key={m.id}>
-                            <td className={s.td}>{new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
-                            <td className={s.td} style={{ fontWeight: '700' }}>{m.motivo}</td>
-                            <td className={s.td} style={{ textAlign: 'right', fontWeight: '600', color: esIngreso ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                            <td className={stylesAdmin.td}>{new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
+                            <td className={stylesAdmin.td}><strong>{m.motivo}</strong></td>
+                            <td className={`${stylesAdmin.td} ${s.tdMonto} ${esIngreso ? s.textGreen : s.textRed}`}>
                               {esIngreso ? "+" : "-"}{formatCurrency(m.monto)}
                             </td>
                           </tr>
@@ -378,95 +380,89 @@ const CajeroTab = ({ usuarioId, sucursalId }) => {
           </div>
         )}
 
+        {/* --- SUBTAB: TURNO Y ARQUEO --- */}
         {activeSubTab === "TURNO Y ARQUEO" && (
-          <div className={s.fadeIn}>
+          <div className={stylesAdmin.fadeIn}>
             {!sesionActiva ? (
-              <div className={`${s.adminCard}`} style={{ maxWidth: '500px', margin: '40px auto', textAlign: 'center', padding: '40px' }}>
-                <div style={{ fontSize: '4rem', marginBottom: '20px' }}>💵</div>
-                <h2 className={s.cardTitle} style={{ fontSize: '1.8rem' }}>Caja Cerrada</h2>
-                <p className={s.textMuted} style={{ marginBottom: '30px' }}>Inicia jornada en la sucursal asignada.</p>
+              <div className={`${stylesAdmin.adminCard} ${s.cajaCerradaCard}`}>
+                <div className={s.cashIcon}>🏪</div>
+                <h2 className={s.cajaCerradaTitle}>Caja Cerrada</h2>
+                <p className={s.cajaCerradaDesc}>Inicia el fondo de caja para comenzar a operar.</p>
                 
-                <div className={s.formGroup} style={{ textAlign: 'left' }}>
-                  <label className={s.label}>Fondo de Caja ($)</label>
-                  <input
-                    type="number"
-                    className={s.inputField}
-                    style={{ fontSize: '1.5rem', textAlign: 'center', height: '60px' }}
-                    value={montoApertura}
-                    readOnly={!puedeEditarCaja}
-                    onChange={e => setMontoApertura(e.target.value)}
-                    placeholder="0.00"
-                  />
-                </div>
-                {puedeEditarCaja ? (
-                  <button className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`} style={{ padding: '20px', fontSize: '1.1rem', marginTop: '20px' }} onClick={() => abrirTurno(montoApertura)}>
-                    INICIAR JORNADA
+                <div className={s.cajaCerradaFormWrapper}>
+                  <label className={`${stylesAdmin.label} ${s.cajaCerradaLabel}`}>Fondo Inicial de Apertura ($)</label>
+                  <input type="number" className={`${stylesAdmin.inputField} ${s.cajaCerradaInput}`} value={montoApertura} onChange={e => setMontoApertura(e.target.value)} placeholder="0.00" />
+                  <button className={`${stylesAdmin.btn} ${stylesAdmin.btnPrimary} ${stylesAdmin.btnFull} ${s.cajaCerradaBtn}`} onClick={() => abrirTurno(montoApertura)}>
+                    ABRIR TURNO AHORA
                   </button>
-                ) : (
-                  <div className={s.badgeDanger} style={{ marginTop: '20px' }}>Requiere permisos para abrir caja.</div>
-                )}
+                </div>
               </div>
             ) : (
-              <div className={s.splitLayout}>
-                <div className={s.adminCard}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <h3 className={s.cardTitle} style={{ margin: 0 }}>Turno Activo</h3>
-                    <span className={s.badgeSuccess}>● ABIERTO</span>
+              <div className={`${stylesAdmin.splitLayout} ${s.turnoAbiertoGrid}`}>
+                <div className={`${stylesAdmin.adminCard} ${s.turnoActivoCard}`}>
+                  <div className={s.turnoHeaderRow}>
+                    <h3 className={s.turnoTitle}>Resumen de Turno</h3>
+                    <span className={stylesAdmin.badgeSuccess}>ACTIVO</span>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-bg-muted)', paddingBottom: '10px' }}>
-                        <span className={s.label}>Apertura:</span>
-                        <span style={{ fontWeight: '700' }}>{new Date(sesionActiva.fecha_apertura).toLocaleString()}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-bg-muted)', paddingBottom: '10px' }}>
-                        <span className={s.label}>Fondo Inicial:</span>
-                        <span style={{ fontWeight: '600', color: 'var(--color-primary)' }}>{formatCurrency(sesionActiva.monto_apertura)}</span>
-                      </div>
+                  <div className={s.dataList}>
+                    <div className={s.dataRow}>
+                      <span className={s.dataLabel}>Cajero Responsable:</span>
+                      {/* 💡 Muestra el ID del usuario que ABRÍO el turno, no del que lo está viendo */}
+                      <span className={s.dataValue}>#{sesionActiva.usuario_id}</span>
+                    </div>
+                    <div className={s.dataRow}>
+                      <span className={s.dataLabel}>Abierto desde:</span>
+                      <span className={s.dataValue}>{new Date(sesionActiva.fecha_apertura).toLocaleString()}</span>
+                    </div>
+                    <div className={s.fondoRow}>
+                      <span className={s.dataLabel}>Fondo Inicial:</span>
+                      <span className={s.fondoValue}>{formatCurrency(sesionActiva.monto_apertura)}</span>
+                    </div>
                   </div>
                 </div>
 
-                <div className={s.adminCard} style={{ opacity: puedeEditarCaja ? 1 : 0.6 }}>
-                  <h3 className={s.cardTitle}>Arqueo de Caja</h3>
-                  <p className={s.textMuted} style={{ fontSize: '13px', marginBottom: '20px' }}>Ingresa el efectivo físico total en el cajón.</p>
-                  <div className={s.formGroup}>
-                    <label className={s.label}>Efectivo en Cajón ($)</label>
-                    <input
-                      type="number"
-                      className={s.inputField}
-                      style={{ fontSize: '1.5rem', fontWeight: '600' }}
-                      value={montoArqueo}
-                      readOnly={!puedeEditarCaja}
-                      onChange={e => setMontoArqueo(e.target.value)}
-                      placeholder="0.00"
-                    />
+                <div className={`${stylesAdmin.adminCard} ${s.arqueoCard}`}>
+                  <h3 className={s.arqueoTitle}>Arqueo Final</h3>
+                  <p className={s.arqueoDesc}>Cuenta el efectivo total del cajón y regístralo aquí.</p>
+                  <div className={stylesAdmin.formGroup}>
+                    <label className={`${stylesAdmin.label} ${s.arqueoLabel}`}>Total Efectivo Contado ($)</label>
+                    <input type="number" className={`${stylesAdmin.inputField} ${s.arqueoInput}`} value={montoArqueo} onChange={e => setMontoArqueo(e.target.value)} placeholder="0.00" />
                   </div>
-                  {puedeEditarCaja && (
-                    <button className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`} style={{ marginTop: '20px', padding: '15px' }} onClick={() => cerrarTurno(montoArqueo)}>
-                      🔒 CERRAR CAJA Y ARQUEAR
-                    </button>
-                  )}
+                  <button className={`${stylesAdmin.btn} ${stylesAdmin.btnFull} ${s.arqueoBtn}`} onClick={() => cerrarTurno(montoArqueo)}>
+                    🔒 CERRAR Y GENERAR CORTE
+                  </button>
                 </div>
               </div>
             )}
           </div>
         )}
 
+        {/* --- SUBTAB: HISTORIAL --- */}
         {activeSubTab === "HISTORIAL" && (
-          <div className={s.adminCard} style={{ padding: '20px' }}>
-            <div className={stylesPOS.historyGrid}>
-              {historial.map((h) => (
-                <div key={h.id} className={`${stylesPOS.historyCard} ${stylesCaja.historyCardRelative}`}>
-                  <button onClick={() => imprimirReporte(h)} className={stylesCaja.printBtn} title="Imprimir Corte">🖨️</button>
-                  <div>
-                    <span className={s.label}>ID Sesión: #{h.id?.toString().slice(-5)}</span>
-                    <div style={{ fontWeight: '600', fontSize: '1.1rem' }}>{new Date(h.fecha_apertura).toLocaleDateString()}</div>
+          <div className={stylesAdmin.adminCard}>
+            <div className={s.historyGrid}>
+              {historial.length === 0 ? (
+                <div className={stylesAdmin.emptyState}>No hay turnos previos registrados.</div>
+              ) : (
+                historial.map((h) => (
+                  <div key={h.id} className={`${s.historyCard} ${s.historyCardRelative}`}>
+                    <button onClick={() => imprimirReporte(h)} className={s.printBtn} title="Reimprimir Ticket">🖨️</button>
+                    <div>
+                      <small className={stylesAdmin.textMuted}>Folio: {h.id.slice(0,8)}</small>
+                      <div className={s.historyDate}>{new Date(h.fecha_apertura).toLocaleDateString()}</div>
+                      <div className={s.historyCardTime}>
+                        {new Date(h.fecha_apertura).toLocaleTimeString()} - {new Date(h.fecha_cierre).toLocaleTimeString()}
+                      </div>
+                    </div>
+                    <div className={s.historyRightBox}>
+                      <div className={s.historyCardAmount}>{formatCurrency(h.monto_cierre_real)}</div>
+                      <span className={parseFloat(h.diferencia) < 0 ? stylesAdmin.badgeDanger : stylesAdmin.badgeSuccess}>
+                        {parseFloat(h.diferencia) === 0 ? "CUADRADO" : `DIF: ${formatCurrency(h.diferencia)}`}
+                      </span>
+                    </div>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '1.2rem', fontWeight: '900', color: 'var(--color-primary)' }}>{formatCurrency(h.monto_cierre_real || 0)}</div>
-                    <span className={h.diferencia < 0 ? s.badgeDanger : s.badgeSuccess}>DIF: {formatCurrency(h.diferencia)}</span>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         )}

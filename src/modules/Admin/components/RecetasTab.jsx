@@ -59,8 +59,10 @@ export const RecetasTab = ({ sucursalId }) => {
         {loading && <span className={s.syncBadge}>SINCRONIZANDO...</span>}
       </header>
 
-      {/* 💡 LAYOUT DINÁMICO: splitLayout (2 cols) o fullLayout (1 col) */}
+      {/* 💡 LAYOUT DINÁMICO: splitLayout (2 cols en escritorio, 1 col en móvil gracias al CSS) */}
       <div className={mostrarFormulario ? s.splitLayout : s.fullLayout}>
+        
+        {/* FORMULARIO LATERAL */}
         <aside className={s.adminCard} style={{ display: mostrarFormulario ? 'block' : 'none' }}>
           <h3 className={s.cardTitle}>
             {isEditing ? (puedeEditar ? " Editando Receta" : "Ver Receta") : " Nueva Preparación"}
@@ -142,7 +144,7 @@ export const RecetasTab = ({ sucursalId }) => {
                       <button type="button" className={`${s.btnSecondary} ${s.btnRemoveCircle} ${s.btnSmall}`} onClick={() => removeIngrediente(idx)}>X</button>
                     )}
                     
-                    <div style={{ display: 'flex', gap: '10px', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
                       <label style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
                         <input 
                           type="radio" 
@@ -204,7 +206,7 @@ export const RecetasTab = ({ sucursalId }) => {
                             setIngredientes(n);
                           }}
                           required
-                          readOnly={deshabilitarCampos}
+                          disabled={deshabilitarCampos}
                         />
                       </div>
                       <div className={s.unitDisplayBox}>
@@ -224,7 +226,7 @@ export const RecetasTab = ({ sucursalId }) => {
               <button 
                 type="button" 
                 onClick={() => setIngredientes([...ingredientes, { tipo: 'insumo', insumo_id: "", cantidad: "", unidad_id: "" }])}
-                className={`${s.btn} ${s.btnSec} ${s.btnSmall}`}>
+                className={`${s.btn} ${s.btnSuccess} ${s.btnSmall}`}>
                 + AÑADIR INGREDIENTE
               </button>
             )}
@@ -244,9 +246,9 @@ export const RecetasTab = ({ sucursalId }) => {
           </form>
         </aside>
 
-        {/* TABLA DE RECETAS: Adaptada para ocupar 100% si el aside se oculta */}
+        {/* TABLA DE RECETAS (Con scroll horizontal en móvil mediante tableContainer) */}
         <div className={`${s.adminCard} ${s.tableContainer}`}>
-          <table className={s.table} style={{ minWidth: "900px", width: "100%" }}>
+          <table className={s.table}>
             <thead className={s.thead}>
               <tr>
                 <th className={s.th} style={{ textAlign: "left" }}>PREPARACIÓN / RENDIMIENTO</th>
@@ -285,7 +287,6 @@ export const RecetasTab = ({ sucursalId }) => {
                         </div>
                       </td>
                       <td className={s.td} style={{ textAlign: "center" }}>
-                        {/* 💡 ALINEACIÓN MEJORADA: Precio azul y unidad al lado */}
                         <div className={s.totalAmount} style={{ 
                           color: 'var(--color-primary)', 
                           display: 'flex', 
@@ -351,7 +352,6 @@ const SearchableSelect = ({ options, value, onChange, disabled, placeholder = "B
         onChange={(e) => {
           setSearchTerm(e.target.value);
           setIsOpen(true);
-          // 🛡️ PARCHE: Ya no borramos el value inmediatamente para permitir la escritura fluida
         }}
         onFocus={() => setIsOpen(true)}
         onBlur={() => {

@@ -24,6 +24,10 @@ export const GastosTab = () => {
     );
   }
 
+  // 💡 ESTÁNDAR: Controles de visibilidad del Layout Dinámico
+  const mostrarFormularioGastos = g.puedeCrearGastos || g.puedeEditarGastos;
+  const mostrarFormularioCategorias = g.puedeEditarGastos;
+
   return (
     <div className={s.tabWrapper}>
       <div className={s.pageHeader}>
@@ -48,180 +52,181 @@ export const GastosTab = () => {
 
       {/* --- SUBTAB: GASTOS --- */}
       {subTab === "gastos" && (
-        <div className={s.splitLayout}>
-          {/*Formulario: Solo visible si tiene permiso de crear o editar */}
-          {(g.puedeCrearGastos || g.puedeEditarGastos) && (
-            <aside className={s.adminCard}>
-              <h3 className={s.cardTitle}>
-                {g.editGastoId ? "Editar Gasto" : "Registrar Salida"}
-              </h3>
+        <div className={mostrarFormularioGastos ? s.splitLayout : s.fullLayout}>
+          
+          {/* PANEL LATERAL DE REGISTRO */}
+          <aside 
+            className={s.adminCard}
+            style={{ display: mostrarFormularioGastos ? 'block' : 'none' }}
+          >
+            <h3 className={s.cardTitle}>
+              {g.editGastoId ? "Editar Gasto" : "Registrar Salida"}
+            </h3>
 
-              <form
-                onSubmit={g.handleSaveGasto}
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "15px",
-                }}
-              >
-                <div className={s.formGrid}>
-                  <div className={s.formGroup}>
-                    <label className={s.label}>FECHA</label>
-                    <input
-                      type="date"
-                      className={s.inputField}
-                      value={g.gastoFormData.fecha}
-                      onChange={(e) =>
-                        g.setGastoFormData({
-                          ...g.gastoFormData,
-                          fecha: e.target.value,
-                        })
-                      }
-                      required
-                    />
-                  </div>
-                  <div className={s.formGroup}>
-                    <label className={s.label}>MONTO ($)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      className={s.inputField}
-                      value={g.gastoFormData.monto}
-                      onChange={(e) =>
-                        g.setGastoFormData({
-                          ...g.gastoFormData,
-                          monto: e.target.value,
-                        })
-                      }
-                      required
-                    />
-                  </div>
-                </div>
-
+            <form
+              onSubmit={g.handleSaveGasto}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "15px",
+              }}
+            >
+              <div className={s.formGrid}>
                 <div className={s.formGroup}>
-                  <label className={s.label}>SUCURSAL</label>
-                  <select
-                    className={s.inputField}
-                    value={g.gastoFormData.sucursal_id}
-                    onChange={(e) =>
-                      g.setGastoFormData({
-                        ...g.gastoFormData,
-                        sucursal_id: e.target.value,
-                      })
-                    }
-                    required
-                  >
-                    <option value="">Seleccionar...</option>
-                    {g.sucursales.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.nombre}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className={s.formGroup}>
-                  <label className={s.label}>CATEGORÍA</label>
-                  <select
-                    className={s.inputField}
-                    value={g.gastoFormData.categoria_id}
-                    onChange={(e) =>
-                      g.setGastoFormData({
-                        ...g.gastoFormData,
-                        categoria_id: e.target.value,
-                      })
-                    }
-                    required
-                  >
-                    <option value="">Seleccionar...</option>
-                    {g.categorias.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.nombre}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className={s.formGroup}>
-                  <label className={s.label}>CONCEPTO / DESCRIPCIÓN</label>
+                  <label className={s.label}>FECHA</label>
                   <input
+                    type="date"
                     className={s.inputField}
-                    value={g.gastoFormData.descripcion}
+                    value={g.gastoFormData.fecha}
                     onChange={(e) =>
                       g.setGastoFormData({
                         ...g.gastoFormData,
-                        descripcion: e.target.value,
+                        fecha: e.target.value,
                       })
                     }
-                    placeholder="Ej. Pago de luz CFE"
                     required
                   />
                 </div>
-
-                <div className={s.formGrid}>
-                  <div className={s.formGroup}>
-                    <label className={s.label}>MÉTODO DE PAGO</label>
-                    <select
-                      className={s.inputField}
-                      value={g.gastoFormData.metodo_pago}
-                      onChange={(e) =>
-                        g.setGastoFormData({
-                          ...g.gastoFormData,
-                          metodo_pago: e.target.value,
-                        })
-                      }
-                    >
-                      <option value="Efectivo">Efectivo</option>
-                      <option value="Transferencia">Transferencia</option>
-                      <option value="Tarjeta">Tarjeta</option>
-                    </select>
-                  </div>
-                  <div className={s.formGroup}>
-                    <label className={s.label}>FOLIO / REF.</label>
-                    <input
-                      className={s.inputField}
-                      value={g.gastoFormData.referencia_comprobante}
-                      onChange={(e) =>
-                        g.setGastoFormData({
-                          ...g.gastoFormData,
-                          referencia_comprobante: e.target.value,
-                        })
-                      }
-                      placeholder="Opcional"
-                    />
-                  </div>
+                <div className={s.formGroup}>
+                  <label className={s.label}>MONTO ($)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className={s.inputField}
+                    value={g.gastoFormData.monto}
+                    onChange={(e) =>
+                      g.setGastoFormData({
+                        ...g.gastoFormData,
+                        monto: e.target.value,
+                      })
+                    }
+                    required
+                  />
                 </div>
+              </div>
 
-                <div
-                  style={{ display: "flex", gap: "10px", marginTop: "10px" }}
+              <div className={s.formGroup}>
+                <label className={s.label}>SUCURSAL</label>
+                <select
+                  className={s.inputField}
+                  value={g.gastoFormData.sucursal_id}
+                  onChange={(e) =>
+                    g.setGastoFormData({
+                      ...g.gastoFormData,
+                      sucursal_id: e.target.value,
+                    })
+                  }
+                  required
                 >
+                  <option value="">Seleccionar...</option>
+                  {g.sucursales.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={s.formGroup}>
+                <label className={s.label}>CATEGORÍA</label>
+                <select
+                  className={s.inputField}
+                  value={g.gastoFormData.categoria_id}
+                  onChange={(e) =>
+                    g.setGastoFormData({
+                      ...g.gastoFormData,
+                      categoria_id: e.target.value,
+                    })
+                  }
+                  required
+                >
+                  <option value="">Seleccionar...</option>
+                  {g.categorias.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={s.formGroup}>
+                <label className={s.label}>CONCEPTO / DESCRIPCIÓN</label>
+                <input
+                  className={s.inputField}
+                  value={g.gastoFormData.descripcion}
+                  onChange={(e) =>
+                    g.setGastoFormData({
+                      ...g.gastoFormData,
+                      descripcion: e.target.value,
+                    })
+                  }
+                  placeholder="Ej. Pago de luz CFE"
+                  required
+                />
+              </div>
+
+              <div className={s.formGrid}>
+                <div className={s.formGroup}>
+                  <label className={s.label}>MÉTODO DE PAGO</label>
+                  <select
+                    className={s.inputField}
+                    value={g.gastoFormData.metodo_pago}
+                    onChange={(e) =>
+                      g.setGastoFormData({
+                        ...g.gastoFormData,
+                        metodo_pago: e.target.value,
+                      })
+                    }
+                  >
+                    <option value="Efectivo">Efectivo</option>
+                    <option value="Transferencia">Transferencia</option>
+                    <option value="Tarjeta">Tarjeta</option>
+                  </select>
+                </div>
+                <div className={s.formGroup}>
+                  <label className={s.label}>FOLIO / REF.</label>
+                  <input
+                    className={s.inputField}
+                    value={g.gastoFormData.referencia_comprobante}
+                    onChange={(e) =>
+                      g.setGastoFormData({
+                        ...g.gastoFormData,
+                        referencia_comprobante: e.target.value,
+                      })
+                    }
+                    placeholder="Opcional"
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginTop: "10px" }}>
+                <button
+                  type="submit"
+                  className={`${s.btn} ${s.btnPrimary}`}
+                  style={{ flex: 1 }}
+                >
+                  {g.editGastoId ? "ACTUALIZAR" : "GUARDAR GASTO"}
+                </button>
+                {g.editGastoId && (
                   <button
-                    type="submit"
-                    className={`${s.btn} ${s.btnPrimary}`}
+                    type="button"
+                    className={`${s.btn} ${s.btnOutlineDanger}`}
+                    onClick={g.resetGastoForm}
                     style={{ flex: 1 }}
                   >
-                    {g.editGastoId ? "ACTUALIZAR" : "GUARDAR GASTO"}
+                    CANCELAR
                   </button>
-                  {g.editGastoId && (
-                    <button
-                      type="button"
-                      className={`${s.btn} ${s.btnOutlineDanger}`}
-                      onClick={g.resetGastoForm}
-                    >
-                      CANCELAR
-                    </button>
-                  )}
-                </div>
-              </form>
-            </aside>
-          )}
+                )}
+              </div>
+            </form>
+          </aside>
 
-          {/* 📊 Tabla de Gastos */}
+          {/* 📊 TABLA DE GASTOS */}
           <div className={`${s.adminCard} ${s.tableContainer}`}>
             {g.loading ? (
               <div className={s.emptyState}>Cargando información...</div>
             ) : (
-              <table className={s.table} style={{ minWidth: "700px" }}>
+              <table className={s.table}>
                 <thead className={s.thead}>
                   <tr>
                     <th className={s.th}>FECHA</th>
@@ -318,77 +323,78 @@ export const GastosTab = () => {
 
       {/* --- SUBTAB: CATEGORÍAS --- */}
       {subTab === "categorias" && (
-        <div className={s.splitLayout}>
-          {/* Formulario de Categorías */}
-          {g.puedeEditarGastos && (
-            <aside className={s.adminCard}>
-              <h3 className={s.cardTitle}>
-                {g.editCatId ? "Editar Categoría" : "Nueva Categoría"}
-              </h3>
-              <form
-                onSubmit={g.handleSaveCategoria}
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "15px",
-                }}
-              >
-                <div className={s.formGroup}>
-                  <label className={s.label}>NOMBRE</label>
-                  <input
-                    className={s.inputField}
-                    placeholder="Ej. Nómina"
-                    value={g.catFormData.nombre}
-                    onChange={(e) =>
-                      g.setCatFormData({
-                        ...g.catFormData,
-                        nombre: e.target.value,
-                      })
-                    }
-                    required
-                  />
-                </div>
-                <div className={s.formGroup}>
-                  <label className={s.label}>DESCRIPCIÓN</label>
-                  <input
-                    className={s.inputField}
-                    placeholder="Opcional"
-                    value={g.catFormData.descripcion}
-                    onChange={(e) =>
-                      g.setCatFormData({
-                        ...g.catFormData,
-                        descripcion: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-                <div
-                  style={{ display: "flex", gap: "10px", marginTop: "10px" }}
+        <div className={mostrarFormularioCategorias ? s.splitLayout : s.fullLayout}>
+          
+          {/* PANEL LATERAL DE CATEGORÍAS */}
+          <aside 
+            className={s.adminCard}
+            style={{ display: mostrarFormularioCategorias ? 'block' : 'none' }}
+          >
+            <h3 className={s.cardTitle}>
+              {g.editCatId ? "Editar Categoría" : "Nueva Categoría"}
+            </h3>
+            <form
+              onSubmit={g.handleSaveCategoria}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "15px",
+              }}
+            >
+              <div className={s.formGroup}>
+                <label className={s.label}>NOMBRE</label>
+                <input
+                  className={s.inputField}
+                  placeholder="Ej. Nómina"
+                  value={g.catFormData.nombre}
+                  onChange={(e) =>
+                    g.setCatFormData({
+                      ...g.catFormData,
+                      nombre: e.target.value,
+                    })
+                  }
+                  required
+                />
+              </div>
+              <div className={s.formGroup}>
+                <label className={s.label}>DESCRIPCIÓN</label>
+                <input
+                  className={s.inputField}
+                  placeholder="Opcional"
+                  value={g.catFormData.descripcion}
+                  onChange={(e) =>
+                    g.setCatFormData({
+                      ...g.catFormData,
+                      descripcion: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginTop: "10px" }}>
+                <button
+                  type="submit"
+                  className={`${s.btn} ${s.btnPrimary}`}
+                  style={{ flex: 1 }}
                 >
+                  {g.editCatId ? "ACTUALIZAR" : "GUARDAR CATEGORÍA"}
+                </button>
+                {g.editCatId && (
                   <button
-                    type="submit"
-                    className={`${s.btn} ${s.btnPrimary}`}
+                    type="button"
+                    className={`${s.btn} ${s.btnOutlineDanger}`}
+                    onClick={g.resetCatForm}
                     style={{ flex: 1 }}
                   >
-                    {g.editCatId ? "ACTUALIZAR" : "GUARDAR CATEGORÍA"}
+                    CANCELAR
                   </button>
-                  {g.editCatId && (
-                    <button
-                      type="button"
-                      className={`${s.btn} ${s.btnOutlineDanger}`}
-                      onClick={g.resetCatForm}
-                    >
-                      CANCELAR
-                    </button>
-                  )}
-                </div>
-              </form>
-            </aside>
-          )}
+                )}
+              </div>
+            </form>
+          </aside>
 
-          {/* Tabla de Categorías */}
+          {/* TABLA DE CATEGORÍAS */}
           <div className={`${s.adminCard} ${s.tableContainer}`}>
-            <table className={s.table} style={{ minWidth: "400px" }}>
+            <table className={s.table}>
               <thead className={s.thead}>
                 <tr>
                   <th className={s.th}>NOMBRE DE CATEGORÍA</th>

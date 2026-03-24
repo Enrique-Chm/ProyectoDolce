@@ -19,7 +19,7 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   const [carrito, setCarrito] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // 🛡️ SISTEMA DE PERMISOS: Basado en la familia 'comandas'
+  // 🛡️ PERMISOS: Basados en la familia 'comandas'
   const puedeVerVentas = hasPermission('ver_comandas');
   const puedeCrearVentas = hasPermission('crear_comandas');
   const puedeEditarVentas = hasPermission('editar_comandas');
@@ -35,22 +35,25 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   }, []);
 
   /**
-   * 🔒 HELPER DE SEGURIDAD: Candado proactivo
-   * Verifica en tiempo real si hay una caja abierta en la sucursal antes de realizar acciones.
+   * 🔒 SEGURIDAD PROACTIVA:
+   * Verifica si hay una caja abierta ANTES de dejar que el mesero haga nada.
    */
   const verificarCajaAntesDeAccion = async () => {
     setLoading(true);
     try {
-      // Forzamos el ID de sucursal a número para la consulta
-      const { abierta } = await MeseroService.verificarCajaAbierta(Number(sucursalId));
+      // Forzamos el ID de sucursal a número para evitar fallos de búsqueda
+      const { abierta, error } = await MeseroService.verificarCajaAbierta(Number(sucursalId));
+      
+      if (error) throw new Error(error);
+
       if (!abierta) {
-        alert("⚠️ OPERACIÓN BLOQUEADA: No hay una sesión de caja abierta en esta sucursal. Por favor, solicita al cajero iniciar el turno.");
+        alert("⚠️ BLOQUEO DE SEGURIDAD: No hay una sesión de caja abierta en esta sucursal. Por favor, solicita al cajero iniciar el turno.");
         return false;
       }
       return true;
     } catch (error) {
-      console.error("Error al verificar caja:", error);
-      alert("Error técnico al verificar el estado de la caja.");
+      console.error("Error al validar estado de caja:", error);
+      alert("Error técnico al verificar la caja. Revisa tu conexión.");
       return false;
     } finally {
       setLoading(false);
@@ -58,7 +61,7 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   };
 
   /**
-   * Carga las mesas con órdenes pendientes o por cobrar
+   * Carga las mesas activas de la sucursal
    */
   const cargarCuentas = useCallback(async () => {
     if (!puedeVerVentas || !sucursalId) return;
@@ -69,12 +72,12 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
       
       setCuentasAbiertas(data || []);
       
-      // Sincronización de la venta activa si el usuario está dentro de una mesa
+      // Sincronización: Si la mesa se cerró en otra terminal, sacamos al mesero de esa vista
       setVentaActiva((prev) => {
         if (!prev) return null;
         const actualizada = (data || []).find(v => v.id === prev.id);
         if (!actualizada && prev.id) {
-             alert("La mesa ya no está disponible (fue cobrada o cancelada).");
+             alert("Esta mesa ya fue cerrada o liquidada.");
              setTimeout(() => resetTodo(), 0); 
              return null;
         }
@@ -88,12 +91,11 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   }, [sucursalId, puedeVerVentas, resetTodo]);
 
   /**
-   * Carga el catálogo de productos disponible para la sucursal
+   * Carga el catálogo de platillos
    */
   const cargarMenu = useCallback(async () => {
     if (!puedeVerVentas || !sucursalId) return;
     try {
-      // El mesero necesita 'ver_productos' (permiso de datos) aunque no vea el tab de admin
       const data = await productosService.getInitialData(Number(sucursalId));
       setProductos(data.productos || []);
       setCategorias(data.categorias || []);
@@ -103,7 +105,7 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   }, [sucursalId, puedeVerVentas]);
 
   /**
-   * Carga historial de ventas ya liquidadas
+   * Carga historial de ventas pagadas
    */
   const cargarHistorial = useCallback(async () => {
     if (!puedeVerVentas || !sucursalId) return;
@@ -119,30 +121,24 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
     }
   }, [sucursalId, puedeVerVentas]);
 
-  // Efectos de carga de datos según la vista activa
+  // Manejo de vistas automáticas
   useEffect(() => { if (view === 'cuentas') cargarCuentas(); }, [view, cargarCuentas]);
   useEffect(() => { if (view === 'menu' && productos.length === 0) cargarMenu(); }, [view, productos.length, cargarMenu]);
   useEffect(() => { if (view === 'historial') cargarHistorial(); }, [view, cargarHistorial]);
   
-  /**
-   * Acción: Iniciar flujo para mesa nueva
-   */
   const iniciarNuevaMesa = async () => {
     if (!puedeCrearVentas) return;
-    const cajaLista = await verificarCajaAntesDeAccion();
-    if (cajaLista) {
+    const ok = await verificarCajaAntesDeAccion();
+    if (ok) {
       setMesaInput("");
       setView("mesas");
     }
   };
 
-  /**
-   * Acción: Entrar a una mesa existente
-   */
   const seleccionarCuenta = async (venta = null) => {
     if (!puedeVerVentas) return;
-    const cajaLista = await verificarCajaAntesDeAccion();
-    if (cajaLista) {
+    const ok = await verificarCajaAntesDeAccion();
+    if (ok) {
       setVentaActiva(venta);
       setMesaInput(venta?.mesa || '');
       setCarrito([]); 
@@ -150,29 +146,18 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
     }
   };
 
-  /**
-   * Lógica de Carrito de Compras
-   */
   const agregarAlCarrito = (p) => {
-    if (!puedeCrearVentas) return alert("No tienes permiso para agregar productos.");
-    if (ventaActiva?.estado === 'por_cobrar') {
-      return alert("⚠️ MESA BLOQUEADA: La cuenta ya ha sido solicitada a caja.");
-    }
+    if (!puedeCrearVentas) return alert("Sin permisos.");
+    if (ventaActiva?.estado === 'por_cobrar') return alert("Mesa bloqueada por solicitud de cuenta.");
 
     setCarrito(prev => {
       const existe = prev.find(item => item.id === p.id);
       if (existe) {
-        return prev.map(item => 
-          item.id === p.id ? { ...item, cantidad: item.cantidad + 1 } : item
-        );
+        return prev.map(item => item.id === p.id ? { ...item, cantidad: item.cantidad + 1 } : item);
       }
       return [...prev, { 
-        id: p.id, 
-        nombre: p.nombre, 
-        precio_venta: p.precio_venta, 
-        costo_actual: p.costo_actual || 0,
-        cantidad: 1, 
-        notas: '' 
+        id: p.id, nombre: p.nombre, precio_venta: p.precio_venta, 
+        costo_actual: p.costo_actual || 0, cantidad: 1, notas: '' 
       }];
     });
   };
@@ -188,16 +173,16 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   };
 
   /**
-   * 🚀 ENVÍO DE COMANDA: Punto crítico de integración
+   * 🚀 ENVÍO DE COMANDA
+   * Se comunica con el Service para procesar toda la lógica de negocio.
    */
   const handleEnviarOrden = async () => {
-    if (!puedeCrearVentas) return alert("Sin permisos.");
-    if (carrito.length === 0) return alert("El carrito está vacío.");
-    if (ventaActiva?.estado === 'por_cobrar') return alert("Mesa bloqueada por pago.");
+    if (!puedeCrearVentas) return alert("No tienes permisos para esta acción.");
+    if (carrito.length === 0) return alert("Agrega productos al carrito.");
     
     setLoading(true);
     try {
-      // Blindamos los IDs como números para Supabase
+      // Payload limpio con IDs numéricos
       const payload = {
         id: ventaActiva?.id, 
         sucursal_id: Number(sucursalId),
@@ -208,37 +193,32 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
       const res = await MeseroService.procesarVenta(payload, carrito);
 
       if (res.success) {
-        alert("✅ ¡Comanda enviada a cocina!");
+        alert("✅ Orden enviada correctamente.");
         resetTodo();
       } else {
-        alert("❌ Error: " + (res.error || "Ocurrió un problema en el servidor."));
+        // Mostramos el error detallado que viene desde el Service
+        alert("❌ Error al procesar: " + res.error);
       }
     } catch (error) {
-      console.error(error);
-      alert("Error crítico al procesar la comanda.");
+      alert("Error crítico de comunicación con el servidor.");
     } finally {
       setLoading(false);
     }
   };
 
-  /**
-   * Notifica a Caja que la mesa desea liquidar
-   */
   const pedirCuenta = async (ventaId) => {
-    if (!puedeEditarVentas) return alert("Sin permisos para solicitar cuenta.");
-    if (!ventaId) return;
-    
+    if (!puedeEditarVentas) return alert("Sin permisos.");
     setLoading(true);
     try {
       const res = await MeseroService.marcarPorCobrar(ventaId);
       if (res.success) {
-        alert("🔔 Ticket solicitado. La mesa ha sido bloqueada para nuevas ediciones.");
+        alert("🔔 Cuenta solicitada a caja.");
         resetTodo();
       } else {
         alert("Error al solicitar cuenta.");
       }
     } catch (error) {
-      alert("Error en la conexión con caja.");
+      alert("Fallo de conexión.");
     } finally {
       setLoading(false);
     }
@@ -246,24 +226,14 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
 
   return {
     view, setView,
-    cuentasAbiertas: puedeVerVentas ? cuentasAbiertas : [],
-    cuentasCobradas: puedeVerVentas ? cuentasCobradas : [],
-    ventaActiva,
-    mesaInput, setMesaInput,
-    productos: puedeVerVentas ? productos : [],
-    categorias: puedeVerVentas ? categorias : [],
+    cuentasAbiertas, cuentasCobradas,
+    ventaActiva, mesaInput, setMesaInput,
+    productos, categorias,
     carrito, setCarrito,
     loading,
-    seleccionarCuenta,
-    iniciarNuevaMesa,
-    agregarAlCarrito,
-    eliminarDelCarrito,
-    actualizarNota,
-    handleEnviarOrden,
-    pedirCuenta,
-    resetTodo,
-    puedeVerVentas,
-    puedeCrearVentas,
-    puedeEditarVentas
+    seleccionarCuenta, iniciarNuevaMesa,
+    agregarAlCarrito, eliminarDelCarrito, actualizarNota,
+    handleEnviarOrden, pedirCuenta, resetTodo,
+    puedeVerVentas, puedeCrearVentas, puedeEditarVentas
   };
 };

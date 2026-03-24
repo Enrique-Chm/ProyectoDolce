@@ -9,7 +9,7 @@ export const AnaliticaTab = ({ sucursalId }) => {
   // 🛡️ SEGURIDAD INTERNA (RBAC)
   const puedeVerAnalitica = hasPermission('ver_ventas');
 
-  // Extraemos los datos del hook (que ya incluye gastos y utilidad real)
+  // Extraemos los datos del hook
   const { 
     fechaInicio, setFechaInicio,
     fechaFin, setFechaFin,
@@ -35,6 +35,7 @@ export const AnaliticaTab = ({ sucursalId }) => {
   if (loading) {
     return (
       <div className={`${s.tabContent} ${s.messageState}`}>
+        <div className={s.spinner} style={{ margin: '0 auto 20px' }}></div>
         <p className={s.messageStatePrimary}>
            CALCULANDO ESTADO DE RESULTADOS...
         </p>
@@ -61,7 +62,7 @@ export const AnaliticaTab = ({ sucursalId }) => {
           </p>
         </div>
 
-        {/* SELECTOR DE FECHAS */}
+        {/* SELECTOR DE FECHAS RESPONSIVO */}
         <div className={s.dateFilters}>
           <div className={s.dateCol}>
             <label className={s.dateLabel}>DESDE</label>
@@ -85,7 +86,7 @@ export const AnaliticaTab = ({ sucursalId }) => {
         </div>
       </header>
 
-      {/* BLOQUE 1: KPIs FINANCIEROS (TARJETAS ACTUALIZADAS) */}
+      {/* BLOQUE 1: KPIs FINANCIEROS (Se adapta de 1 a 5 columnas automáticamente) */}
       <div className={s.metricsGrid}>
         <MetricCard 
           label="1. VENTAS BRUTAS" 
@@ -121,10 +122,10 @@ export const AnaliticaTab = ({ sucursalId }) => {
       </div>
 
       {/* BLOQUE 2: RANKINGS Y DESEMPEÑO */}
-      <div className={s.metricsGrid} style={{ alignItems: 'start' }}>
+      <div className={s.metricsGrid}>
         
         {/* TOP 5 PRODUCTOS */}
-        <div className={s.adminCard} style={{ padding: '25px' }}>
+        <div className={s.adminCard} style={{ padding: '24px' }}>
           <h3 className={s.cardTitle}>🏆 Top 5 Productos</h3>
           <div className={s.listContainer}>
             {ranking.map((p, i) => (
@@ -150,7 +151,7 @@ export const AnaliticaTab = ({ sucursalId }) => {
         </div>
 
         {/* VENTAS POR STAFF */}
-        <div className={s.adminCard} style={{ padding: '25px', background: 'var(--color-bg-app)' }}>
+        <div className={s.adminCard} style={{ padding: '24px', background: 'var(--color-bg-app)' }}>
           <h3 className={s.cardTitle}>👥 Desempeño Staff</h3>
           <div className={s.listContainer} style={{ gap: '8px' }}>
             {staff.map((st, i) => (

@@ -1,9 +1,16 @@
 /* =========================================
    ESTRUCTURA PRINCIPAL Y LAYOUT
    ========================================= */
+.adminLayout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: var(--color-bg-app);
+}
+
 .adminContainer {
   display: flex;
-  min-height: 100vh;
+  flex: 1; /* Ocupa el resto del espacio debajo del header */
   background-color: var(--color-bg-app);
   font-family: var(--font-main);
 }
@@ -30,6 +37,40 @@
 .fullLayout .tableContainer {
   width: 100%;
   max-width: 100%;
+}
+
+/* =========================================
+   BARRA SUPERIOR (TOP BAR)
+   ========================================= */
+.topBar {
+  width: 100%;
+  min-height: 64px; /* Modificado: min-height permite que crezca si el contenido hace wrap en móvil */
+  background-color: var(--color-bg-card);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 32px;
+  z-index: 20;
+  gap: 15px;
+  flex-wrap: wrap; /* Permite que los elementos bajen de línea si no caben */
+}
+
+.topBarTitle {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.userName {
+  font-weight: 600;
+  color: var(--color-text-main);
 }
 
 /* =========================================
@@ -97,36 +138,6 @@
 }
 
 /* =========================================
-   BARRA SUPERIOR (TOP BAR)
-   ========================================= */
-.topBar {
-  height: 64px;
-  background-color: var(--color-bg-card);
-  border-bottom: 1px solid var(--color-border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 32px;
-}
-
-.topBarTitle {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--color-text-main);
-}
-
-.userInfo {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.userName {
-  font-weight: 600;
-  color: var(--color-text-main);
-}
-
-/* =========================================
    NAVEGACIÓN DE PESTAÑAS (TABS)
    ========================================= */
 .tabContent {
@@ -142,6 +153,7 @@
   padding-bottom: 15px;
   overflow-x: auto;
   margin-bottom: 24px;
+  -webkit-overflow-scrolling: touch; /* Scroll suave en iOS */
 }
 
 .tabButton {
@@ -169,7 +181,7 @@
 }
 
 /* =========================================
-   MINI-TABS (Sub-navegación interna de Permisos)
+   MINI-TABS (Sub-navegación interna)
    ========================================= */
 .miniTabsWrapper {
   background-color: var(--color-bg-app);
@@ -182,6 +194,7 @@
   gap: 10px;
   overflow-x: auto;
   padding-bottom: 15px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .miniTabButton {
@@ -214,6 +227,8 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 15px;
 }
 
 .pageTitle {
@@ -297,12 +312,6 @@
   gap: 15px;
   align-items: flex-end;
   margin-top: 15px;
-}
-
-.formGridAsym {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  gap: 10px;
 }
 
 .formGroup {
@@ -430,6 +439,7 @@
    ========================================= */
 .matrixContainer {
   padding: 20px;
+  overflow-x: auto;
 }
 
 .tableMatrix {
@@ -786,6 +796,7 @@
   padding: 8px 15px;
   border-radius: var(--radius-ui);
   border: 1px solid var(--color-border);
+  flex-wrap: wrap; /* Añadido para móvil */
 }
 
 .dateCol {
@@ -915,14 +926,34 @@
 /* =========================================
    RESPONSIVIDAD (Media Queries)
    ========================================= */
+
+/* Tablets en Portrait y Pantallas Medias */
 @media (max-width: 1024px) {
   .sidebar { width: 200px; }
   .splitLayout { grid-template-columns: 1fr; }
 }
 
+/* Teléfonos y Tablets pequeñas */
 @media (max-width: 768px) {
-  .adminContainer { flex-direction: column; }
+  .adminContainer { 
+    flex-direction: column; 
+  }
   
+  /* TopBar en Móvil */
+  .topBar { 
+    padding: 15px 20px; 
+    flex-direction: column; /* Apila el logo/sucursal con el usuario/logout */
+    align-items: flex-start;
+    height: auto;
+    gap: 15px;
+  }
+
+  .topBar > div {
+    width: 100%;
+    justify-content: space-between; /* Distribuye el espacio entre logo y sucursal, etc. */
+  }
+
+  /* Sidebar (Tabs) en Móvil */
   .sidebar {
     width: 100%;
     height: auto;
@@ -934,13 +965,73 @@
   .sidebarNav {
     flex-direction: row;
     overflow-x: auto;
-    padding: 0 10px;
+    padding: 0 15px;
+    -webkit-overflow-scrolling: touch; /* Smooth scroll nativo en iOS */
+    scrollbar-width: none; /* Oculta scrollbar en Firefox */
+  }
+  
+  .sidebarNav::-webkit-scrollbar { 
+    display: none; /* Oculta scrollbar en Chrome/Safari/Edge */
   }
   
   .navItem {
     white-space: nowrap;
-    padding: 8px 12px;
+    padding: 10px 16px;
+    width: auto; /* Permite que el botón se ajuste a su texto, no al 100% de la fila */
   }
   
-  .topBar { padding: 0 16px; }
+  /* Contenido y Tarjetas en Móvil */
+  .tabContent { 
+    padding: 15px; /* Reduce padding lateral masivo */
+  }
+  
+  .adminCard {
+    padding: 15px; /* Reduce padding interior de las tarjetas */
+  }
+
+  /* Formularios a 1 sola columna en Móvil */
+  .formGrid, .formGridAsym {
+    grid-template-columns: 1fr;
+  }
+
+  /* Ajustes en Tablas para Móvil (Scroll Horizontal) */
+  .tableContainer {
+    margin: 0 -15px; /* Permite que la tabla toque los bordes de la pantalla */
+    padding: 0 15px;
+  }
+}
+/* =========================================
+   UTILIDADES RESPONSIVAS Y EXTRAS
+   ========================================= */
+
+/* Oculta elementos de texto secundarios en pantallas de celular (menores a 768px) */
+.hideOnMobile {
+  display: none;
+}
+
+/* Vuelve a mostrar los elementos en Tablets y Escritorio (768px o más) */
+@media (min-width: 768px) {
+  .hideOnMobile {
+    display: inline-block; /* o block, dependiendo del contexto */
+  }
+}
+
+/* Animación de carga para el Suspense (Lazy Loading) de los módulos */
+.spinner {
+  border: 3px solid rgba(0, 0, 0, 0.1);
+  border-left-color: var(--color-primary);
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+  margin-right: 10px;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }

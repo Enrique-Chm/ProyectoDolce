@@ -56,24 +56,25 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
         >
            LISTA DE MANDADO 
           {listaParaComprar.length > 0 && (
-            <span className={s.badgeCount}>
+            <span className={s.badgeDanger} style={{ borderRadius: '50%', padding: '4px 8px' }}>
               {listaParaComprar.length}
             </span>
           )}
         </button>
       </nav>
 
-      {/* HEADER CON PRESUPUESTO: Ajustado para que se apile en móviles/tablets */}
-      <section className={s.headerSection}>
-        <h2 className={s.pageTitle} style={{ margin: 0 }}>
+      {/* HEADER CON PRESUPUESTO: Ajustado para que se apile en móviles/tablets (Responsivo) */}
+      <section style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <h2 className={s.pageTitle} style={{ margin: 0, fontSize: '1.2rem' }}>
           {subTab === 'config' ? 'Proyección de Inventario' : 'Órdenes Sugeridas'}
         </h2>
         
-        <div className={`${s.btn} ${s.btnSec} ${s.btnSmall}`}>
-          <span className={`${s.btn} ${s.btnSec} ${s.btnSmall}`}>
+        {/* Contenedor del Presupuesto (Mantiene su diseño pero se acomoda solo) */}
+        <div style={{ display: 'flex', alignItems: 'center', background: 'white', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-ui)', padding: '5px 15px', boxShadow: 'var(--shadow-sm)' }}>
+          <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)', marginRight: '10px' }}>
             Inversión Estimada
           </span>
-          <div className={`${s.btn} ${s.btnSec} ${s.btnSmall}`}>
+          <div style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--color-primary)' }}>
             {formatCurrency(presupuestoTotal)}
           </div>
         </div>
@@ -82,7 +83,8 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
       {/* --- VISTA 1: ESTRATEGIA (TABLA RESPONSIVA) --- */}
       {subTab === 'config' && (
         <div className={`${s.adminCard} ${s.tableContainer}`}>
-          <table className={s.table} style={{ minWidth: '900px' }}>
+          {/* Se elimina minWidth en la tabla para que .tableContainer maneje el scroll lateral */}
+          <table className={s.table}>
             <thead className={s.thead}>
               <tr>
                 <th className={s.th}>INSUMO</th>
@@ -95,75 +97,85 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
               </tr>
             </thead>
             <tbody>
-              {sugerenciasFiltradas.map((item) => (
-                <tr key={item.insumo_id}>
-                  <td className={s.td} style={{ fontWeight: '700', color: 'var(--color-text-main)' }}>
-                    {item.insumo_nombre}
-                  </td>
-                  <td className={s.td}style={{ textAlign: 'center' }}>
-                    {parseFloat(item.consumo_diario_real || 0).toFixed(2)}
-                  </td>
-                  <td className={s.td}style={{ textAlign: 'center' }}>
-                    {editandoId === item.insumo_id && puedeEditar ? (
-                      <input 
-                        type="number" 
-                        className={s.tableInputCenter}
-                        style={{ maxWidth: '80px', margin: '0 auto', display: 'block',textAlign: 'center' }}
-                        value={tempPolitica.cobertura} 
-                        onChange={e => setTempPolitica({...tempPolitica, cobertura: e.target.value})} 
-                        onBlur={() => handleSavePolicy(item.insumo_id)}
-                        autoFocus
-                      />
-                    ) : (
-                      <span style={{ color: 'var(--color-primary)', fontWeight: '600' }}>
-                        {item.dias_cobertura_objetivo} días
+              {sugerenciasFiltradas.length === 0 ? (
+                 <tr><td colSpan="7" className={s.emptyState}>No hay proyecciones generadas.</td></tr>
+              ) : (
+                sugerenciasFiltradas.map((item) => (
+                  <tr key={item.insumo_id}>
+                    <td className={s.td} style={{ fontWeight: '700', color: 'var(--color-text-main)' }}>
+                      {item.insumo_nombre}
+                    </td>
+                    <td className={s.td}style={{ textAlign: 'center' }}>
+                      {parseFloat(item.consumo_diario_real || 0).toFixed(2)}
+                    </td>
+                    <td className={s.td}style={{ textAlign: 'center' }}>
+                      {editandoId === item.insumo_id && puedeEditar ? (
+                        <input 
+                          type="number" 
+                          className={s.inputField} // Homologado con clases del sistema
+                          style={{ maxWidth: '80px', margin: '0 auto', display: 'block',textAlign: 'center', padding: '6px' }}
+                          value={tempPolitica.cobertura} 
+                          onChange={e => setTempPolitica({...tempPolitica, cobertura: e.target.value})} 
+                          onBlur={() => handleSavePolicy(item.insumo_id)}
+                          autoFocus
+                        />
+                      ) : (
+                        <span style={{ color: 'var(--color-primary)', fontWeight: '600' }}>
+                          {item.dias_cobertura_objetivo} días
+                        </span>
+                      )}
+                    </td>
+                    <td className={s.td}style={{ textAlign: 'center' }}>
+                      {parseFloat(item.stock_fisico_hoy).toFixed(1)}
+                    </td>
+                    <td className={s.td}style={{ textAlign: 'center' }}>
+                      <span style={{ 
+                        color: item.cajas_a_pedir > 0 ? 'var(--color-success)' : 'var(--color-text-muted)', 
+                        fontWeight: '600' 
+                      }}>
+                        {item.cajas_a_pedir} Cajas
                       </span>
-                    )}
-                  </td>
-                  <td className={s.td}style={{ textAlign: 'center' }}>
-                    {parseFloat(item.stock_fisico_hoy).toFixed(1)}
-                  </td>
-                  <td className={s.td}style={{ textAlign: 'center' }}>
-                    <span style={{ 
-                      color: item.cajas_a_pedir > 0 ? 'var(--color-success)' : 'var(--color-text-muted)', 
-                      fontWeight: '600' 
-                    }}>
-                      {item.cajas_a_pedir} Cajas
-                    </span>
-                  </td>
-                  <td className={s.td} style={{ fontWeight: '600',textAlign: 'center' }}>
-                    {formatCurrency(item.presupuesto_estimado)}
-                  </td>
-                  <td className={s.td} style={{ textAlign: 'right' }}>
-                    {/* El botón de editar solo se muestra si tiene permisos */}
-                    {puedeEditar && (
-                      <button 
-                        className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`} 
-                        onClick={() => { 
-                          setEditandoId(item.insumo_id); 
-                          setTempPolitica({cobertura: item.dias_cobertura_objetivo, seguridad: item.dias_stock_seguridad}) 
-                        }}
-                      >
-                        📝
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className={s.td} style={{ fontWeight: '600',textAlign: 'center' }}>
+                      {formatCurrency(item.presupuesto_estimado)}
+                    </td>
+                    <td className={s.td} style={{ textAlign: 'right' }}>
+                      {/* El botón de editar solo se muestra si tiene permisos */}
+                      {puedeEditar && (
+                        <div style={{ display: 'flex', justifyContent: 'center' }}>
+                           <button 
+                             className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`} 
+                             onClick={() => { 
+                               setEditandoId(item.insumo_id); 
+                               setTempPolitica({cobertura: item.dias_cobertura_objetivo, seguridad: item.dias_stock_seguridad}) 
+                             }}
+                           >
+                             📝
+                           </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       )}
 
-      {/* --- VISTA 2: LISTA DE MANDADO --- */}
+      {/* --- VISTA 2: LISTA DE MANDADO (Cuadrícula CSS Grid Responsiva) --- */}
       {subTab === 'compras' && (
-        <div className={s.cardsGrid}>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
+          gap: '20px' 
+        }}>
           {listaParaComprar.map(ins => (
-            <div key={ins.insumo_id} className={`${s.adminCard} ${s.cardFlex}`}>
+            <div key={ins.insumo_id} className={s.adminCard} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '15px' }}>
               <div>
-                <strong className={s.cardFlexTitle}>{ins.insumo_nombre}</strong>
-                <p className={s.cardFlexSubtitle}>
-                  PROVEEDOR: {ins.proveedor_nombre}
+                <strong style={{ fontSize: '1.1rem', color: 'var(--color-text-main)', display: 'block', marginBottom: '5px' }}>{ins.insumo_nombre}</strong>
+                <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', margin: 0 }}>
+                  <span style={{ fontWeight: 'bold' }}>PROVEEDOR:</span> {ins.proveedor_nombre}
                 </p>
               </div>
               
@@ -176,7 +188,7 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
                   ✓ RECIBIR {ins.cajas_a_pedir} CAJAS
                 </button>
               ) : (
-                <div className={s.readOnlyNotice}>
+                <div style={{ fontSize: '11px', color: 'var(--color-warning)', fontWeight: 'bold', textAlign: 'center', padding: '10px', background: 'var(--color-bg-muted)', borderRadius: '6px' }}>
                   Solo lectura (Requiere permiso de gestión)
                 </div>
               )}

@@ -1,6 +1,6 @@
 // Archivo: src/modules/Admin/components/InventariosTab.jsx
 import React, { useState, useMemo, useEffect } from 'react';
-import { useInventarios } from "../../../hooks/useInventariosTab"; // ✅ Nombre de hook estandarizado
+import { useInventarios } from "../../../hooks/useInventariosTab"; 
 import s from "../AdminPage.module.css"; 
 
 const InventariosTab = ({ sucursalId, usuarioId }) => {
@@ -89,19 +89,19 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
           className={`${s.tabButton} ${activeSubTab === 'stock' ? s.activeTabButton : ''}`} 
           onClick={() => setActiveSubTab('stock')}
         >
-            EXISTENCIAS
+           EXISTENCIAS
         </button>
         <button 
           className={`${s.tabButton} ${activeSubTab === 'movimientos' ? s.activeTabButton : ''}`} 
           onClick={() => setActiveSubTab('movimientos')}
         >
-            HISTORIAL
+           HISTORIAL
         </button>
         <button 
           className={`${s.tabButton} ${activeSubTab === 'contraste' ? s.activeTabButton : ''}`} 
           onClick={() => setActiveSubTab('contraste')}
         >
-            AUDITORÍA / CIERRE
+           AUDITORÍA / CIERRE
         </button>
       </nav>
 
@@ -129,7 +129,8 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                 />
               </div>
 
-              <div className={s.formGridAsym} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              {/* 💡 Reemplazo de estilo en línea por clase .formGrid para responsividad */}
+              <div className={s.formGrid}>
                 <div className={s.formGroup}>
                   <label className={s.label}>OPERACIÓN</label>
                   <select 
@@ -338,7 +339,8 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
               <div className={s.tableHeader}>
                 <h3 className={s.cardTitle} style={{ margin: 0 }}>Historial de Movimientos</h3>
               </div>
-              <table className={s.table} style={{ minWidth: '700px' }}>
+              {/* 💡 Eliminamos el style minWidth fijo para que .tableContainer maneje el overflow horizontal */}
+              <table className={s.table}>
                 <thead className={s.thead}>
                   <tr>
                     <th className={s.th}>FECHA</th>

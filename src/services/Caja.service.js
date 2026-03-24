@@ -1,4 +1,4 @@
-// Archivo: src/services/CajaService.js
+// Archivo: src/services/Caja.service.js
 import { supabase } from '../lib/supabaseClient';
 import { hasPermission } from '../utils/checkPermiso'; // 🛡️ Importamos el validador
 
@@ -22,14 +22,13 @@ export const CajaService = {
      2. GESTIÓN DE SESIONES (cajas_sesiones)
      ========================================== */
 
-  getSesionActiva: async (usuarioId, sucursalId) => {
-    // 🛡️ Filtro por sucursalId para asegurar que la sesión pertenezca a la sucursal actual
+  // 💡 CORRECCIÓN VITAL: Ahora SOLO recibe sucursalId (1 sola manzana)
+  getSesionActiva: async (sucursalId) => {
     const { data, error } = await supabase
       .from('cajas_sesiones')
       .select('*')
       .is('fecha_cierre', null)
-      .eq('usuario_id', usuarioId)
-      .eq('sucursal_id', sucursalId) 
+      .eq('sucursal_id', sucursalId) // 👈 Busca directamente por sucursal
       .eq('estado', 'abierto')       
       .maybeSingle();
     return { data, error };
@@ -41,11 +40,11 @@ export const CajaService = {
       return { data: null, error: { message: "No tienes permisos para abrir la caja." } };
     }
 
-    // 🔴 PUNTO CLAVE: Aquí se inserta el sucursal_id que el Mesero buscará después
+    // 🔴 PUNTO CLAVE: Aquí se inserta el usuario_id (para control) y el sucursal_id
     const { data, error } = await supabase
       .from('cajas_sesiones')
       .insert([{ 
-        usuario_id: datos.usuario_id,
+        usuario_id: datos.usuario_id, // 👈 Regla: Control de quién abre la caja
         sucursal_id: datos.sucursal_id, 
         monto_apertura: parseFloat(datos.monto_apertura),
         estado: 'abierto',             
@@ -151,13 +150,17 @@ export const CajaService = {
      5. COBROS Y GESTIÓN DE CUENTAS 
      ========================================== */
 
-  getVentasPendientes: async (sucursalId) => {
+  /**
+   * Obtiene las ventas pendientes filtradas por sucursal e ID de sesión (turno actual).
+   */
+  getVentasPendientes: async (sucursalId, sesionId) => {
     if (!hasPermission('ver_ventas')) return { data: [], error: null };
 
     let query = supabase
       .from('ventas')
       .select('*')
-      .in('estado', ['abierta', 'pendiente', 'por_cobrar'])
+      .eq('id_sesion_caja', sesionId) // 👈 Solo de este turno
+      .in('estado', ['pendiente', 'cocina', 'entregado', 'por_cobrar'])
       .order('created_at', { ascending: false });
 
     if (sucursalId) {
@@ -190,8 +193,31 @@ export const CajaService = {
 
     const { data, error } = await supabase
       .from('ventas_detalle')
-      .select('*, productos(nombre)') 
+      // 💡 Corregido: 'productosmenu' para coincidir con tu esquema
+      .select('*, productosmenu(nombre)') 
       .eq('venta_id', idVenta);
+    return { data, error };
+  },
+
+  /**
+   * Obtiene las ventas cobradas filtradas por sucursal e ID de sesión (turno actual).
+   */
+  getVentasCobradas: async (sucursalId, sesionId, limit = 15) => {
+    if (!hasPermission('ver_ventas')) return { data: [], error: null };
+
+    let query = supabase
+      .from('ventas')
+      .select('*')
+      .eq('id_sesion_caja', sesionId) // 👈 Solo de este turno
+      .eq('estado', 'pagado')
+      .order('hora_cierre', { ascending: false })
+      .limit(limit);
+
+    if (sucursalId) {
+      query = query.eq('sucursal_id', sucursalId);
+    }
+
+    const { data, error } = await query;
     return { data, error };
   }
 };

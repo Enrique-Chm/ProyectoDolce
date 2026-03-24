@@ -1,7 +1,7 @@
 // Archivo: src/App.jsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast'; // 👈 IMPORTANTE: Importamos el Toaster
+import { Toaster } from 'react-hot-toast'; //  IMPORTANTE: Importamos el Toaster
 
 // Importamos la página de Admin
 import AdminPage from './modules/Admin/AdminPage';
@@ -14,7 +14,7 @@ function App() {
 
   return (
     <Router>
-      {/* 👈 Aquí vive el Toaster: escuchará las notificaciones de cualquier parte de tu app */}
+      {/*  Aquí vive el Toaster: escuchará las notificaciones de cualquier parte de tu app */}
       <Toaster position="top-right" reverseOrder={false} />
 
       <div className="app-main-container">

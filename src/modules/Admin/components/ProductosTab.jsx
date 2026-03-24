@@ -136,8 +136,9 @@ export const ProductosTab = ({ sucursalId }) => {
             
             <form onSubmit={handleSubmitProducto} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <div className={s.formGroup} style={{ flex: 1 }}>
+              {/* Uso de formGrid para que el buscador y el costo se apilen en móvil de forma natural */}
+              <div className={s.formGrid}>
+                <div className={s.formGroup}>
                   <label className={s.label}>RECETA PRINCIPAL</label>
                   <SearchableSelect 
                     options={recetasCosteadas} 
@@ -158,7 +159,7 @@ export const ProductosTab = ({ sucursalId }) => {
                     }}
                   />
                 </div>
-                <div className={s.formGroup} style={{ width: '80px' }} title="Costo de la Receta">
+                <div className={s.formGroup} title="Costo de la Receta">
                   <label className={s.label}>COSTO</label>
                   <input 
                     type="text" 
@@ -172,7 +173,7 @@ export const ProductosTab = ({ sucursalId }) => {
                       fontWeight: "bold",
                       color: "var(--color-text-main)",
                       cursor: "not-allowed",
-                      padding: "8px 4px"
+                      padding: "10px 14px"
                     }}
                   />
                 </div>
@@ -191,7 +192,7 @@ export const ProductosTab = ({ sucursalId }) => {
                 </div>
                 <div className={s.formGroup}>
                   <label className={s.label}>MARGEN NETO %</label>
-                  <div className={s.unitDisplayBox} style={{ fontWeight: '700', color: getMarginColor(prodFormData.margen_en_vivo) }}>
+                  <div className={s.unitDisplayBox} style={{ width: '100%', fontWeight: '700', color: getMarginColor(prodFormData.margen_en_vivo) }}>
                     {prodFormData.margen_en_vivo}%
                   </div>
                 </div>
@@ -258,8 +259,9 @@ export const ProductosTab = ({ sucursalId }) => {
             </form>
           </aside>
 
+          {/* Contenedor .tableContainer para scroll lateral en móviles */}
           <div className={`${s.adminCard} ${s.tableContainer}`}>
-            <table className={s.table} style={{ minWidth: '700px', width: '100%' }}>
+            <table className={s.table}>
               <thead className={s.thead}>
                 <tr>
                   <th className={s.th}>PRODUCTO</th>
@@ -393,8 +395,9 @@ export const ProductosTab = ({ sucursalId }) => {
                         />
                       </div>
                       
-                      <div className={s.formGrid} style={{ gridTemplateColumns: '1fr 1fr 1fr', gap: '5px' }}>
-                        <div>
+                      {/* En lugar del gridTemplateColumns fijo, usamos flex-wrap para responsividad fluida */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                        <div style={{ flex: '1 1 80px' }}>
                           <label className={s.label}>CANTIDAD ({unidadAbrev})</label>
                           <input 
                             type="number" step="0.001" 
@@ -404,7 +407,7 @@ export const ProductosTab = ({ sucursalId }) => {
                             required readOnly={editGrupoId ? !puedeEditar : !puedeCrear}
                           />
                         </div>
-                        <div>
+                        <div style={{ flex: '1 1 80px' }}>
                           <label className={s.label}>PRECIO</label>
                           <input 
                             type="number" step="0.01" 
@@ -414,7 +417,7 @@ export const ProductosTab = ({ sucursalId }) => {
                             required readOnly={editGrupoId ? !puedeEditar : !puedeCrear}
                           />
                         </div>
-                        <div>
+                        <div style={{ flex: '1 1 80px' }}>
                           <label className={s.label}>MARGEN</label>
                           <div className={s.unitDisplayBox} style={{ width:'100%', fontSize: '15px', fontWeight: '700', color: getMarginColor(opcion.margen) }}>
                             {opcion.margen}%
@@ -447,8 +450,9 @@ export const ProductosTab = ({ sucursalId }) => {
             </form>
           </aside>
 
+          {/* Contenedor .tableContainer para scroll lateral en móviles */}
           <div className={`${s.adminCard} ${s.tableContainer}`}>
-            <table className={s.table} style={{ minWidth: '500px', width: '100%' }}>
+            <table className={s.table}>
               <thead className={s.thead}>
                 <tr>
                   <th className={s.th}>GRUPO MAESTRO</th>

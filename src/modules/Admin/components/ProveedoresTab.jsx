@@ -65,13 +65,13 @@ export const ProveedoresTab = () => {
         {loading && <span className={s.syncBadge}>CARGANDO...</span>}
       </header>
 
-      {/* 💡 LAYOUT DINÁMICO: splitLayout (2 cols) o fullLayout (1 col) */}
+      {/* 💡 LAYOUT DINÁMICO: splitLayout (2 cols en escritorio, 1 col en móvil) */}
       <div className={mostrarFormulario ? s.splitLayout : s.fullLayout}>
         
         {/* PANEL DE REGISTRO / EDICIÓN PROTEGIDO */}
         <aside className={s.adminCard} style={{ display: mostrarFormulario ? 'block' : 'none' }}>
           <h3 className={s.cardTitle}>
-            {editId ? (puedeEditar ? 'Editar Proveedor' : 'Ficha Técnica') : '🏢 Nuevo Proveedor'}
+            {editId ? (puedeEditar ? 'Editar Proveedor' : 'Ficha Técnica') : 'Nuevo Proveedor'}
           </h3>
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
             <div className={s.formGroup}>
@@ -99,6 +99,7 @@ export const ProveedoresTab = () => {
               />
             </div>
 
+            {/* Este Grid se adapta automáticamente por la clase .formGrid en el CSS global */}
             <div className={s.formGrid}>
               <div className={s.formGroup}>
                 <label className={s.label}>TELÉFONO</label>
@@ -151,7 +152,7 @@ export const ProveedoresTab = () => {
               {editId && (
                 <button 
                   type="button" 
-                  className={`${s.btn} ${s.btnDark} ${s.btnSmall}`}
+                  className={`${s.btn} ${s.btnDark} ${s.btnFull}`}
                   onClick={handleCancelClick} 
                 >
                   {puedeEditar ? 'CANCELAR EDICIÓN' : 'CERRAR VISTA'}
@@ -161,9 +162,9 @@ export const ProveedoresTab = () => {
           </form>
         </aside>
 
-        {/* TABLA DE PROVEEDORES: Se adapta al ancho disponible */}
+        {/* TABLA DE PROVEEDORES: .tableContainer maneja el scroll horizontal en móviles */}
         <div className={`${s.adminCard} ${s.tableContainer}`}>
-          <table className={s.table} style={{ minWidth: '700px', width: '100%' }}>
+          <table className={s.table}>
             <thead className={s.thead}>
               <tr>
                 <th className={s.th}>EMPRESA / CORREO</th>
@@ -178,7 +179,7 @@ export const ProveedoresTab = () => {
                   <tr key={p.id} style={{ backgroundColor: editId === p.id ? 'var(--color-bg-app)' : 'transparent' }}>
                     <td className={s.td}>
                       <div style={{ fontWeight: '600', color: 'var(--color-text-main)' }}>{p.nombre_empresa}</div>
-                      <div className={s.textMuted} style={{ fontSize: '11px' }}>{p.correo || 'Sin correo registrado'}</div>
+                      <div className={s.textMuted} style={{ fontSize: '11px', wordBreak: 'break-all' }}>{p.correo || 'Sin correo registrado'}</div>
                     </td>
                     <td className={s.td}>
                       <div style={{ fontSize: '13px', fontWeight: '600' }}>{p.contacto_nombre || '---'}</div>

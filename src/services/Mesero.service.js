@@ -6,24 +6,32 @@ export const MeseroService = {
   
   /**
    * 🛡️ Verifica si existe una sesión de caja abierta para la sucursal.
-   * Es vital para cumplir con la restricción de la base de datos y obtener el ID de sesión.
+   * Al no haber triggers, este método es el encargado de obtener el UUID 
+   * necesario para vincular la venta con el turno del cajero.
    */
   verificarCajaAbierta: async (sucursalId) => {
-    const { data, error } = await supabase
-      .from('cajas_sesiones')
-      .select('id')
-      .eq('sucursal_id', sucursalId)
-      .eq('estado', 'abierto') // Aseguramos coincidencia con el término de CajaService
-      .is('fecha_cierre', null)
-      .maybeSingle();
-    
-    if (error) {
-        console.error("Error al verificar caja:", error);
-        return { abierta: false, error };
+    try {
+      const { data, error } = await supabase
+        .from('cajas_sesiones')
+        .select('id')
+        .eq('sucursal_id', Number(sucursalId))
+        .eq('estado', 'abierto') 
+        .is('fecha_cierre', null)
+        .maybeSingle();
+      
+      if (error) {
+          console.error("Error al verificar caja:", error);
+          return { abierta: false, error };
+      }
+      return { abierta: !!data, sesionId: data?.id, error: null };
+    } catch (err) {
+      return { abierta: false, error: err.message };
     }
-    return { abierta: !!data, sesionId: data?.id, error: null };
   },
 
+  /**
+   * Obtiene las mesas activas filtradas por sucursal.
+   */
   getCuentasAbiertas: async (sucursalId) => {
     if (!hasPermission('ver_comandas')) {
       return { data: [], error: { message: 'No tienes permisos para ver cuentas abiertas.' } };
@@ -35,17 +43,20 @@ export const MeseroService = {
         *,
         ventas_detalle!venta_id (*)
       `)
-      .in('estado', ['pendiente', 'por_cobrar', 'abierta'])
+      .in('estado', ['pendiente', 'cocina', 'entregado', 'por_cobrar', 'abierta'])
       .order('created_at', { ascending: false });
 
     if (sucursalId) {
-      query = query.eq('sucursal_id', sucursalId);
+      query = query.eq('sucursal_id', Number(sucursalId));
     }
 
     const { data, error } = await query;
     return { data, error };
   },
 
+  /**
+   * Obtiene el historial de ventas pagadas de la sucursal.
+   */
   getHistorialCobradas: async (sucursalId) => {
     if (!hasPermission('ver_comandas')) {
       return { data: [], error: { message: 'No tienes permisos para ver el historial.' } };
@@ -59,13 +70,16 @@ export const MeseroService = {
       .limit(50);
 
     if (sucursalId) {
-      query = query.eq('sucursal_id', sucursalId);
+      query = query.eq('sucursal_id', Number(sucursalId));
     }
 
     const { data, error } = await query;
     return { data, error };
   },
 
+  /**
+   * Cambia el estado de una mesa a 'por_cobrar' para notificar a caja.
+   */
   marcarPorCobrar: async (ventaId) => {
     if (!hasPermission('editar_comandas')) {
       return { success: false, error: 'No tienes facultades para solicitar la cuenta.' };
@@ -73,7 +87,10 @@ export const MeseroService = {
 
     const { error } = await supabase
       .from('ventas')
-      .update({ estado: 'por_cobrar' })
+      .update({ 
+        estado: 'por_cobrar',
+        hora_por_cobrar: new Date().toISOString()
+      })
       .eq('id', ventaId);
       
     return { success: !error, error: error?.message };
@@ -81,7 +98,8 @@ export const MeseroService = {
 
   /**
    * 🚀 PROCESAR VENTA (MÉTODO MAESTRO)
-   * Maneja la creación de la venta padre, inserción de detalles y actualización de totales.
+   * Ahora que los triggers no existen, el service valida manualmente la caja
+   * antes de realizar el insert para asegurar la integridad de los datos.
    */
   procesarVenta: async (ventaData, carrito) => {
     if (!hasPermission('crear_comandas')) {
@@ -91,30 +109,26 @@ export const MeseroService = {
     try {
       let ventaId = ventaData.id;
 
-      // 1. 🛡️ SIEMPRE VERIFICAR CAJA ANTES DE PROCESAR
-      // Obtenemos el sesionId dinámicamente para asegurar que la venta se vincule al turno actual.
+      // 1. 🛡️ VERIFICACIÓN MANUAL DE CAJA (Sustituye la seguridad del Trigger)
       const { abierta, sesionId, error: errSesion } = await MeseroService.verificarCajaAbierta(ventaData.sucursal_id);
 
       if (errSesion || !abierta) {
-        throw new Error("No se puede procesar la orden: No hay una sesión de caja abierta en esta sucursal. Avisa al cajero.");
+        throw new Error(`Operación cancelada: No se encontró una sesión de caja abierta para la sucursal ${ventaData.sucursal_id}. El cajero debe iniciar turno.`);
       }
 
-      // 2. SI ES UNA MESA NUEVA (Insertar Venta Padre)
+      // 2. SI ES UNA MESA NUEVA (Crear registro en 'ventas')
       if (!ventaId) {
         const totalInicial = carrito.reduce((acc, item) => acc + (item.cantidad * item.precio_venta), 0);
         
         const nuevaVentaPayload = {
-          usuario_id: ventaData.usuario_id || null, 
+          usuario_id: Number(ventaData.usuario_id), 
           mesa: ventaData.mesa ? String(ventaData.mesa) : 'S/N',
-          estado: 'pendiente',
+          estado: 'pendiente', 
           subtotal: parseFloat(totalInicial), 
           total: parseFloat(totalInicial),
-          sucursal_id: ventaData.sucursal_id,
-          id_sesion_caja: sesionId // 👈 VINCULACIÓN CRÍTICA: Previene el error P0001
+          sucursal_id: Number(ventaData.sucursal_id),
+          id_sesion_caja: sesionId // Vinculamos manualmente el ID de sesión encontrado
         };
-
-        // Debug para verificar en consola antes de enviar
-        console.log("Insertando Venta Padre:", nuevaVentaPayload);
 
         const { data: nuevaVenta, error: errVenta } = await supabase
           .from('ventas')
@@ -124,7 +138,7 @@ export const MeseroService = {
           
         if (errVenta) {
           console.error("Error al crear la venta padre:", errVenta);
-          throw new Error(errVenta.message); 
+          throw new Error(`Error de base de datos: ${errVenta.message}`); 
         }
         ventaId = nuevaVenta.id;
       }
@@ -137,20 +151,20 @@ export const MeseroService = {
         precio_unitario: parseFloat(item.precio_venta),
         costo_unitario_historico: parseFloat(item.costo_actual || 0), 
         subtotal: parseFloat(item.cantidad * item.precio_venta),
-        notes: item.notes || item.notas || ''
+        notas: item.notes || item.notas || ''
       }));
 
-      // 4. INSERTAR DETALLES
+      // 4. INSERTAR DETALLES EN 'ventas_detalle'
       const { error: errDetalles } = await supabase
         .from('ventas_detalle')
         .insert(detalles);
         
       if (errDetalles) {
         console.error("Error al insertar los detalles:", errDetalles);
-        throw new Error(errDetalles.message);
+        throw new Error(`Error al registrar productos: ${errDetalles.message}`);
       }
 
-      // 5. RECALCULAR TOTALES Y ASEGURAR SESIÓN (Sync final)
+      // 5. RECALCULAR TOTALES (Sincronización final)
       const { data: allDetails, error: errCalc } = await supabase
         .from('ventas_detalle')
         .select('subtotal')
@@ -158,16 +172,15 @@ export const MeseroService = {
           
       if (errCalc) throw new Error("Error al recalcular totales.");
 
-      const nuevoTotal = allDetails.reduce((sum, item) => sum + item.subtotal, 0);
+      const nuevoTotal = (allDetails || []).reduce((sum, item) => sum + item.subtotal, 0);
         
-      // Actualizamos la venta padre con el nuevo total y nos aseguramos de enviar el id_sesion_caja
-      // por si el Trigger de actualización también lo requiere.
+      // Actualizamos el registro padre con los totales finales y re-aseguramos el id_sesion_caja
       const { error: errUpdate } = await supabase
         .from('ventas')
         .update({ 
           subtotal: parseFloat(nuevoTotal),
           total: parseFloat(nuevoTotal),
-          id_sesion_caja: sesionId // Re-aseguramos la sesión activa en el update
+          id_sesion_caja: sesionId 
         })
         .eq('id', ventaId);
           

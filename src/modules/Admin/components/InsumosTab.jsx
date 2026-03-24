@@ -177,14 +177,15 @@ export const InsumosTab = ({ sucursalId }) => {
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+            {/* Modificado a flexColumnGap10 para que los botones se apilen en pantallas móviles */}
+            <div className={s.flexColumnGap10} style={{ marginTop: '10px' }}>
               {puedeEditar && (
-                <button type="submit" className={`${s.btn} ${s.btnPrimary}`} style={{ flex: 1 }} disabled={loading}>
+                <button type="submit" className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`} disabled={loading}>
                   {loading ? '...' : (editId ? 'ACTUALIZAR' : 'GUARDAR')}
                 </button>
               )}
               {editId && (
-                <button type="button" onClick={handleCancelClick} className={`${s.btn} ${s.btnDark}`} style={{ flex: 1 }}>
+                <button type="button" onClick={handleCancelClick} className={`${s.btn} ${s.btnDark} ${s.btnFull}`}>
                   {puedeEditar ? 'CANCELAR' : 'VOLVER'}
                 </button>
               )}
@@ -192,8 +193,9 @@ export const InsumosTab = ({ sucursalId }) => {
           </form>
         </aside>
 
+        {/* 💡 Eliminamos el minWidth forzado en la tabla, el contenedor .tableContainer manejará el scroll lateral */}
         <div className={`${s.adminCard} ${s.tableContainer}`}>
-          <table className={s.table} style={{ minWidth: '700px', width: '100%' }}>
+          <table className={s.table}>
             <thead className={s.thead}>
               <tr>
                 <th className={s.th}>INSUMO / VARIANTE</th>
