@@ -34,15 +34,20 @@ const AdminPage = () => {
 
   // 🛡️ Configuración de Pestañas
   const tabsConfig = useMemo(() => [
-    { id: 'analitica', label: 'Dashboard Analítica', permiso: 'ver_ventas' }, 
-    { id: 'mesero', label: 'Mesero (Ventas)', permiso: 'ver_ventas' },
-    { id: 'cajero', label: 'Caja (Cobros)', permiso: 'ver_ventas' },
+    { id: 'analitica', label: 'Dashboard Analítica', permiso: 'ver_analitica' }, 
+    { id: 'mesero', label: 'Mesero', permiso: 'ver_comandas' },
+    { id: 'cajero', label: 'Caja', permiso: 'ver_ventas' },
     { id: 'insumos', label: 'Catálogo Insumos', permiso: 'ver_insumos' },
     { id: 'kardex', label: 'Auditoría Inventarios', permiso: 'ver_inventario' },
     { id: 'estimaciones', label: 'Proyección Compras', permiso: 'ver_inventario' },
     { id: 'gastos', label: 'Gastos Operativos', permiso: 'ver_gastos' }, 
     { id: 'recetas', label: 'Recetas', permiso: 'ver_recetas' }, 
-    { id: 'productos', label: 'Productos', permiso: 'ver_productos' }, 
+    /**
+     * 🛡️ TRUCO DE VISIBILIDAD:
+     * El mesero tendrá 'ver_productos' para poder tomar pedidos, pero el Tab de 
+     * gestión de productos ahora exige 'crear_productos'. Así el mesero NO lo ve en el menú.
+     */
+    { id: 'productos', label: 'Productos', permiso: 'crear_productos' }, 
     { id: 'proveedores', label: 'Proveedores', permiso: 'ver_proveedores' },
     { id: 'empleados', label: 'Empleados', permiso: 'ver_usuarios' }, 
     { id: 'impresoras', label: 'Impresoras', permiso: 'ver_configuracion' },
@@ -96,7 +101,7 @@ const AdminPage = () => {
       {/* BARRA LATERAL */}
       <aside className={s.sidebar}>
         <div className={s.sidebarHeader}>
-          <h2>CloudKitchen <span style={{ color: 'var(--color-primary)' }}></span></h2>
+          <h2>CloudKitchen</h2>
         </div>
         
         <nav className={s.sidebarNav}>
@@ -153,19 +158,19 @@ const AdminPage = () => {
               Cargando módulo...
             </div>
           }>
-             {activeTab === 'analitica' && <AnaliticaTab sucursalId={filterSucursal} />}
-             {activeTab === 'mesero' && <MeseroTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
-             {activeTab === 'cajero' && <CajeroTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
-             {activeTab === 'insumos' && <InsumosTab sucursalId={filterSucursal} />}
-             {activeTab === 'kardex' && <InventariosTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
-             {activeTab === 'estimaciones' && <EstimacionesTab sucursalId={filterSucursal} />}
-             {activeTab === 'gastos' && <GastosTab />}
-             {activeTab === 'recetas' && <RecetasTab sucursalId={filterSucursal} />}
-             {activeTab === 'productos' && <ProductosTab sucursalId={filterSucursal} />}
-             {activeTab === 'proveedores' && <ProveedoresTab sucursalId={filterSucursal} />}
-             {activeTab === 'empleados' && <EmpleadosTab />}
-             {activeTab === 'impresoras' && <ImpresorasTab sucursalId={filterSucursal} />}
-             {activeTab === 'config' && <ConfigTab />}
+              {activeTab === 'analitica' && <AnaliticaTab sucursalId={filterSucursal} />}
+              {activeTab === 'mesero' && <MeseroTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
+              {activeTab === 'cajero' && <CajeroTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
+              {activeTab === 'insumos' && <InsumosTab sucursalId={filterSucursal} />}
+              {activeTab === 'kardex' && <InventariosTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
+              {activeTab === 'estimaciones' && <EstimacionesTab sucursalId={filterSucursal} />}
+              {activeTab === 'gastos' && <GastosTab />}
+              {activeTab === 'recetas' && <RecetasTab sucursalId={filterSucursal} />}
+              {activeTab === 'productos' && <ProductosTab sucursalId={filterSucursal} />}
+              {activeTab === 'proveedores' && <ProveedoresTab sucursalId={filterSucursal} />}
+              {activeTab === 'empleados' && <EmpleadosTab />}
+              {activeTab === 'impresoras' && <ImpresorasTab sucursalId={filterSucursal} />}
+              {activeTab === 'config' && <ConfigTab />}
           </Suspense>
         </section>
       </main>

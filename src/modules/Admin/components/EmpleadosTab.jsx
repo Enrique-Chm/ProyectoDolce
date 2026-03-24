@@ -6,50 +6,40 @@ import s from "../AdminPage.module.css";
 
 export const EmpleadosTab = () => {
   const [subTab, setSubTab] = useState("usuarios");
+  const [activePermisoTab, setActivePermisoTab] = useState("SERVICIO");
+  
   const emp = useEmpleados();
 
-  // Función auxiliar para obtener el ID de un permiso basado en su clave
-  const getPermisoId = (clave) =>
-    emp.permisos.find((p) => p.clave_permiso === clave)?.id;
+  const getPermisoId = (clave) => emp.permisos.find((p) => p.clave_permiso === clave)?.id;
 
   return (
     <div className={s.tabWrapper}>
       <div className={s.pageHeader}>
         <h2 className={s.pageTitle}>Gestión de Capital Humano</h2>
       </div>
-      {/* Navegación de Sub-pestañas con validación de permisos */}
+      
+      {/* Navegación de Pestañas Principales */}
       <nav className={s.tabNav}>
         {hasPermission("ver_usuarios") && (
-          <button
-            className={`${s.tabButton} ${subTab === "usuarios" ? s.activeTabButton : ""}`}
-            onClick={() => setSubTab("usuarios")}
-          >
+          <button className={`${s.tabButton} ${subTab === "usuarios" ? s.activeTabButton : ""}`} onClick={() => setSubTab("usuarios")}>
             EQUIPO
           </button>
         )}
-
         {hasPermission("ver_configuracion") && (
-          <button
-            className={`${s.tabButton} ${subTab === "permisos" ? s.activeTabButton : ""}`}
-            onClick={() => setSubTab("permisos")}
-          >
+          <button className={`${s.tabButton} ${subTab === "permisos" ? s.activeTabButton : ""}`} onClick={() => setSubTab("permisos")}>
             PERMISOS Y ROLES
           </button>
         )}
-
         {hasPermission("ver_sucursales") && (
-          <button
-            className={`${s.tabButton} ${subTab === "sucursales" ? s.activeTabButton : ""}`}
-            onClick={() => setSubTab("sucursales")}
-          >
+          <button className={`${s.tabButton} ${subTab === "sucursales" ? s.activeTabButton : ""}`} onClick={() => setSubTab("sucursales")}>
             SUCURSALES
           </button>
         )}
       </nav>
+
       {/* --- SUBTAB: EQUIPO --- */}
       {subTab === "usuarios" && hasPermission("ver_usuarios") && (
         <div className={s.splitLayout}>
-          {/* Formulario: Visible si puede crear, o si puede editar y hay un ID */}
           <aside className={s.adminCard} style={{ display: emp.puedeCrearUsuarios || emp.editId ? 'block' : 'none' }}>
             <h3 className={s.cardTitle}>
               {emp.editId ? (emp.puedeEditarUsuarios ? "Editar Perfil" : "Ver Perfil") : " Nuevo Integrante"}
@@ -60,12 +50,7 @@ export const EmpleadosTab = () => {
                 <input
                   className={s.inputField}
                   value={emp.formData.nombre}
-                  onChange={(e) =>
-                    emp.setFormData({
-                      ...emp.formData,
-                      nombre: e.target.value,
-                    })
-                  }
+                  onChange={(e) => emp.setFormData({ ...emp.formData, nombre: e.target.value })}
                   required
                   readOnly={emp.editId ? !emp.puedeEditarUsuarios : !emp.puedeCrearUsuarios}
                 />
@@ -79,9 +64,7 @@ export const EmpleadosTab = () => {
                   valueKey="id"
                   labelKey="nombre"
                   placeholder="Seleccionar sucursal..."
-                  onChange={(val) =>
-                    emp.setFormData({ ...emp.formData, sucursal_id: val })
-                  }
+                  onChange={(val) => emp.setFormData({ ...emp.formData, sucursal_id: val })}
                   disabled={emp.editId ? !emp.puedeEditarUsuarios : !emp.puedeCrearUsuarios}
                 />
               </div>
@@ -92,12 +75,7 @@ export const EmpleadosTab = () => {
                   <input
                     className={s.inputField}
                     value={emp.formData.username}
-                    onChange={(e) =>
-                      emp.setFormData({
-                        ...emp.formData,
-                        username: e.target.value,
-                      })
-                    }
+                    onChange={(e) => emp.setFormData({ ...emp.formData, username: e.target.value })}
                     required
                     readOnly={emp.editId ? !emp.puedeEditarUsuarios : !emp.puedeCrearUsuarios}
                   />
@@ -110,9 +88,7 @@ export const EmpleadosTab = () => {
                     valueKey="id"
                     labelKey="nombre_rol"
                     placeholder="Elegir rol..."
-                    onChange={(val) =>
-                      emp.setFormData({ ...emp.formData, rol_id: val })
-                    }
+                    onChange={(val) => emp.setFormData({ ...emp.formData, rol_id: val })}
                     disabled={emp.editId ? !emp.puedeEditarUsuarios : !emp.puedeCrearUsuarios}
                   />
                 </div>
@@ -125,12 +101,7 @@ export const EmpleadosTab = () => {
                     type="password"
                     className={s.inputField}
                     value={emp.formData.password_hash}
-                    onChange={(e) =>
-                      emp.setFormData({
-                        ...emp.formData,
-                        password_hash: e.target.value,
-                      })
-                    }
+                    onChange={(e) => emp.setFormData({ ...emp.formData, password_hash: e.target.value })}
                     required={!emp.editId}
                     readOnly={emp.editId ? !emp.puedeEditarUsuarios : !emp.puedeCrearUsuarios}
                   />
@@ -141,35 +112,20 @@ export const EmpleadosTab = () => {
                     type="number"
                     className={s.inputField}
                     value={emp.formData.pin_seguridad}
-                    onChange={(e) =>
-                      emp.setFormData({
-                        ...emp.formData,
-                        pin_seguridad: e.target.value,
-                      })
-                    }
+                    onChange={(e) => emp.setFormData({ ...emp.formData, pin_seguridad: e.target.value })}
                     readOnly={emp.editId ? !emp.puedeEditarUsuarios : !emp.puedeCrearUsuarios}
                   />
                 </div>
               </div>
 
-              <div
-                style={{ display: "flex", gap: "10px", marginTop: "10px" }}
-              >
+              <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
                 {(emp.editId ? emp.puedeEditarUsuarios : emp.puedeCrearUsuarios) && (
-                  <button
-                    type="submit"
-                    className={`${s.btn} ${s.btnPrimary}`}
-                    style={{ flex: 1 }}
-                  >
+                  <button type="submit" className={`${s.btn} ${s.btnPrimary}`} style={{ flex: 1 }}>
                     {emp.editId ? "ACTUALIZAR" : "REGISTRAR"}
                   </button>
                 )}
                 {emp.editId && (
-                  <button
-                    type="button"
-                    className={`${s.btn} ${s.btnDark}`}
-                    onClick={emp.resetUserForm}
-                  >
+                  <button type="button" className={`${s.btn} ${s.btnDark}`} onClick={emp.resetUserForm}>
                     {emp.puedeEditarUsuarios ? "CANCELAR" : "CERRAR"}
                   </button>
                 )}
@@ -184,38 +140,20 @@ export const EmpleadosTab = () => {
                 <tr>
                   <th className={s.th}>EMPLEADO / SUCURSAL</th>
                   <th className={s.th}>ROL</th>
-                  <th className={s.th} style={{ textAlign: "right" }}>
-                    ACCIONES
-                  </th>
+                  <th className={s.th} style={{ textAlign: "right" }}>ACCIONES</th>
                 </tr>
               </thead>
               <tbody>
                 {emp.usuarios.map((u) => (
                   <tr key={u.id}>
                     <td className={s.td}>
-                      <div
-                        style={{
-                          fontWeight: "600",
-                          color: "var(--color-text-main)",
-                        }}
-                      >
-                        {u.nombre}
-                      </div>
-                      <small
-                        style={{
-                          color: "var(--color-primary)",
-                          fontWeight: "bold",
-                        }}
-                      >
-                        {/* 💡 LECTURA CORRECTA DE LA RELACIÓN */}
+                      <div style={{ fontWeight: "600", color: "var(--color-text-main)" }}>{u.nombre}</div>
+                      <small style={{ color: "var(--color-primary)", fontWeight: "bold" }}>
                         {u.cat_sucursales?.nombre || "Sin Sucursal"}
                       </small>
                     </td>
                     <td className={s.td}>
-                      <span className={s.badge}>
-                        {/* 💡 LECTURA CORRECTA DE LA RELACIÓN */}
-                        {u.roles?.nombre_rol?.toUpperCase() || "SIN ROL"}
-                      </span>
+                      <span className={s.badge}>{u.roles?.nombre_rol?.toUpperCase() || "SIN ROL"}</span>
                     </td>
                     <td className={s.td} style={{ textAlign: "right" }}>
                       <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
@@ -223,10 +161,7 @@ export const EmpleadosTab = () => {
                           className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`}
                           onClick={() => {
                             emp.setEditId(u.id);
-                            emp.setFormData({
-                                ...u,
-                                password_hash: '' // No cargar el hash por seguridad
-                            });
+                            emp.setFormData({ ...u, password_hash: '' });
                           }}
                         >
                           {emp.puedeEditarUsuarios ? '📝' : 'VER'}
@@ -248,97 +183,50 @@ export const EmpleadosTab = () => {
           </div>
         </div>
       )}
+
       {/* --- SUBTAB: PERMISOS --- */}
       {subTab === "permisos" && hasPermission("ver_configuracion") && (
         <div className={s.splitLayout}>
           <aside className={s.adminCard}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "20px",
-              }}
-            >
-              <h3 className={s.cardTitle} style={{ margin: 0 }}>
-                Roles
-              </h3>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+              <h3 className={s.cardTitle} style={{ margin: 0 }}>Roles</h3>
               {emp.puedeCrearConfig && (
-                <button
-                  className={`${s.btn} ${s.btnSec} ${s.btnSmall}`}
-                  style={{ padding: "4px 10px" }}
-                  onClick={() => emp.setMostrarFormRol(!emp.mostrarFormRol)}
-                >
+                <button className={`${s.btn} ${s.btnSec} ${s.btnSmall}`} style={{ padding: "4px 10px" }} onClick={() => emp.setMostrarFormRol(!emp.mostrarFormRol)}>
                   + Rol
                 </button>
               )}
             </div>
 
             {emp.mostrarFormRol && emp.puedeCrearConfig && (
-              <form
-                onSubmit={emp.handleSaveRol}
-                style={{
-                  padding: "15px",
-                  background: "var(--color-bg-app)",
-                  borderRadius: "var(--radius-ui)",
-                  marginBottom: "15px",
-                }}
-              >
+              <form onSubmit={emp.handleSaveRol} style={{ padding: "15px", background: "var(--color-bg-app)", borderRadius: "var(--radius-ui)", marginBottom: "15px" }}>
                 <div className={s.formGroup}>
-                  <label className={s.label} style={{ fontSize: '9px' }}>NOMBRE DEL ROL</label>
+                  <label className={s.label}>NOMBRE DEL ROL</label>
                   <input
-                    className={s.inputField}
-                    placeholder="Ej. Chef, Cajero..."
-                    value={emp.rolFormData.nombre_rol}
-                    onChange={(e) =>
-                      emp.setRolFormData({ ...emp.rolFormData, nombre_rol: e.target.value })
-                    }
-                    required
+                    className={s.inputField} placeholder="Ej. Chef, Cajero..." value={emp.rolFormData.nombre_rol}
+                    onChange={(e) => emp.setRolFormData({ ...emp.rolFormData, nombre_rol: e.target.value })} required
                   />
                 </div>
                 <div className={s.formGroup}>
-                  <label className={s.label} style={{ fontSize: '9px' }}>DESCRIPCIÓN</label>
+                  <label className={s.label}>DESCRIPCIÓN</label>
                   <input
-                    className={s.inputField}
-                    placeholder="¿Qué hace este rol?"
-                    value={emp.rolFormData.descripcion}
-                    onChange={(e) =>
-                      emp.setRolFormData({ ...emp.rolFormData, descripcion: e.target.value })
-                    }
-                    required
+                    className={s.inputField} placeholder="¿Qué hace este rol?" value={emp.rolFormData.descripcion}
+                    onChange={(e) => emp.setRolFormData({ ...emp.rolFormData, descripcion: e.target.value })} required
                   />
                 </div>
-                <button
-                  type="submit"
-                  className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`}
-                  disabled={emp.loading}
-                >
+                <button type="submit" className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`} disabled={emp.loading}>
                   {emp.loading ? 'GUARDANDO...' : 'GUARDAR ROL'}
                 </button>
               </form>
             )}
 
-            <div
-              style={{ display: "flex", flexDirection: "column", gap: "5px" }}
-            >
+            <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
               {emp.roles.map((r) => (
                 <div
                   key={r.id}
                   style={{
-                    padding: "12px 15px",
-                    borderRadius: "var(--radius-ui)",
-                    cursor: "pointer",
-                    fontWeight: "700",
-                    fontSize: "0.9rem",
-                    transition: "all 0.2s",
-                    backgroundColor:
-                      emp.rolSeleccionado === r.id
-                        ? "var(--color-primary)"
-                        : "transparent",
-                    color:
-                      emp.rolSeleccionado === r.id
-                        ? "white"
-                        : "var(--color-text-muted)",
+                    padding: "12px 15px", borderRadius: "var(--radius-ui)", cursor: "pointer", fontWeight: "700", fontSize: "0.9rem", transition: "all 0.2s",
+                    backgroundColor: emp.rolSeleccionado === r.id ? "var(--color-primary)" : "transparent",
+                    color: emp.rolSeleccionado === r.id ? "white" : "var(--color-text-muted)",
                   }}
                   onClick={() => emp.seleccionarRol(r.id)}
                 >
@@ -348,164 +236,114 @@ export const EmpleadosTab = () => {
             </div>
           </aside>
 
-          <div className={`${s.adminCard} ${s.tableContainer}`}>
-            <div
-              className={s.tableHeader}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <h3 style={{ fontSize: "1.1rem", fontWeight: "700", margin: 0 }}>
-                Matriz de Facultades
-              </h3>
-
+          <div className={`${s.adminCard} ${s.tableContainer}`} style={{ padding: 0, overflow: 'hidden' }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px" }}>
+              <h3 style={{ fontSize: "1.1rem", fontWeight: "700", margin: 0 }}>Matriz de Facultades</h3>
               {emp.rolSeleccionado && emp.puedeEditarConfig && (
-                <button
-                  onClick={emp.guardarMatrizPermisos}
-                  disabled={emp.loading}
-                  className={`${s.btn} ${s.btnSuccess}`}
-                >
+                <button onClick={emp.guardarMatrizPermisos} disabled={emp.loading} className={`${s.btn} ${s.btnSuccess}`}>
                   {emp.loading ? "GUARDANDO..." : "GUARDAR CAMBIOS"}
                 </button>
               )}
             </div>
 
             {!emp.rolSeleccionado ? (
-              <p className={s.emptyState}>
-                Selecciona un rol de la izquierda para configurar sus accesos...
-              </p>
+              <p className={s.emptyState}>Selecciona un rol de la izquierda para configurar sus accesos...</p>
             ) : (
-              <table className={s.table} style={{ minWidth: "600px" }}>
-                <thead className={s.thead}>
-                  <tr>
-                    <th className={s.th}>MÓDULO DEL SISTEMA</th>
-                    <th className={s.th} style={{ textAlign: "center" }}>
-                      VER
-                    </th>
-                    <th className={s.th} style={{ textAlign: "center" }}>
-                      CREAR
-                    </th>
-                    <th className={s.th} style={{ textAlign: "center" }}>
-                      EDITAR
-                    </th>
-                    <th className={s.th} style={{ textAlign: "center" }}>
-                      BORRAR
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {MATRIZ_MODULOS.map((m) => {
-                    const baseSlug = m.slug.replace("ver_", "");
+              <>
+                <div className={s.miniTabsWrapper}>
+                  <nav className={s.miniTabNav}>
+                    {[
+                      { id: 'SERVICIO', label: '📍 SALÓN Y CAJA' },
+                      { id: 'FINANZAS', label: '💰 FINANZAS' },
+                      { id: 'ALMACEN', label: '📦 INVENTARIOS' },
+                      { id: 'ADMIN', label: '⚙️ CONFIGURACIÓN' }
+                    ].map(tab => (
+                      <button
+                        key={tab.id} onClick={() => setActivePermisoTab(tab.id)}
+                        className={`${s.miniTabButton} ${activePermisoTab === tab.id ? s.activeMiniTabButton : ''}`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </nav>
+                </div>
 
-                    const idVer = getPermisoId(`ver_${baseSlug}`);
-                    const idCrear = getPermisoId(`crear_${baseSlug}`);
-                    const idEditar = getPermisoId(`editar_${baseSlug}`);
-                    const idBorrar = getPermisoId(`borrar_${baseSlug}`);
-
-                    return (
-                      <tr key={m.slug}>
-                        <td className={s.td} style={{ fontWeight: "700" }}>
-                          {m.label}
-                        </td>
-
-                        {/* COLUMNA VER */}
-                        <td className={s.td} style={{ textAlign: "center" }}>
-                          {idVer ? (
-                            <input
-                              type="checkbox"
-                              className={s.checkbox}
-                              disabled={!emp.puedeEditarConfig}
-                              checked={emp.permisosActivos.includes(idVer)}
-                              onChange={() => emp.togglePermiso(idVer)}
-                            />
-                          ) : (
-                            <span
-                              style={{
-                                fontSize: "10px",
-                                color: "var(--color-text-muted)",
-                              }}
-                            >
-                              N/A
-                            </span>
-                          )}
-                        </td>
-
-                        {/* COLUMNA CREAR */}
-                        <td className={s.td} style={{ textAlign: "center" }}>
-                          {idCrear ? (
-                            <input
-                              type="checkbox"
-                              className={s.checkbox}
-                              disabled={!emp.puedeEditarConfig}
-                              checked={emp.permisosActivos.includes(idCrear)}
-                              onChange={() => emp.togglePermiso(idCrear)}
-                            />
-                          ) : (
-                            <span
-                              style={{
-                                fontSize: "10px",
-                                color: "var(--color-text-muted)",
-                              }}
-                            >
-                              N/A
-                            </span>
-                          )}
-                        </td>
-
-                        {/* COLUMNA EDITAR */}
-                        <td className={s.td} style={{ textAlign: "center" }}>
-                          {idEditar ? (
-                            <input
-                              type="checkbox"
-                              className={s.checkbox}
-                              disabled={!emp.puedeEditarConfig}
-                              checked={emp.permisosActivos.includes(idEditar)}
-                              onChange={() => emp.togglePermiso(idEditar)}
-                            />
-                          ) : (
-                            <span
-                              style={{
-                                fontSize: "10px",
-                                color: "var(--color-text-muted)",
-                              }}
-                            >
-                              N/A
-                            </span>
-                          )}
-                        </td>
-
-                        {/* COLUMNA BORRAR */}
-                        <td className={s.td} style={{ textAlign: "center" }}>
-                          {idBorrar ? (
-                            <input
-                              type="checkbox"
-                              className={s.checkbox}
-                              disabled={!emp.puedeEditarConfig}
-                              checked={emp.permisosActivos.includes(idBorrar)}
-                              onChange={() => emp.togglePermiso(idBorrar)}
-                            />
-                          ) : (
-                            <span
-                              style={{
-                                fontSize: "10px",
-                                color: "var(--color-text-muted)",
-                              }}
-                            >
-                              N/A
-                            </span>
-                          )}
-                        </td>
+                <div className={s.matrixContainer}>
+                  <table className={`${s.table} ${s.tableMatrix}`}>
+                    <thead className={s.thead}>
+                      <tr>
+                        <th className={s.th}>MÓDULO DEL SISTEMA</th>
+                        <th className={`${s.th} ${s.thCenter} ${s.thVer}`}>VER</th>
+                        <th className={`${s.th} ${s.thCenter} ${s.thCrear}`}>CREAR</th>
+                        <th className={`${s.th} ${s.thCenter} ${s.thEditar}`}>EDITAR</th>
+                        <th className={`${s.th} ${s.thCenter} ${s.thBorrar}`}>BORRAR</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        let ultimaCat = null;
+                        return MATRIZ_MODULOS
+                          .filter(m => m.cat === activePermisoTab || (!m.cat && activePermisoTab === 'ADMIN'))
+                          .map((m) => {
+                            const mostrarEncabezado = m.cat !== ultimaCat;
+                            ultimaCat = m.cat;
+                            const baseSlug = m.slug.replace("ver_", "");
+
+                            // 💡 OPTIMIZACIÓN: Las 4 columnas se definen en un array y se renderizan con un .map()
+                            const columnasPermisos = [
+                              { id: getPermisoId(`ver_${baseSlug}`), claseCheck: s.checkVer },
+                              { id: getPermisoId(`crear_${baseSlug}`), claseCheck: s.checkCrear },
+                              { id: getPermisoId(`editar_${baseSlug}`), claseCheck: s.checkEditar },
+                              { id: getPermisoId(`borrar_${baseSlug}`), claseCheck: s.checkBorrar }
+                            ];
+
+                            return (
+                              <React.Fragment key={m.slug}>
+                                {mostrarEncabezado && (
+                                  <tr className={s.tableRowCategory}>
+                                    <td colSpan="5">
+                                      {m.cat === 'SERVICIO' && '📍 Área de Salón y Meseros'}
+                                      {m.cat === 'FINANZAS' && '💰 Control de Caja y Gastos'}
+                                      {m.cat === 'ALMACEN'  && '📦 Inventarios y Costeo'}
+                                      {m.cat === 'ADMIN'    && '⚙️ Configuración del Sistema'}
+                                      {!m.cat && 'MÓDULOS DE SISTEMA'}
+                                    </td>
+                                  </tr>
+                                )}
+
+                                <tr>
+                                  <td className={s.td} style={{ fontWeight: "700" }}>{m.label}</td>
+                                  
+                                  {/* Renderizado de columnas CRUD simplificado en 15 líneas en lugar de 60 */}
+                                  {columnasPermisos.map((col, idx) => (
+                                    <td key={idx} className={`${s.td} ${s.thCenter}`}>
+                                      {col.id ? (
+                                        <input
+                                          type="checkbox"
+                                          className={`${s.checkbox} ${col.claseCheck}`}
+                                          disabled={!emp.puedeEditarConfig}
+                                          checked={emp.permisosActivos.includes(col.id)}
+                                          onChange={() => emp.togglePermiso(col.id)}
+                                        />
+                                      ) : (
+                                        <span className={s.permisoNA}>N/A</span>
+                                      )}
+                                    </td>
+                                  ))}
+                                </tr>
+                              </React.Fragment>
+                            );
+                        });
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
         </div>
       )}
+
       {/* --- SUBTAB: SUCURSALES --- */}
       {subTab === "sucursales" && hasPermission("ver_sucursales") && (
         <div className={s.splitLayout}>
@@ -517,50 +355,27 @@ export const EmpleadosTab = () => {
               <div className={s.formGroup}>
                 <label className={s.label}>NOMBRE</label>
                 <input
-                  className={s.inputField}
-                  value={emp.sucursalFormData.nombre}
-                  onChange={(e) =>
-                    emp.setSucursalFormData({
-                      ...emp.sucursalFormData,
-                      nombre: e.target.value,
-                    })
-                  }
-                  required
-                  readOnly={emp.editSucursalId ? !emp.puedeEditarSucursales : !emp.puedeCrearSucursales}
+                  className={s.inputField} value={emp.sucursalFormData.nombre}
+                  onChange={(e) => emp.setSucursalFormData({ ...emp.sucursalFormData, nombre: e.target.value })}
+                  required readOnly={emp.editSucursalId ? !emp.puedeEditarSucursales : !emp.puedeCrearSucursales}
                 />
               </div>
               <div className={s.formGroup}>
                 <label className={s.label}>DIRECCIÓN</label>
                 <input
-                  className={s.inputField}
-                  value={emp.sucursalFormData.direccion}
-                  onChange={(e) =>
-                    emp.setSucursalFormData({
-                      ...emp.sucursalFormData,
-                      direccion: e.target.value,
-                    })
-                  }
+                  className={s.inputField} value={emp.sucursalFormData.direccion}
+                  onChange={(e) => emp.setSucursalFormData({ ...emp.sucursalFormData, direccion: e.target.value })}
                   readOnly={emp.editSucursalId ? !emp.puedeEditarSucursales : !emp.puedeCrearSucursales}
                 />
               </div>
               <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
                 {(emp.editSucursalId ? emp.puedeEditarSucursales : emp.puedeCrearSucursales) && (
-                  <button
-                    type="submit"
-                    className={`${s.btn} ${s.btnPrimary}`}
-                    style={{ flex: 1 }}
-                  >
-                    GUARDAR SUCURSAL
-                  </button>
+                  <button type="submit" className={`${s.btn} ${s.btnPrimary}`} style={{ flex: 1 }}>GUARDAR SUCURSAL</button>
                 )}
                 {emp.editSucursalId && (
                   <button
-                    type="button"
-                    className={`${s.btn} ${s.btnDark}`}
-                    onClick={() => {
-                      emp.setEditSucursalId(null);
-                      emp.setSucursalFormData({ nombre: '', direccion: '' });
-                    }}
+                    type="button" className={`${s.btn} ${s.btnDark}`}
+                    onClick={() => { emp.setEditSucursalId(null); emp.setSucursalFormData({ nombre: '', direccion: '' }); }}
                   >
                     {emp.puedeEditarSucursales ? "CANCELAR" : "CERRAR"}
                   </button>
@@ -575,36 +390,24 @@ export const EmpleadosTab = () => {
                 <tr>
                   <th className={s.th}>NOMBRE</th>
                   <th className={s.th}>DIRECCIÓN</th>
-                  <th className={s.th} style={{ textAlign: "right" }}>
-                    ACCIONES
-                  </th>
+                  <th className={s.th} style={{ textAlign: "right" }}>ACCIONES</th>
                 </tr>
               </thead>
               <tbody>
                 {emp.sucursales.map((suc) => (
                   <tr key={suc.id}>
-                    <td className={s.td}>
-                      <strong>{suc.nombre}</strong>
-                    </td>
+                    <td className={s.td}><strong>{suc.nombre}</strong></td>
                     <td className={s.td}>{suc.direccion || "N/A"}</td>
                     <td className={s.td} style={{ textAlign: "right" }}>
                       <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
                         <button
                           className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`}
-                          onClick={() => {
-                            emp.setEditSucursalId(suc.id);
-                            emp.setSucursalFormData(suc);
-                          }}
+                          onClick={() => { emp.setEditSucursalId(suc.id); emp.setSucursalFormData(suc); }}
                         >
                           {emp.puedeEditarSucursales ? '📝' : '👁️'}
                         </button>
                         {emp.puedeBorrarSucursales && (
-                          <button
-                            className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`}
-                            onClick={() => emp.handleDeleteSucursal(suc.id, suc.nombre)}
-                          >
-                            ❌
-                          </button>
+                          <button className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`} onClick={() => emp.handleDeleteSucursal(suc.id, suc.nombre)}>❌</button>
                         )}
                       </div>
                     </td>
@@ -622,28 +425,14 @@ export const EmpleadosTab = () => {
 /**
  * SUB-COMPONENTE MEJORADO: SearchableSelect
  */
-const SearchableSelect = ({
-  options,
-  value,
-  onChange,
-  disabled,
-  placeholder = "Buscar...",
-  valueKey = "id",
-  labelKey = "nombre",
-  formatLabel,
-}) => {
+const SearchableSelect = ({ options, value, onChange, disabled, placeholder = "Buscar...", valueKey = "id", labelKey = "nombre", formatLabel }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    const selected = options.find(
-      (opt) => String(opt[valueKey]) === String(value),
-    );
-    if (selected) {
-      setSearchTerm(selected[labelKey]);
-    } else {
-      setSearchTerm("");
-    }
+    const selected = options.find((opt) => String(opt[valueKey]) === String(value));
+    if (selected) setSearchTerm(selected[labelKey]);
+    else setSearchTerm("");
   }, [value, options, valueKey, labelKey]);
 
   const filteredOptions = options.filter((opt) =>
@@ -653,54 +442,25 @@ const SearchableSelect = ({
   return (
     <div style={{ position: "relative" }}>
       <input
-        type="text"
-        className={s.inputField}
-        value={searchTerm}
-        disabled={disabled}
-        placeholder={placeholder}
+        type="text" className={s.inputField} value={searchTerm} disabled={disabled} placeholder={placeholder}
         style={{ backgroundColor: disabled ? "var(--color-bg-app)" : "white" }}
-        onChange={(e) => {
-          setSearchTerm(e.target.value);
-          setIsOpen(true);
-          if (value) onChange("");
-        }}
+        onChange={(e) => { setSearchTerm(e.target.value); setIsOpen(true); if (value) onChange(""); }}
         onFocus={() => setIsOpen(true)}
-        onBlur={() => {
-          setTimeout(() => {
-            setIsOpen(false);
-            const selected = options.find(
-              (opt) => String(opt[valueKey]) === String(value),
-            );
-            if (selected) setSearchTerm(selected[labelKey]);
-            else setSearchTerm("");
-          }, 200);
-        }}
+        onBlur={() => { setTimeout(() => { setIsOpen(false); const selected = options.find((opt) => String(opt[valueKey]) === String(value)); if (selected) setSearchTerm(selected[labelKey]); else setSearchTerm(""); }, 200); }}
       />
-
       {isOpen && !disabled && (
         <ul className={s.dropdownList}>
           {filteredOptions.length > 0 ? (
             filteredOptions.map((opt, index) => (
               <li
-                key={index}
-                className={s.dropdownItem}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  onChange(opt[valueKey]);
-                  setSearchTerm(opt[labelKey]);
-                  setIsOpen(false);
-                }}
+                key={index} className={s.dropdownItem}
+                onMouseDown={(e) => { e.preventDefault(); onChange(opt[valueKey]); setSearchTerm(opt[labelKey]); setIsOpen(false); }}
               >
                 {formatLabel ? formatLabel(opt) : opt[labelKey]}
               </li>
             ))
           ) : (
-            <li
-              className={s.dropdownItem}
-              style={{ color: "var(--color-text-muted)" }}
-            >
-              No se encontraron coincidencias...
-            </li>
+            <li className={s.dropdownItem} style={{ color: "var(--color-text-muted)" }}>No se encontraron coincidencias...</li>
           )}
         </ul>
       )}

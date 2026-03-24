@@ -1,5 +1,6 @@
 // Archivo: src/services/CajaService.js
 import { supabase } from '../lib/supabaseClient';
+import { hasPermission } from '../utils/checkPermiso'; // 🛡️ Importamos el validador
 
 export const CajaService = {
 
@@ -22,28 +23,32 @@ export const CajaService = {
      ========================================== */
 
   getSesionActiva: async (usuarioId, sucursalId) => {
-    // 🛡️ Se agrega sucursalId para asegurar que la sesión pertenezca a la sucursal actual
+    // 🛡️ Filtro por sucursalId para asegurar que la sesión pertenezca a la sucursal actual
     const { data, error } = await supabase
       .from('cajas_sesiones')
       .select('*')
       .is('fecha_cierre', null)
       .eq('usuario_id', usuarioId)
-      .eq('sucursal_id', sucursalId) // Filtro por sucursal
-      .eq('estado', 'abierto')       // Consistencia con el término masculino
+      .eq('sucursal_id', sucursalId) 
+      .eq('estado', 'abierto')       
       .maybeSingle();
     return { data, error };
   },
 
   abrirCaja: async (datos) => {
-    // 🔴 CORRECCIÓN CRÍTICA: Se incluye sucursal_id para evitar valores NULL en la DB
-    // Esto permite que el candado del MeseroTab reconozca la caja abierta
+    // 🛡️ Seguridad: Solo usuarios con permiso de edición pueden abrir caja
+    if (!hasPermission('editar_ventas')) {
+      return { data: null, error: { message: "No tienes permisos para abrir la caja." } };
+    }
+
+    // 🔴 PUNTO CLAVE: Aquí se inserta el sucursal_id que el Mesero buscará después
     const { data, error } = await supabase
       .from('cajas_sesiones')
       .insert([{ 
         usuario_id: datos.usuario_id,
-        sucursal_id: datos.sucursal_id, // <--- CAMBIO: Ahora se guarda la sucursal
+        sucursal_id: datos.sucursal_id, 
         monto_apertura: parseFloat(datos.monto_apertura),
-        estado: 'abierto',             // Consistencia con 'abierto' 
+        estado: 'abierto',             
         fecha_apertura: new Date().toISOString() 
       }])
       .select()
@@ -52,6 +57,10 @@ export const CajaService = {
   },
 
   cerrarCaja: async (sesionId, datosCierre) => {
+    if (!hasPermission('editar_ventas')) {
+      return { data: null, error: { message: "No tienes permisos para cerrar la caja." } };
+    }
+
     const { data, error } = await supabase
       .from('cajas_sesiones')
       .update({ 
@@ -71,6 +80,10 @@ export const CajaService = {
      ========================================== */
 
   registrarMovimiento: async (movimiento) => {
+    if (!hasPermission('editar_ventas')) {
+      return { data: null, error: { message: "No tienes permisos para registrar movimientos." } };
+    }
+
     const { data, error } = await supabase
       .from('caja_movimientos')
       .insert([{
@@ -85,6 +98,8 @@ export const CajaService = {
   },
 
   getMovimientosSesion: async (turnoId) => {
+    if (!hasPermission('ver_ventas')) return { data: [], error: null };
+
     const { data, error } = await supabase
       .from('caja_movimientos')
       .select('*')
@@ -97,25 +112,38 @@ export const CajaService = {
      4. CÁLCULOS DE ARQUEO Y VENTAS
      ========================================== */
 
-  getTotalesEfectivoSesion: async (fechaApertura) => {
-    const { data, error } = await supabase
+  getTotalesEfectivoSesion: async (fechaApertura, sucursalId) => {
+    let query = supabase
       .from('ventas')
       .select('total')
       .gte('hora_cierre', fechaApertura) 
       .eq('metodo_pago', 'efectivo')
       .eq('estado', 'pagado');
-    
+
+    if (sucursalId) {
+      query = query.eq('sucursal_id', sucursalId);
+    }
+
+    const { data, error } = await query;
     const totalVentas = data?.reduce((acc, curr) => acc + curr.total, 0) || 0;
     return { totalVentas, error };
   },
 
-  getHistorialSesiones: async (limit = 20) => {
-    const { data, error } = await supabase
+  getHistorialSesiones: async (sucursalId, limit = 20) => {
+    if (!hasPermission('ver_ventas')) return { data: [], error: null };
+
+    let query = supabase
       .from('cajas_sesiones')
       .select('*')
       .not('fecha_cierre', 'is', null)
       .order('fecha_apertura', { ascending: false })
       .limit(limit);
+
+    if (sucursalId) {
+      query = query.eq('sucursal_id', sucursalId);
+    }
+
+    const { data, error } = await query;
     return { data, error };
   },
 
@@ -123,16 +151,28 @@ export const CajaService = {
      5. COBROS Y GESTIÓN DE CUENTAS 
      ========================================== */
 
-  getVentasPendientes: async () => {
-    const { data, error } = await supabase
+  getVentasPendientes: async (sucursalId) => {
+    if (!hasPermission('ver_ventas')) return { data: [], error: null };
+
+    let query = supabase
       .from('ventas')
       .select('*')
       .in('estado', ['abierta', 'pendiente', 'por_cobrar'])
       .order('created_at', { ascending: false });
+
+    if (sucursalId) {
+      query = query.eq('sucursal_id', sucursalId);
+    }
+
+    const { data, error } = await query;
     return { data, error };
   },
 
   finalizarVenta: async (idVenta, datos) => {
+    if (!hasPermission('editar_ventas')) {
+      return { data: null, error: { message: "No tienes permisos para cobrar cuentas." } };
+    }
+
     const { data, error } = await supabase
       .from('ventas')
       .update({
@@ -146,9 +186,11 @@ export const CajaService = {
   },
 
   getDetalleVenta: async (idVenta) => {
+    if (!hasPermission('ver_ventas')) return { data: [], error: null };
+
     const { data, error } = await supabase
       .from('ventas_detalle')
-      .select('*') // Si tienes error PGRST201 aquí, usa: .select('*, ventas!venta_id(*)')
+      .select('*, productos(nombre)') 
       .eq('venta_id', idVenta);
     return { data, error };
   }

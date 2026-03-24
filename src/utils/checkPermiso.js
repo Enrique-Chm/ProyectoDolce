@@ -4,24 +4,28 @@
  * 📋 MATRIZ DE MÓDULOS (CRUD Sincronizado)
  * El slug base define la familia de permisos.
  * La tabla visual de 4 columnas usará este slug para buscar automáticamente:
- * ver_X, crear_X, editar_X y borrar_X.
+ * ver_[slug], crear_[slug], editar_[slug] y borrar_[slug].
  */
 export const MATRIZ_MODULOS = [
-  // --- Operación Principal ---
-  { label: 'Ventas, Caja y Tickets',              slug: 'ver_ventas' },
-  { label: 'Inventarios y Mermas',                slug: 'ver_inventario' },
-  
-  // --- Administración ---
-  { label: 'Finanzas: Gastos Operativos',         slug: 'ver_gastos' }, // 👈 ¡NUEVO MÓDULO AGREGADO AQUÍ!
-  { label: 'Equipo, Roles y Permisos',            slug: 'ver_usuarios' },
-  { label: 'Gestión de Sucursales',               slug: 'ver_sucursales' },
-  { label: 'Configuración General e Impresoras',  slug: 'ver_configuracion' },
-  
-  // --- Catálogos Maestros ---
-  { label: 'Catálogo: Insumos (Stock)',           slug: 'ver_insumos' },
-  { label: 'Catálogo: Productos (Menú)',          slug: 'ver_productos' },
-  { label: 'Catálogo: Proveedores',               slug: 'ver_proveedores' },
-  { label: 'Catálogo: Recetas',                   slug: 'ver_recetas' }
+  // --- GRUPO: SERVICIO Y ATENCIÓN ---
+  { label: 'Toma de Pedidos (Comandas)', slug: 'comandas', cat: 'SERVICIO' },
+  { label: 'Catálogo de Platillos (Precios)', slug: 'productos', cat: 'SERVICIO' },
+
+  // --- GRUPO: CONTROL DE DINERO ---
+  { label: 'Dashboard y Reportes', slug: 'analitica', cat: 'FINANZAS' }, 
+  { label: 'Punto de Venta y Caja', slug: 'ventas', cat: 'FINANZAS' },
+  { label: 'Gastos Operativos', slug: 'gastos', cat: 'FINANZAS' },
+
+  // --- GRUPO: ALMACÉN E INVENTARIOS ---
+  { label: 'Inventarios y Mermas', slug: 'inventario', cat: 'ALMACEN' },
+  { label: 'Catálogo de Insumos (Stock)', slug: 'insumos', cat: 'ALMACEN' },
+  { label: 'Gestión de Recetas', slug: 'recetas', cat: 'ALMACEN' },
+  { label: 'Gestión de Proveedores', slug: 'proveedores', cat: 'ALMACEN' },
+
+  // --- GRUPO: ADMINISTRACIÓN ---
+  { label: 'Equipo y Roles', slug: 'usuarios', cat: 'ADMIN' },
+  { label: 'Gestión de Sucursales', slug: 'sucursales', cat: 'ADMIN' },
+  { label: 'Ajustes e Impresoras', slug: 'configuracion', cat: 'ADMIN' }
 ];
 
 /**
@@ -43,6 +47,7 @@ export const hasPermission = (clave) => {
     if (esAdmin) return true;
 
     // 2. Verificación de Permiso Específico en el array de la sesión
+    // .trim() elimina espacios accidentales y .toLowerCase() asegura consistencia
     return session.permisos?.includes(clave.trim()) || false;
   } catch (error) {
     console.error("Error en hasPermission:", error);

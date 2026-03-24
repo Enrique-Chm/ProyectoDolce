@@ -4,31 +4,42 @@ import { hasPermission } from '../utils/checkPermiso';
 
 export const inventarioService = {
 
+  /**
+   * Obtiene el catálogo de insumos cruzado con el stock actual de la sucursal.
+   */
   async getInsumos(sucursalId) {
     if (!hasPermission('ver_inventario')) return [];
 
-    // 🛡️ SOLUCIÓN DEFINITIVA:
-    // 1. Usamos 'cat_unidades_medida!lista_insumo_unidad_medida_fkey' para la unidad.
-    // 2. Usamos 'cat_categoria_insumos!fk_lista_insumo_categoria' para resolver la duplicidad de la categoría.
+    /**
+     * 🛡️ SOLUCIÓN DEFINITIVA PGRST200:
+     * Usamos los nombres de los constraints definidos en SQL (!fk_insumo_unidad y !fk_insumo_categoria).
+     * Esto ignora cualquier duplicidad en el esquema de Supabase.
+     */
     const { data: catalogo, error: errC } = await supabase
       .from('lista_insumo')
       .select(`
         id, 
         nombre, 
-        cat_unidades_medida!lista_insumo_unidad_medida_fkey (abreviatura), 
-        cat_categoria_insumos!fk_lista_insumo_categoria (nombre)
+        cat_unidades_medida!fk_insumo_unidad (abreviatura), 
+        cat_categoria_insumos!fk_insumo_categoria (nombre)
       `);
 
     if (errC) {
-      console.error("Error al sincronizar catálogo:", errC);
+      console.error("Error al sincronizar catálogo de insumos:", errC);
       throw errC;
     }
 
-    const { data: saldos } = await supabase
+    // Traemos los saldos actuales por sucursal para cruzar la información
+    const { data: saldos, error: errS } = await supabase
       .from('stock_sucursal')
       .select('insumo_id, cantidad_actual')
       .eq('sucursal_id', sucursalId);
 
+    if (errS) {
+      console.error("Error al obtener saldos de sucursal:", errS);
+    }
+
+    // Mapeamos los datos para entregar un objeto limpio al Frontend
     return catalogo.map(item => {
       const saldoObj = saldos?.find(s => s.insumo_id === item.id);
       
@@ -36,26 +47,32 @@ export const inventarioService = {
         id: item.id,
         nombre: item.nombre || '',
         caja_master: saldoObj ? parseFloat(saldoObj.cantidad_actual) : 0,
-        // Acceso directo a las propiedades mapeadas
+        // Acceso directo a través de los alias resueltos por Supabase
         unidad: item.cat_unidades_medida?.abreviatura || 'pz',
         categoria: item.cat_categoria_insumos?.nombre || 'General'
       };
     });
   },
 
+  /**
+   * Registra un movimiento en el Kardex y actualiza el stock físico.
+   */
   async crearMovimiento(movimiento) {
     if (!hasPermission('crear_inventario')) {
-      return { success: false, error: 'Acceso denegado.' };
+      return { success: false, error: 'Acceso denegado: No tienes permisos para crear movimientos.' };
     }
 
     try {
+      // 1. Insertar el registro histórico en inventario_movimientos
       const { data: movData, error: errorMov } = await supabase
         .from('inventario_movimientos')
         .insert([movimiento])
-        .select().single();
+        .select()
+        .single();
 
       if (errorMov) throw errorMov;
 
+      // 2. Sincronizar el stock real en stock_sucursal (Ajuste perpetuo)
       const { error: errorUpsert } = await supabase
         .from('stock_sucursal')
         .upsert({ 
@@ -66,21 +83,27 @@ export const inventarioService = {
         }, { onConflict: 'sucursal_id, insumo_id' });
 
       if (errorUpsert) throw errorUpsert;
+      
       return { success: true, data: movData };
     } catch (error) {
+      console.error("Error crítico en movimiento:", error);
       return { success: false, error: error.message };
     }
   },
 
+  /**
+   * Motor de Auditoría: Compara Stock Inicial + Compras - Ventas vs Real
+   */
   async calcularContraste(sucursalId, fechaInicio, fechaFin) {
     if (!hasPermission('ver_inventario')) {
-      return { data: null, error: 'No tienes permiso.' };
+      return { data: null, error: 'Acceso denegado.' };
     }
 
     try {
       const fInicioISO = `${fechaInicio}T00:00:00.000Z`;
       const fFinISO = `${fechaFin}T23:59:59.999Z`;
 
+      // Obtenemos catálogo fresco
       const insumos = await inventarioService.getInsumos(sucursalId);
 
       const [recetas, ventasDetalle, movimientos] = await Promise.all([
@@ -140,11 +163,14 @@ export const inventarioService = {
         error: null
       };
     } catch (err) {
-      console.error("Error en cálculo de contraste:", err);
+      console.error("Error en motor de contraste:", err);
       return { data: null, error: err.message };
     }
   },
 
+  /**
+   * Aplica un ajuste de inventario real tras auditoría física.
+   */
   async aplicarAuditoriaInsumo({ sucursal_id, insumo_id, stock_esperado, conteo_fisico, usuario_id }) {
     if (!hasPermission('editar_inventario')) {
       return { success: false, error: 'Acceso denegado.' };
@@ -156,6 +182,7 @@ export const inventarioService = {
       const diferenciaTotal = fisico - esperado;
       const timestamp = new Date().toISOString();
 
+      // Solo si hay discrepancia mayor a un gramo/unidad registramos el movimiento
       if (Math.abs(diferenciaTotal) >= 0.001) {
         const { error: errMov } = await supabase.from('inventario_movimientos').insert([{
           sucursal_id,
@@ -172,6 +199,7 @@ export const inventarioService = {
         if (errMov) throw errMov;
       }
 
+      // Actualización mandatoria del stock en sucursal
       const { error: errUpsert } = await supabase.from('stock_sucursal').upsert({
         sucursal_id,
         insumo_id,
@@ -182,19 +210,27 @@ export const inventarioService = {
       if (errUpsert) throw errUpsert;
       return { success: true };
     } catch (error) {
+      console.error("Error al guardar ajuste físico:", error);
       return { success: false, error: error.message };
     }
   },
 
   async getMotivos() {
     if (!hasPermission('ver_inventario')) return [];
-    const { data } = await supabase.from('cat_motivos_inventario').select('*').eq('activo', true);
+    const { data } = await supabase
+      .from('cat_motivos_inventario')
+      .select('*')
+      .eq('activo', true);
     return data || [];
   },
 
   async getMovimientos(sucursalId) {
     if (!hasPermission('ver_inventario')) return [];
-    const { data } = await supabase.from('inventario_movimientos').select('*, insumo:insumo_id(nombre)').eq('sucursal_id', sucursalId).order('created_at', { ascending: false });
+    const { data } = await supabase
+      .from('inventario_movimientos')
+      .select('*, insumo:insumo_id(nombre)')
+      .eq('sucursal_id', sucursalId)
+      .order('created_at', { ascending: false });
     return data || [];
   }
 };

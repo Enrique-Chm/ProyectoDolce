@@ -1,6 +1,6 @@
 // Archivo: src/modules/Admin/components/InventariosTab.jsx
 import React, { useState, useMemo, useEffect } from 'react';
-import { useInventarios } from "../../../hooks/useInventariosTab"; // ✅ Ruta y nombre corregidos
+import { useInventarios } from "../../../hooks/useInventariosTab"; // ✅ Nombre de hook estandarizado
 import s from "../AdminPage.module.css"; 
 
 const InventariosTab = ({ sucursalId, usuarioId }) => {
@@ -44,7 +44,7 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
   // --- HANDLERS ---
   const handleSubmitMovimiento = async (e) => {
     e.preventDefault();
-    // 🛡️ Bloqueo de seguridad: Crear movimientos requiere permiso de creación
+    // 🛡️ Bloqueo de seguridad
     if (!puedeCrear) return; 
     if (!nuevoMov.insumo_id) return alert("Por favor selecciona un insumo de la lista.");
 
@@ -59,7 +59,7 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
   };
 
   const handleGuardarConteo = async (row) => {
-    // 🛡️ Bloqueo de seguridad: Auditar requiere permiso de edición
+    // 🛡️ Bloqueo de seguridad
     if (!puedeEditar) return; 
     const valorFisico = conteos[row.id];
     
@@ -89,19 +89,19 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
           className={`${s.tabButton} ${activeSubTab === 'stock' ? s.activeTabButton : ''}`} 
           onClick={() => setActiveSubTab('stock')}
         >
-           EXISTENCIAS
+            EXISTENCIAS
         </button>
         <button 
           className={`${s.tabButton} ${activeSubTab === 'movimientos' ? s.activeTabButton : ''}`} 
           onClick={() => setActiveSubTab('movimientos')}
         >
-           HISTORIAL
+            HISTORIAL
         </button>
         <button 
           className={`${s.tabButton} ${activeSubTab === 'contraste' ? s.activeTabButton : ''}`} 
           onClick={() => setActiveSubTab('contraste')}
         >
-           AUDITORÍA / CIERRE
+            AUDITORÍA / CIERRE
         </button>
       </nav>
 

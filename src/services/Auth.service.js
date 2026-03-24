@@ -1,14 +1,9 @@
-// Archivo: src/services/auth.service.js
+// Archivo: src/services/Auth.service.js
 import { supabase } from '../lib/supabaseClient';
 
 export const authService = {
-  /**
-   * Intenta iniciar sesión y registra un ID de instancia único.
-   */
   async login(username, password) {
     try {
-      // 1. Buscamos al usuario (Mantenemos tu lógica de tabla personalizada)
-      // Agregamos una limpieza básica de strings para evitar espacios accidentales
       const cleanUsername = username.trim();
 
       const { data: usuario, error } = await supabase
@@ -24,18 +19,14 @@ export const authService = {
           roles (nombre_rol)
         `)
         .eq('username', cleanUsername)
-        .eq('password_hash', password) // 🛡️ Asumimos que el hash se maneja antes de llegar aquí
+        .eq('password_hash', password) 
         .eq('status', 'activo')
         .single();
 
-      if (error || !usuario) {
-        throw new Error('Credenciales inválidas o usuario inactivo.');
-      }
+      if (error || !usuario) throw new Error('Credenciales inválidas o usuario inactivo.');
 
-      // 2. GENERAMOS UN ID DE SESIÓN ÚNICO (Prevención de secuestro de sesión)
       const uniqueSessionId = crypto.randomUUID();
 
-      // 3. ACTUALIZAMOS LA DB: Esto permite invalidar sesiones viejas en otros dispositivos
       const { error: updateError } = await supabase
         .from('usuarios_internos')
         .update({ session_id: uniqueSessionId })
@@ -43,7 +34,7 @@ export const authService = {
 
       if (updateError) throw updateError;
 
-      // 4. Obtenemos permisos (La base del blindaje de los otros servicios)
+      // 4. Obtenemos permisos con la técnica a prueba de fallos
       const permisos = await this.getPermisosByRol(usuario.rol_id);
 
       const sessionData = {
@@ -59,9 +50,7 @@ export const authService = {
         loginAt: new Date().toISOString()
       };
 
-      // Guardamos en localStorage (Blindaje: Solo guardamos lo necesario)
       localStorage.setItem('cloudkitchen_session', JSON.stringify(sessionData));
-      
       return sessionData;
     } catch (error) {
       console.error("🛡️ Error crítico en Auth:", error.message);
@@ -69,26 +58,34 @@ export const authService = {
     }
   },
 
-  /**
-   * Obtiene las claves de permiso del rol (Maestro de permisos)
-   */
   async getPermisosByRol(rolId) {
-    const { data, error } = await supabase
-      .from('rol_permisos')
-      .select(`permisos (clave_permiso)`)
-      .eq('rol_id', rolId);
+    try {
+      // PASO 1: Consulta 100% plana. Imposible que dé error PGRST200 o PGRST201
+      const { data: rolPermisos, error: err1 } = await supabase
+        .from('rol_permisos')
+        .select('permiso_id')
+        .eq('rol_id', rolId);
 
-    if (error) {
-      console.error("Error cargando matriz de permisos:", error);
+      if (err1) throw err1;
+      if (!rolPermisos || rolPermisos.length === 0) return [];
+
+      const permisosIds = rolPermisos.map(rp => rp.permiso_id);
+
+      // PASO 2: Consulta plana a la tabla de permisos
+      const { data: permisosData, error: err2 } = await supabase
+        .from('permisos')
+        .select('clave_permiso')
+        .in('id', permisosIds);
+
+      if (err2) throw err2;
+
+      return permisosData.map(p => p.clave_permiso);
+    } catch (error) {
+      console.error("Error cargando matriz de permisos en 2 pasos:", error);
       return [];
     }
-    // Aplanamos el array para que hasPermission pueda hacer .includes() fácilmente
-    return data.map(p => p.permisos.clave_permiso);
   },
 
-  /**
-   * Recupera la sesión actual del almacenamiento local
-   */
   getCurrentSession() {
     try {
       const session = localStorage.getItem('cloudkitchen_session');
@@ -98,16 +95,8 @@ export const authService = {
     }
   },
 
-  /**
-   * Finaliza la sesión y limpia el rastro local
-   */
   logout() {
-    // 🛡️ Seguridad: Limpiamos todo el almacenamiento relacionado
     localStorage.removeItem('cloudkitchen_session');
-    
-    // Opcional: Podrías llamar a Supabase aquí para borrar el session_id de la DB
-    // si quisieras invalidar la sesión también en el servidor.
-
-    window.location.href = '/login'; // Redirección limpia
+    window.location.href = '/login'; 
   }
 };

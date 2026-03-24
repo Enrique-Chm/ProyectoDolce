@@ -10,7 +10,9 @@ export const productosService = {
   async getInitialData(sucursalId) {
     try {
       // 🛡️ Blindaje: Verificación de lectura
+      // El Mesero DEBE tener este permiso marcado en la matriz para ver el menú
       if (!hasPermission('ver_productos')) {
+        console.warn("Bloqueo de seguridad: El usuario no tiene permiso 'ver_productos'");
         return { productos: [], categorias: [], costosMap: [], listaRecetas: [], gruposModificadores: [] };
       }
 

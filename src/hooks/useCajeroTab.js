@@ -1,10 +1,9 @@
 // Archivo: src/hooks/useCajeroTab.js
 import { useState, useEffect, useCallback } from "react";
 import { CajaService } from "../services/Caja.service";
-import { hasPermission } from "../utils/checkPermiso"; // 🛡️ Importación de seguridad
+import { hasPermission } from "../utils/checkPermiso"; 
 import Swal from "sweetalert2";
 
-// 🔴 ACTUALIZACIÓN: Ahora recibe sucursalId para vincular el turno correctamente
 export const useCajeroTab = (usuarioId, sucursalId) => {
   const [loading, setLoading] = useState(true);
   const [sesionActiva, setSesionActiva] = useState(null);
@@ -40,7 +39,6 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
       }
 
       // 2. Obtener sesión activa
-      // 🔴 ACTUALIZACIÓN: Se envía sucursalId para filtrar correctamente
       const { data: sesion } = await CajaService.getSesionActiva(usuarioId, sucursalId);
       setSesionActiva(sesion);
 
@@ -53,14 +51,15 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
       }
 
       // 4. Cargar historial de sesiones cerradas
-      const { data: hist } = await CajaService.getHistorialSesiones();
+      // 🛡️ FIX MULTITIENDA: Pasamos sucursalId para no ver historiales de otras sucursales
+      const { data: hist } = await CajaService.getHistorialSesiones(sucursalId);
       setHistorial(hist || []);
     } catch (error) {
       console.error("Error en sincronización de caja:", error);
     } finally {
       setLoading(false);
     }
-  }, [usuarioId, sucursalId, puedeVer]); // 🛡️ sucursalId agregada como dependencia
+  }, [usuarioId, sucursalId, puedeVer]); 
 
   useEffect(() => {
     cargarDatosCaja();
@@ -94,10 +93,9 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
       return Swal.fire("Error", "Ingresa un monto de apertura válido", "error");
     }
 
-    // 🔴 ACTUALIZACIÓN: Se incluye sucursal_id en el payload para evitar el NULL en la DB
     const { data, error } = await CajaService.abrirCaja({
       usuario_id: usuarioId,
-      sucursal_id: sucursalId, // <--- Este campo es el que "abre" el candado del mesero
+      sucursal_id: sucursalId, 
       monto_apertura: montoNum,
     });
 
@@ -160,7 +158,8 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
       return Swal.fire("Error", "Ingresa el monto físico contado", "error");
     }
 
-    const { totalVentas } = await CajaService.getTotalesEfectivoSesion(sesionActiva.fecha_apertura);
+    // 🛡️ FIX MULTITIENDA: Pasamos sucursalId para no sumar ventas de otras sucursales
+    const { totalVentas } = await CajaService.getTotalesEfectivoSesion(sesionActiva.fecha_apertura, sucursalId);
     
     const ingresos = movimientos
       .filter((m) => {
@@ -212,7 +211,7 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
 
   return {
     loading,
-    sesionActiva: puedeVer ? sesionActiva : null, // 🛡️ Datos ocultos si no hay permiso
+    sesionActiva: puedeVer ? sesionActiva : null,
     movimientos: puedeVer ? movimientos : [],
     historial: puedeVer ? historial : [],
     motivosCatalogo,
@@ -222,7 +221,6 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
     cerrarTurno,
     registrarMovimientoEfectivo,
     refrescarTodo: cargarDatosCaja,
-    // 🛡️ Banderas de UI para el componente JSX
     puedeVer,
     puedeEditar
   };
