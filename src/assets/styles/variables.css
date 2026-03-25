@@ -2,6 +2,7 @@
 :root {
   /* Colores de Marca (Unificados del Comandero y Admin) */
   --color-primary: #005696;
+  --color-primary-rgb: 0, 86, 150; /* Necesario para rgba() */
   --color-primary-hover: #004477;
   --color-secondary: #64748b;
 
@@ -20,14 +21,15 @@
   --color-text-main: #090a0e;
   --color-text-muted: #42454b;
   --color-text-white: #ffffff;
-  --color-text-blue: var(--color-primary-hover) /* Bordes y Sombras */
-    --color-border-dark: #d1d5db;
+  --color-text-blue: var(--color-primary-hover); /* Bordes y Sombras */
+  --color-border-dark: #d1d5db;
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
   --color-border: #d1d5db;
-  /* Tipografía y Formas */
-  --font-main: "Inter", sans-serif;
-  --radius-ui: 8px;
-  --radius-card: 16px;
-  --radius-button: 12px;
+
+/* Tipografía y Formas */
+  --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --radius-ui: 12px;     /* Elementos internos más suaves */
+  --radius-button: 12px; /* Botones accesibles y redondeados */
+  --radius-card: 24px;   /* Tarjetas con curvas amplias y modernas */
 }

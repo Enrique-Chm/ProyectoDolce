@@ -5,6 +5,7 @@ import { hasPermission } from '../utils/checkPermiso'; // 🛡️ Importación d
 /**
  * SERVICIO DE PROVEEDORES
  * Centraliza la lógica de persistencia para el directorio de contactos.
+ * NOTA: Los proveedores son globales en este sistema (no filtrados por sucursal).
  */
 export const proveedoresService = {
   

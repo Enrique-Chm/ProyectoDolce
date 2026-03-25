@@ -56,12 +56,6 @@
   flex-wrap: wrap; /* Permite que los elementos bajen de línea si no caben */
 }
 
-.topBarTitle {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--color-text-main);
-}
-
 .userInfo {
   display: flex;
   align-items: center;
@@ -281,7 +275,6 @@
 .btnPrimary { background-color: var(--color-primary); color: white; }
 .btnPrimary:hover:not(:disabled) { filter: brightness(1.1); box-shadow: var(--shadow-sm); }
 
-.btnSec { background-color: #10b981; color: white; }
 .btnSuccess { background-color: #10b981; color: white; }
 .btnSuccess:hover:not(:disabled) { filter: brightness(1.1); box-shadow: var(--shadow-sm); }
 
@@ -538,22 +531,23 @@
 /* =========================================
    LOGIN
    ========================================= */
+
 .loginWrapper {
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background-color: var(--bg-main);
+  background-color: var(--color-bg-app); /* Corregido */
   padding: 20px;
 }
 
 .loginCard {
-  background-color: var(--bg-card);
+  background-color: var(--color-bg-card); /* Corregido */
   width: 100%;
   max-width: 400px;
   padding: 40px;
   border-radius: var(--radius-ui);
-  box-shadow: var(--shadow-main);
+  box-shadow: var(--shadow-md); /* Corregido */
   border: 1px solid var(--color-border);
 }
 
@@ -777,7 +771,7 @@
 
 .analyticsTitle {
   font-size: 1.6rem;
-  font-weight: 900;
+  font-weight: 800;
   margin: 0;
   color: var(--color-text-main);
 }
@@ -847,14 +841,14 @@
 
 .metricLabel {
   font-size: 9px;
-  font-weight: 900;
+  font-weight: 600;
   color: var(--color-text-muted);
   letter-spacing: 0.5px;
 }
 
 .metricValue {
   font-size: 1.6rem;
-  font-weight: 900;
+  font-weight: 600;
   margin-top: 8px;
   letter-spacing: -1px;
 }

@@ -2,9 +2,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { proveedoresService } from '../services/Proveedores.service';
 import { hasPermission } from '../utils/checkPermiso';
-import toast from 'react-hot-toast'; // 👈 Importamos el "Asistente" para notificaciones
+import toast from 'react-hot-toast'; 
 
-export const useProveedoresTab = () => {
+export const useProveedoresTab = () => { // 👈 Eliminado sucursalId ya que los proveedores son globales
   const [proveedores, setProveedores] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editId, setEditId] = useState(null);
@@ -31,15 +31,16 @@ export const useProveedoresTab = () => {
 
     try {
       setLoading(true);
-      const data = await proveedoresService.getAll();
+      // 👈 Llamada al servicio sin parámetros de sucursal
+      const data = await proveedoresService.getAll(); 
       setProveedores(data);
     } catch (error) {
       console.error("Error al cargar proveedores:", error);
-      toast.error("Error al sincronizar el directorio de proveedores."); // 👈 Aviso silencioso de error
+      toast.error("Error al sincronizar el directorio de proveedores.");
     } finally {
       setLoading(false);
     }
-  }, [puedeVer]);
+  }, [puedeVer]); // 👈 Dependencia limpia
 
   useEffect(() => {
     fetchData();
@@ -69,49 +70,46 @@ export const useProveedoresTab = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    // 🛡️ Validación dinámica de ejecución
+    if (e) e.preventDefault();
+    
     const tienePermiso = editId ? puedeEditar : puedeCrear;
     if (!tienePermiso) {
-      return toast.error("Acceso denegado para gestionar proveedores."); // 👈 Toast rojo
+      return toast.error("Acceso denegado para gestionar proveedores.");
     }
 
     setLoading(true);
-    // 👈 Mostramos el Toast de "Cargando"
     const guardandoToast = toast.loading(editId ? "Actualizando datos..." : "Registrando proveedor...");
 
     try {
-      const { error } = await proveedoresService.save(formData, editId);
+      // 💡 Payload limpio: sin sucursal_id para evitar errores de columna inexistente
+      const payload = { ...formData };
+
+      const { error } = await proveedoresService.save(payload, editId);
       if (error) throw error;
       
-      // 👈 Si todo sale bien, transformamos el Toast a éxito
-      toast.success(editId ? "Proveedor actualizado con éxito" : "Proveedor registrado con éxito", { id: guardandoToast });
+      toast.success(editId ? "Proveedor actualizado" : "Proveedor registrado", { id: guardandoToast });
       
       resetForm();
       await fetchData();
     } catch (error) {
-      // 👈 Si falla, transformamos el Toast a error
-      toast.error("Error al procesar la solicitud: " + error.message, { id: guardandoToast });
+      toast.error("Error al procesar: " + error.message, { id: guardandoToast });
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (id, nombre) => {
-    // 🛡️ Validación de borrado
     if (!puedeBorrar) {
       return toast.error("Acceso denegado: No tienes permiso para borrar proveedores.");
     }
 
-    // 🚀 La confirmación (window.confirm) ya se hace visualmente en ProveedoresTab.jsx con SweetAlert2.
-    // Aquí recibimos la orden directa y la ejecutamos mostrando el estado.
     const borrandoToast = toast.loading(`Eliminando al proveedor "${nombre}"...`);
 
     try {
       const { error } = await proveedoresService.delete(id);
       if (error) throw error;
       
-      toast.success(`Proveedor "${nombre}" eliminado correctamente`, { id: borrandoToast });
+      toast.success(`Proveedor "${nombre}" eliminado`, { id: borrandoToast });
       await fetchData();
     } catch (error) {
       toast.error("Error al eliminar: " + error.message, { id: borrandoToast });

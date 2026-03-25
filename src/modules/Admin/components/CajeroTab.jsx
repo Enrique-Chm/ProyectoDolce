@@ -219,11 +219,11 @@ export const CajeroTab = ({ usuarioId, sucursalId }) => {
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
                     
-                    {/* 🛎️ SECCIÓN 1: MESAS POR COBRAR (PRIORIDAD ALTA) */}
+                    {/*  SECCIÓN 1: MESAS POR COBRAR (PRIORIDAD ALTA) */}
                     {mesasPorCobrar.length > 0 && (
                       <div>
                         <h3 className={stylesAdmin.cardTitle} style={{ marginBottom: '15px', color: 'var(--color-warning)' }}>
-                           🛎️ Por Cobrar
+                            Por Cobrar
                         </h3>
                         <div className={s.productGrid}>
                           {mesasPorCobrar.map((venta) => (
@@ -246,11 +246,11 @@ export const CajeroTab = ({ usuarioId, sucursalId }) => {
                       </div>
                     )}
 
-                    {/* ⏳ SECCIÓN 2: MESAS ACTIVAS / CONSUMIENDO */}
+                    {/*  SECCIÓN 2: MESAS ACTIVAS / CONSUMIENDO */}
                     {mesasActivas.length > 0 && (
                       <div>
                         <h3 className={stylesAdmin.cardTitle} style={{ marginBottom: '15px', color: 'var(--color-text-muted)', borderTop: mesasPorCobrar.length > 0 ? '1px dashed var(--color-border)' : 'none', paddingTop: mesasPorCobrar.length > 0 ? '20px' : '0' }}>
-                          ⏳ Abiertas
+                           Abiertas
                         </h3>
                         <div className={s.productGrid}>
                           {mesasActivas.map((venta) => (
@@ -273,11 +273,11 @@ export const CajeroTab = ({ usuarioId, sucursalId }) => {
                       </div>
                     )}
 
-                    {/* ✅ SECCIÓN 3: MESAS COBRADAS EN ESTE TURNO */}
+                    {/*  SECCIÓN 3: MESAS COBRADAS EN ESTE TURNO */}
                     {cuentasCobradas.length > 0 && (
                       <div>
                         <h3 className={stylesAdmin.cardTitle} style={{ marginBottom: '15px', color: 'var(--color-success)', borderTop: (mesasPorCobrar.length > 0 || mesasActivas.length > 0) ? '1px dashed var(--color-border)' : 'none', paddingTop: '20px' }}>
-                          ✅ Cobradas en este Turno
+                           Cobradas en este Turno
                         </h3>
                         <div className={s.productGrid}>
                           {cuentasCobradas.map((venta) => (

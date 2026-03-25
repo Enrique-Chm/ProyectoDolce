@@ -4,8 +4,8 @@ import s from '../AdminPage.module.css';
 import { useProveedoresTab } from '../../../hooks/useProveedoresTab'; 
 import Swal from 'sweetalert2'; 
 
-export const ProveedoresTab = () => {
-  // Consumimos estados y métodos desde el hook
+export const ProveedoresTab = () => { 
+  // Consumimos estados y métodos desde el hook (Sin sucursalId porque son globales en tu DB)
   const {
     proveedores, loading, editId, formData, setFormData,
     puedeCrear, puedeEditar, puedeBorrar,
@@ -13,7 +13,6 @@ export const ProveedoresTab = () => {
   } = useProveedoresTab();
 
   // 💡 LÓGICA DE VISIBILIDAD DINÁMICA
-  // El formulario solo se muestra si el usuario puede crear o si está editando un registro.
   const mostrarFormulario = puedeCrear || editId;
 
   // 🛡️ CONFIRMACIÓN PARA DESCARTAR CAMBIOS
@@ -59,7 +58,7 @@ export const ProveedoresTab = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div className={s.stack} style={{ gap: '20px' }}>
       <header className={s.pageHeader}>
         <h2 className={s.pageTitle}>Directorio de Proveedores</h2>
         {loading && <span className={s.syncBadge}>CARGANDO...</span>}
@@ -73,7 +72,7 @@ export const ProveedoresTab = () => {
           <h3 className={s.cardTitle}>
             {editId ? (puedeEditar ? 'Editar Proveedor' : 'Ficha Técnica') : 'Nuevo Proveedor'}
           </h3>
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+          <form onSubmit={handleSubmit} className={s.stack} style={{ gap: '15px' }}>
             <div className={s.formGroup}>
               <label className={s.label}>NOMBRE DE LA EMPRESA</label>
               <input 
@@ -99,7 +98,6 @@ export const ProveedoresTab = () => {
               />
             </div>
 
-            {/* Este Grid se adapta automáticamente por la clase .formGrid en el CSS global */}
             <div className={s.formGrid}>
               <div className={s.formGroup}>
                 <label className={s.label}>TELÉFONO</label>
@@ -138,7 +136,7 @@ export const ProveedoresTab = () => {
               />
             </div>
 
-            <div className={s.flexColumnGap10} style={{ marginTop: '10px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '10px' }}>
               {(editId ? puedeEditar : puedeCrear) && (
                 <button 
                   type="submit" 
@@ -162,7 +160,7 @@ export const ProveedoresTab = () => {
           </form>
         </aside>
 
-        {/* TABLA DE PROVEEDORES: .tableContainer maneja el scroll horizontal en móviles */}
+        {/* TABLA DE PROVEEDORES */}
         <div className={`${s.adminCard} ${s.tableContainer}`}>
           <table className={s.table}>
             <thead className={s.thead}>
@@ -213,7 +211,7 @@ export const ProveedoresTab = () => {
               ) : (
                 <tr>
                   <td colSpan="4" className={s.emptyState}>
-                    {loading ? 'Cargando directorio...' : 'No hay proveedores registrados.'}
+                    {loading ? 'Sincronizando...' : 'No hay proveedores registrados.'}
                   </td>
                 </tr>
               )}
