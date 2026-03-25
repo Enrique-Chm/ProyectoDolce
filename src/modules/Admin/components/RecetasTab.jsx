@@ -1,5 +1,5 @@
 // Archivo: src/modules/Admin/components/RecetasTab.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import s from "../AdminPage.module.css";
 import { useRecetasTab } from "../../../hooks/useRecetasTab"; 
 import Swal from 'sweetalert2'; 
@@ -79,7 +79,7 @@ export const RecetasTab = ({ sucursalId }) => {
               />
             </div>
 
-            <div className={s.checkboxRow}> {/* Usando clase de utilidad */}
+            <div className={s.checkboxRow}>
                 <label className={s.checkboxLabel}>
                 <input
                     type="checkbox"
@@ -88,8 +88,8 @@ export const RecetasTab = ({ sucursalId }) => {
                     onChange={(e) => setIsSubreceta(e.target.checked)}
                     disabled={noTienePermisoAccion}
                 />
-                <div className={s.flexColumn}>
-                    <span className={s.fontWeight700}>¿Es Sub-receta?</span>
+                <div className={s.formGroup}>
+                    <span className={s.label}>¿Es Sub-receta?</span>
                     <small className={s.textMuted}>Insumo para otra receta</small>
                 </div>
                 </label>
@@ -152,6 +152,7 @@ export const RecetasTab = ({ sucursalId }) => {
                             const n = [...ingredientes];
                             n[idx].tipo = 'insumo';
                             n[idx].insumo_id = ""; 
+                            n[idx].unidad_id = "";
                             setIngredientes(n);
                           }} 
                         />
@@ -167,6 +168,7 @@ export const RecetasTab = ({ sucursalId }) => {
                             const n = [...ingredientes];
                             n[idx].tipo = 'subreceta';
                             n[idx].insumo_id = ""; 
+                            n[idx].unidad_id = "";
                             setIngredientes(n);
                           }} 
                         />
@@ -184,7 +186,10 @@ export const RecetasTab = ({ sucursalId }) => {
                           const n = [...ingredientes];
                           const insData = listaActual.find(i => String(i.id) === String(selectedId));
                           n[idx].insumo_id = selectedId;
-                          if (insData) n[idx].unidad_id = insData.unidad_medida_id || insData.unidad_medida || "";
+                          if (insData) {
+                            // Priorizar unidad_medida_id si viene de subreceta o unidad_medida si viene de insumo
+                            n[idx].unidad_id = insData.unidad_medida_id || insData.unidad_medida || "";
+                          }
                           setIngredientes(n);
                         }}
                       />
@@ -249,9 +254,9 @@ export const RecetasTab = ({ sucursalId }) => {
             <thead className={s.thead}>
               <tr>
                 <th className={s.th}>PREPARACIÓN / RENDIMIENTO</th>
-                <th className={`${s.th} s.thCenter`}>COMPOSICIÓN</th>
-                <th className={`${s.th} s.thCenter`}>COSTO UNITARIO</th>
-                <th className={`${s.th} s.thCenter`}>ACCIONES</th>
+                <th className={`${s.th} ${s.tdCenter}`}>COMPOSICIÓN</th>
+                <th className={`${s.th} ${s.tdCenter}`}>COSTO UNITARIO</th>
+                <th className={`${s.th} ${s.tdCenter}`}>ACCIONES</th>
               </tr>
             </thead>
             <tbody>
@@ -275,7 +280,7 @@ export const RecetasTab = ({ sucursalId }) => {
                       </td>
                       <td className={`${s.td} ${s.tdCenter}`}>
                         <div className={s.flexColumnGap5}>
-                          {r.detalle_ingredientes.map((ing, iidx) => (
+                          {r.detalle_ingredientes?.map((ing, iidx) => (
                             <div key={iidx} className={s.miniBadge}>
                               • {ing.insumo}: <strong>{ing.cantidad} {ing.unidad}</strong>
                               <span className={s.textPrimary} style={{ marginLeft: "5px" }}> (${(ing.costo_fila || 0).toFixed(2)})</span>
@@ -286,7 +291,7 @@ export const RecetasTab = ({ sucursalId }) => {
                       <td className={`${s.td} ${s.tdCenter}`}>
                         <div className={`${s.totalAmount} ${s.costUnitWrapper}`}>
                             ${costoU.toFixed(2)}
-                            <span className={s.textSubUnit}> / {unidadFinal}</span>
+                            <span className={s.textSubUnit}>/{unidadFinal}</span>
                         </div>
                         <div className={s.textSubDetail}>
                             Costo lote: ${(r.costo_total_receta || 0).toFixed(2)}
@@ -316,50 +321,79 @@ export const RecetasTab = ({ sucursalId }) => {
   );
 };
 
-// SearchableSelect se mantiene igual (ya es un componente de UI)
+// COMPONENTE DE UI CORREGIDO
 const SearchableSelect = ({ options, value, onChange, disabled, placeholder = "Buscar..." }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
 
+  // Sincronizar el texto con el valor seleccionado inicialmente
   useEffect(() => {
     const selected = options.find((opt) => String(opt.id) === String(value));
     setSearchTerm(selected ? selected.nombre : "");
   }, [value, options]);
 
-  const filteredOptions = options.filter(opt =>
-    (opt.nombre || "").toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Cerrar al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false);
+        const selected = options.find((opt) => String(opt.id) === String(value));
+        setSearchTerm(selected ? selected.nombre : "");
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [value, options]);
+
+  // Si el usuario borra todo o está buscando, filtramos. 
+  // Si acaba de abrir el menú, mostramos todo si el término coincide exactamente con el seleccionado.
+  const filteredOptions = options.filter(opt => {
+    if (!searchTerm) return true;
+    return (opt.nombre || "").toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   return (
-    <div className={s.relative}>
+    <div className={s.relative} ref={containerRef} style={{ position: 'relative' }}>
       <input
         type="text"
         className={s.inputField}
         value={searchTerm}
         disabled={disabled}
         placeholder={placeholder}
+        autoComplete="off"
         onChange={(e) => {
           setSearchTerm(e.target.value);
           setIsOpen(true);
         }}
-        onFocus={() => setIsOpen(true)}
-        onBlur={() => {
-          setTimeout(() => {
-            setIsOpen(false);
-            const selected = options.find((opt) => String(opt.id) === String(value));
-            setSearchTerm(selected ? selected.nombre : "");
-          }, 200);
+        onFocus={() => {
+          setIsOpen(true);
+          // Opcional: limpiar al hacer foco para ver todos inmediatamente
+          // setSearchTerm(""); 
         }}
       />
       
       {isOpen && !disabled && (
-        <ul className={s.dropdownList}>
+        <ul className={s.dropdownList} style={{ 
+            position: 'absolute', 
+            zIndex: 1000, 
+            width: '100%', 
+            maxHeight: '200px', 
+            overflowY: 'auto',
+            backgroundColor: 'white',
+            border: '1px solid #ddd',
+            borderRadius: '4px',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+            listStyle: 'none',
+            padding: 0,
+            margin: 0
+        }}>
           {filteredOptions.length > 0 ? filteredOptions.map(opt => (
             <li
               key={opt.id}
               className={s.dropdownItem}
-              onMouseDown={(e) => {
-                e.preventDefault();
+              style={{ padding: '8px 12px', cursor: 'pointer' }}
+              onClick={() => {
                 onChange(opt.id);
                 setSearchTerm(opt.nombre);
                 setIsOpen(false);
@@ -368,7 +402,9 @@ const SearchableSelect = ({ options, value, onChange, disabled, placeholder = "B
               {opt.nombre}
             </li>
           )) : (
-            <li className={s.dropdownItemMuted}>No hay resultados</li>
+            <li className={s.dropdownItemMuted} style={{ padding: '8px 12px', color: '#999' }}>
+              No hay resultados
+            </li>
           )}
         </ul>
       )}

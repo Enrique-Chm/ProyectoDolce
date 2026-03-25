@@ -1,5 +1,6 @@
 // Archivo: src/hooks/useMeseroTab.js
 import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '../lib/supabaseClient'; // Asegúrate de tener esta importación
 import { productosService } from '../services/productos.service';
 import { MeseroService } from '../services/Mesero.service'; 
 import { hasPermission } from '../utils/checkPermiso';
@@ -19,6 +20,10 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   const [carrito, setCarrito] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // 🚀 ESTADOS NUEVOS PARA EL MODAL DE EXTRAS
+  const [mostrarModalExtras, setMostrarModalExtras] = useState(false);
+  const [productoParaExtras, setProductoParaExtras] = useState(null);
+
   // 🛡️ PERMISOS: Basados en la familia 'comandas'
   const puedeVerVentas = hasPermission('ver_comandas');
   const puedeCrearVentas = hasPermission('crear_comandas');
@@ -32,6 +37,8 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
     setMesaInput('');
     setCarrito([]);
     setView('cuentas');
+    setMostrarModalExtras(false);
+    setProductoParaExtras(null);
   }, []);
 
   /**
@@ -91,14 +98,18 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   }, [sucursalId, puedeVerVentas, resetTodo]);
 
   /**
-   * Carga el catálogo de platillos
+   * Carga el catálogo de platillos (MODIFICADO PARA EXTRAS)
    */
   const cargarMenu = useCallback(async () => {
     if (!puedeVerVentas || !sucursalId) return;
     try {
-      const data = await productosService.getInitialData(Number(sucursalId));
-      setProductos(data.productos || []);
-      setCategorias(data.categorias || []);
+      // 1. Cargamos el menú desde el nuevo método POS
+      const menuRes = await MeseroService.getMenuPOS(Number(sucursalId));
+      setProductos(menuRes.data || []);
+
+      // 2. Cargamos las categorías (podemos usar supabase directo o el service antiguo solo para esto)
+      const { data: catData } = await supabase.from('cat_categorias_menu').select('*').order('nombre');
+      setCategorias(catData || []);
     } catch (err) {
       console.error("Error al cargar menú:", err);
     }
@@ -146,35 +157,90 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
     }
   };
 
+  /**
+   * 🚀 AGREGAR AL CARRITO INTERCEPTADO
+   * Si tiene modificadores, abre el modal. Si no, lo agrega directo.
+   */
   const agregarAlCarrito = (p) => {
     if (!puedeCrearVentas) return alert("Sin permisos.");
     if (ventaActiva?.estado === 'por_cobrar') return alert("Mesa bloqueada por solicitud de cuenta.");
 
+    // INTERCEPCIÓN: ¿Tiene grupos de extras vinculados?
+    if (p.grupos && p.grupos.length > 0) {
+      setProductoParaExtras(p);
+      setMostrarModalExtras(true);
+      return; // Detenemos la ejecución aquí, el flujo sigue en confirmarProductoConExtras
+    }
+
+    // SI NO TIENE EXTRAS, FLUJO NORMAL
     setCarrito(prev => {
-      const existe = prev.find(item => item.id === p.id);
+      // Buscar si ya existe el producto (y que no tenga extras seleccionados previamente)
+      const existe = prev.find(item => item.id === p.id && (!item.extras_seleccionados || item.extras_seleccionados.length === 0));
+      
       if (existe) {
-        return prev.map(item => item.id === p.id ? { ...item, cantidad: item.cantidad + 1 } : item);
+        return prev.map(item => item.cartItemId === existe.cartItemId ? { ...item, cantidad: item.cantidad + 1 } : item);
       }
       return [...prev, { 
-        id: p.id, nombre: p.nombre, precio_venta: p.precio_venta, 
-        costo_actual: p.costo_actual || 0, cantidad: 1, notas: '' 
+        cartItemId: Date.now().toString() + Math.random().toString(), // ID ÚNICO DE FILA
+        id: p.id, 
+        nombre: p.nombre, 
+        precio_venta: p.precio_venta, 
+        precio_calculado: p.precio_venta, // Si no hay extras, es el mismo
+        costo_actual: p.costo_actual || 0, 
+        cantidad: 1, 
+        notas: '',
+        extras_seleccionados: []
       }];
     });
   };
 
-  const eliminarDelCarrito = (id) => {
-    if (ventaActiva?.estado === 'por_cobrar') return;
-    setCarrito(prev => prev.filter(item => item.id !== id));
+  /**
+   * 🚀 CONFIRMAR PRODUCTO CON EXTRAS (DESDE EL MODAL)
+   * Recibe el producto y el array de extras que el mesero palomeó.
+   */
+  const confirmarProductoConExtras = (producto, extrasSeleccionados) => {
+    // 1. Calcular el precio total sumando el producto base + los extras
+    const precioDeExtras = extrasSeleccionados.reduce((sum, ext) => sum + parseFloat(ext.precio_venta || 0), 0);
+    const precioTotalCalculado = parseFloat(producto.precio_venta) + precioDeExtras;
+
+    // 2. Insertarlo en el carrito como una línea completamente nueva
+    setCarrito(prev => [...prev, {
+      cartItemId: Date.now().toString() + Math.random().toString(), // ID Único vital para que no se agrupen mal
+      id: producto.id,
+      nombre: producto.nombre,
+      precio_venta: producto.precio_venta,
+      precio_calculado: precioTotalCalculado,
+      costo_actual: producto.costo_actual || 0,
+      cantidad: 1, // Siempre entra como 1 al personalizarse
+      notas: '',
+      extras_seleccionados: extrasSeleccionados
+    }]);
+
+    // 3. Cerrar el modal
+    setMostrarModalExtras(false);
+    setProductoParaExtras(null);
   };
 
-  const actualizarNota = (id, nota) => {
-    if (ventaActiva?.estado === 'por_cobrar') return;
-    setCarrito(prev => prev.map(item => item.id === id ? { ...item, notas: nota } : item));
+  const cerrarModalExtras = () => {
+    setMostrarModalExtras(false);
+    setProductoParaExtras(null);
   };
 
   /**
-   * 🚀 ENVÍO DE COMANDA
-   * Se comunica con el Service para procesar toda la lógica de negocio.
+   * Eliminar del carrito AHORA USA cartItemId para no borrar productos distintos
+   */
+  const eliminarDelCarrito = (cartItemId) => {
+    if (ventaActiva?.estado === 'por_cobrar') return;
+    setCarrito(prev => prev.filter(item => item.cartItemId !== cartItemId));
+  };
+
+  const actualizarNota = (cartItemId, nota) => {
+    if (ventaActiva?.estado === 'por_cobrar') return;
+    setCarrito(prev => prev.map(item => item.cartItemId === cartItemId ? { ...item, notas: nota } : item));
+  };
+
+  /**
+   * ENVÍO DE COMANDA
    */
   const handleEnviarOrden = async () => {
     if (!puedeCrearVentas) return alert("No tienes permisos para esta acción.");
@@ -196,7 +262,6 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
         alert("✅ Orden enviada correctamente.");
         resetTodo();
       } else {
-        // Mostramos el error detallado que viene desde el Service
         alert("❌ Error al procesar: " + res.error);
       }
     } catch (error) {
@@ -231,6 +296,13 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
     productos, categorias,
     carrito, setCarrito,
     loading,
+    
+    // EXPORTAMOS LOS NUEVOS ESTADOS Y FUNCIONES DEL MODAL
+    mostrarModalExtras,
+    productoParaExtras,
+    confirmarProductoConExtras,
+    cerrarModalExtras,
+
     seleccionarCuenta, iniciarNuevaMesa,
     agregarAlCarrito, eliminarDelCarrito, actualizarNota,
     handleEnviarOrden, pedirCuenta, resetTodo,

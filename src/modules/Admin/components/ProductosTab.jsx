@@ -1,5 +1,5 @@
 // Archivo: src/modules/Admin/components/ProductosTab.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import s from '../AdminPage.module.css';
 import { IVA_FACTOR } from '../../../utils/taxConstants'; 
 import { useProductosTab } from '../../../hooks/useProductosTab'; 
@@ -7,7 +7,6 @@ import Swal from 'sweetalert2';
 
 /**
  * Determina el color del margen de forma dinámica.
- * Se mantiene como función porque devuelve un valor hexadecimal variable.
  */
 const getMarginColor = (margen) => {
   const m = parseFloat(margen);
@@ -132,9 +131,7 @@ export const ProductosTab = ({ sucursalId }) => {
         </button>
       </nav>
 
-      {/* ============================================================== */}
       {/* VISTA 1: PLATILLOS DEL MENÚ */}
-      {/* ============================================================== */}
       {activeSubTab === 'productos' && (
         <div className={mostrarFormularioProd ? s.splitLayout : s.fullLayout}>
           <aside className={`${s.adminCard} ${!mostrarFormularioProd ? s.hidden : ''}`}>
@@ -151,7 +148,7 @@ export const ProductosTab = ({ sucursalId }) => {
                     valueKey="nombre" 
                     labelKey="nombre"
                     placeholder="Buscar receta costeada..."
-                    formatLabel={(opt) => `${opt.nombre} ($${opt.costo_final.toFixed(2)})`}
+                    formatLabel={(opt) => `${opt.nombre} ($${(opt.costo_final || 0).toFixed(2)})`}
                     disabled={noTienePermisoProd}
                     onChange={(val) => {
                       const rec = recetasCosteadas.find(r => r.nombre === val);
@@ -271,7 +268,6 @@ export const ProductosTab = ({ sucursalId }) => {
                   const ventaBase = p.precio_venta || 0;
                   const netoBase = ventaBase / IVA_FACTOR;
                   const margenBase = netoBase > 0 ? (((netoBase - costoBase) / netoBase) * 100).toFixed(1) : 0;
-                  
                   const nombreCategoria = categorias.find(c => c.id === p.categoria)?.nombre || 'Sin categoría';
 
                   return (
@@ -317,9 +313,7 @@ export const ProductosTab = ({ sucursalId }) => {
         </div>
       )}
 
-      {/* ============================================================== */}
       {/* VISTA 2: CATÁLOGO DE GRUPOS MAESTROS (EXTRAS) */}
-      {/* ============================================================== */}
       {activeSubTab === 'grupos' && (
         <div className={mostrarFormularioGrupo ? s.splitLayout : s.fullLayout}>
           <aside className={`${s.adminCard} ${!mostrarFormularioGrupo ? s.hidden : ''}`}>
@@ -356,7 +350,11 @@ export const ProductosTab = ({ sucursalId }) => {
                     type="number" min="1" step="1" 
                     className={`${s.inputField} ${noTienePermisoGrupo ? s.inputDisabled : ''}`} 
                     value={grupoFormData.maximo} 
-                    onChange={e => setGrupoFormData({...grupoFormData, maximo: parseInt(e.target.value)})} 
+                    onChange={e => {
+                      // Corrección para evitar NaN: permitimos el string vacío momentáneamente
+                      const val = e.target.value === "" ? "" : parseInt(e.target.value, 10);
+                      setGrupoFormData({...grupoFormData, maximo: val});
+                    }} 
                     required 
                     disabled={noTienePermisoGrupo}
                   />
@@ -385,7 +383,7 @@ export const ProductosTab = ({ sucursalId }) => {
                           valueKey="nombre" 
                           labelKey="nombre"
                           placeholder="Buscar preparación..." 
-                          formatLabel={(opt) => `${opt.nombre} - $${opt.costo_final.toFixed(2)} por ${opt.unidad_abreviatura || 'unidad'}`}
+                          formatLabel={(opt) => `${opt.nombre} - $${(opt.costo_final || 0).toFixed(2)} por ${opt.unidad_abreviatura || 'unidad'}`}
                           disabled={noTienePermisoGrupo}
                           onChange={(val) => updateOpcion(idx, 'subreceta_id', val)}
                         />
@@ -505,15 +503,30 @@ export const ProductosTab = ({ sucursalId }) => {
 };
 
 /**
- * SearchableSelect Homologado
+ * SearchableSelect Homologado y Corregido
  */
 const SearchableSelect = ({ options, value, onChange, disabled, placeholder = "Buscar...", valueKey = "id", labelKey = "nombre", formatLabel }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
 
+  // Sincronizar el texto con el valor seleccionado
   useEffect(() => {
     const selected = options.find((opt) => String(opt[valueKey]) === String(value));
     setSearchTerm(selected ? selected[labelKey] : "");
+  }, [value, options, valueKey, labelKey]);
+
+  // Manejar cierre al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false);
+        const selected = options.find((opt) => String(opt[valueKey]) === String(value));
+        setSearchTerm(selected ? selected[labelKey] : "");
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [value, options, valueKey, labelKey]);
 
   const filteredOptions = options.filter(opt =>
@@ -521,34 +534,41 @@ const SearchableSelect = ({ options, value, onChange, disabled, placeholder = "B
   );
 
   return (
-    <div className={s.relative}>
+    <div className={s.relative} ref={containerRef} style={{ position: 'relative' }}>
       <input
         type="text"
         className={`${s.inputField} ${disabled ? s.inputDisabled : ''}`}
         value={searchTerm}
         disabled={disabled}
         placeholder={placeholder}
+        autoComplete="off"
         onChange={(e) => {
           setSearchTerm(e.target.value);
           setIsOpen(true);
         }}
         onFocus={() => setIsOpen(true)}
-        onBlur={() => {
-          setTimeout(() => {
-            setIsOpen(false);
-            const selected = options.find((opt) => String(opt[valueKey]) === String(value));
-            setSearchTerm(selected ? selected[labelKey] : "");
-          }, 200);
-        }}
       />
       {isOpen && !disabled && (
-        <ul className={s.dropdownList}>
+        <ul className={s.dropdownList} style={{ 
+          position: 'absolute', 
+          zIndex: 1000, 
+          width: '100%', 
+          maxHeight: '200px', 
+          overflowY: 'auto',
+          backgroundColor: 'white',
+          border: '1px solid #ddd',
+          boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+          padding: 0,
+          margin: '4px 0 0 0',
+          listStyle: 'none'
+        }}>
           {filteredOptions.length > 0 ? filteredOptions.map((opt, index) => (
             <li 
               key={index} 
               className={s.dropdownItem} 
+              style={{ padding: '8px 12px', cursor: 'pointer' }}
               onMouseDown={(e) => { 
-                e.preventDefault(); 
+                e.preventDefault(); // Previene el blur del input antes del clic
                 onChange(opt[valueKey]); 
                 setSearchTerm(opt[labelKey]); 
                 setIsOpen(false); 
@@ -556,7 +576,7 @@ const SearchableSelect = ({ options, value, onChange, disabled, placeholder = "B
             >
               {formatLabel ? formatLabel(opt) : opt[labelKey]}
             </li>
-          )) : <li className={s.dropdownItemMuted}>Sin resultados...</li>}
+          )) : <li className={s.dropdownItemMuted} style={{ padding: '8px 12px', color: '#999' }}>Sin resultados...</li>}
         </ul>
       )}
     </div>

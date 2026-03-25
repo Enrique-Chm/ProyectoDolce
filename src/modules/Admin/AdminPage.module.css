@@ -1,48 +1,49 @@
 /* =========================================
    ESTRUCTURA PRINCIPAL Y LAYOUT
    ========================================= */
-.adminLayout {
+.adminLayout {  /* Se usa 1 vez */
+  background-color: var(--color-bg-app);
   display: flex;
   flex-direction: column;
   min-height: 100vh;
   background-color: var(--color-bg-app);
 }
 
-.adminContainer {
+.adminContainer { /* Se usa 1 vez */
   display: flex;
   flex: 1; /* Ocupa el resto del espacio debajo del header */
   background-color: var(--color-bg-app);
   font-family: var(--font-main);
 }
 
-.mainContent {
+.mainContent { /* Se usa 1 vez */
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-.splitLayout {
+.splitLayout { /* Se usa +10 veces */
   display: grid;
   grid-template-columns: 320px 1fr;
   gap: 24px;
   align-items: start;
 }
 
-.fullLayout {
+.fullLayout { /* Se usa +10 veces */
   display: block; 
   width: 100%;
 }
 
-.fullLayout .tableContainer {
+.fullLayout .tableContainer { /* Nose */
   width: 100%;
   max-width: 100%;
-}
+} 
 
 /* =========================================
    BARRA SUPERIOR (TOP BAR)
    ========================================= */
-.topBar {
+.topBar { /*  1 vez */
   width: 100%;
   min-height: 64px; /* Modificado: min-height permite que crezca si el contenido hace wrap en móvil */
   background-color: var(--color-bg-card);
@@ -56,13 +57,13 @@
   flex-wrap: wrap; /* Permite que los elementos bajen de línea si no caben */
 }
 
-.userInfo {
+.userInfo { /*  1 vez */
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.userName {
+.userName { /*  1 vez */
   font-weight: 600;
   color: var(--color-text-main);
 }
@@ -70,8 +71,8 @@
 /* =========================================
    BARRA LATERAL (SIDEBAR)
    ========================================= */
-.sidebar {
-  width: 260px;
+.sidebar {/*  1 vez */
+  width: 180px;
   background-color: var(--color-bg-card);
   border-right: 1px solid var(--color-border);
   display: flex;
@@ -81,26 +82,12 @@
   z-index: 10;
 }
 
-.sidebarHeader {
-  padding: 0 20px 20px;
-  border-bottom: 1px solid var(--color-border);
-  margin-bottom: 20px;
-}
-
-.sidebarHeader h2 {
-  margin: 0;
-  font-size: 1.25rem;
-  color: var(--color-primary);
-  font-weight: 800;
-  letter-spacing: -0.5px;
-}
-
 .sidebarNav {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 0 12px;
+  padding: 0 4px;
 }
 
 .navItem {
@@ -151,7 +138,7 @@
 }
 
 .tabButton {
-  padding: 8px 20px;
+  padding: 8px 10px;
   white-space: nowrap;
   border: none;
   background: transparent;
@@ -1101,58 +1088,5 @@
 /* Para inputs deshabilitados por permisos */
 .inputDisabled {
   background-color: var(--color-bg-muted) !important;
-  cursor: not-allowed;
-}
-/* --- Utilidades Globales Reutilizables --- */
-.flexRow { display: flex; gap: 10px; align-items: center; }
-.flexWrap { display: flex; flex-wrap: wrap; gap: 8px; }
-.marginTop10 { margin-top: 10px; }
-.marginTop5 { margin-top: 5px; }
-.wFull { width: 100%; }
-.textCenter { text-align: center; }
-.fontWeight600 { font-weight: 600; }
-.fontWeight700 { font-weight: 700; }
-
-/* --- Secciones con separador --- */
-.sectionDivider {
-  border-top: 1px dashed var(--color-border);
-  padding-top: 15px;
-  margin-top: 5px;
-}
-
-/* --- Variantes de Badges (Colores semánticos) --- */
-.badgeBlue {
-  background-color: #e0e7ff !important;
-  color: #3730a3 !important;
-}
-
-.badgeGray {
-  background-color: #f3f4f6 !important;
-  color: #4b5563 !important;
-}
-
-.badgeInteractive {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  background-color: var(--color-primary);
-  color: white;
-  border-radius: var(--radius-ui);
-}
-
-.badgeCloseBtn {
-  cursor: pointer;
-  font-size: 12px;
-  border-left: 1px solid rgba(255, 255, 255, 0.3);
-  padding-left: 8px;
-}
-
-/* --- Inputs Especiales --- */
-.inputReadOnlyEmphasized {
-  background-color: var(--color-bg-muted);
-  text-align: center;
-  font-weight: bold;
-  color: var(--color-text-main);
   cursor: not-allowed;
 }

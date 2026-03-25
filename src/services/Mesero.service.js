@@ -5,6 +5,64 @@ import { hasPermission } from '../utils/checkPermiso';
 export const MeseroService = {
   
   /**
+   * 🚀 NUEVO: Obtiene el catálogo de productos con sus extras anidados
+   * Diseñado específicamente para el POS (sin exponer costos internos)
+   */
+  getMenuPOS: async (sucursalId) => {
+    try {
+      // Opcional: Validar permiso del mesero para ver el menú
+      if (!hasPermission('ver_comandas')) {
+        return { data: [], error: { message: 'No tienes permisos para ver el menú.' } };
+      }
+
+      const { data, error } = await supabase
+        .from('productosmenu')
+        .select(`
+          id,
+          nombre,
+          precio_venta,
+          categoria,
+          imagen_url,
+          producto_grupos (
+            grupos_modificadores (
+              id,
+              nombre,
+              min_seleccion,
+              max_seleccion,
+              opciones_modificadores (
+                id,
+                subreceta_id,
+                precio_venta,
+                cantidad
+              )
+            )
+          )
+        `)
+        .eq('sucursal_id', Number(sucursalId))
+        .eq('disponible', true); // Solo productos activos
+
+      if (error) {
+        console.error("Error al obtener menú POS:", error);
+        return { data: [], error };
+      }
+
+      // Limpiamos la data para que sea más fácil de consumir en React
+      const productosFormateados = data.map(prod => ({
+        ...prod,
+        // Aplana la relación para que grupos quede como un arreglo directo de objetos 'grupos_modificadores'
+        grupos: prod.producto_grupos
+          .map(pg => pg.grupos_modificadores)
+          .filter(g => g !== null) // Evita nulos si hay inconsistencias en la BD
+      }));
+
+      return { data: productosFormateados, error: null };
+    } catch (err) {
+      console.error("Excepción en getMenuPOS:", err);
+      return { data: [], error: err.message };
+    }
+  },
+
+  /**
    * 🛡️ Verifica si existe una sesión de caja abierta para la sucursal.
    * Al no haber triggers, este método es el encargado de obtener el UUID 
    * necesario para vincular la venta con el turno del cajero.
@@ -97,9 +155,8 @@ export const MeseroService = {
   },
 
   /**
-   * 🚀 PROCESAR VENTA (MÉTODO MAESTRO)
-   * Ahora que los triggers no existen, el service valida manualmente la caja
-   * antes de realizar el insert para asegurar la integridad de los datos.
+   * 🚀 PROCESAR VENTA (MÉTODO MAESTRO ACTUALIZADO PARA EXTRAS)
+   * Ahora soporta el cálculo dinámico de precios incluyendo modificadores.
    */
   procesarVenta: async (ventaData, carrito) => {
     if (!hasPermission('crear_comandas')) {
@@ -118,7 +175,8 @@ export const MeseroService = {
 
       // 2. SI ES UNA MESA NUEVA (Crear registro en 'ventas')
       if (!ventaId) {
-        const totalInicial = carrito.reduce((acc, item) => acc + (item.cantidad * item.precio_venta), 0);
+        // CORRECCIÓN: Usar precio_calculado (precio base + extras) si existe, sino precio_venta
+        const totalInicial = carrito.reduce((acc, item) => acc + (item.cantidad * (item.precio_calculado || item.precio_venta)), 0);
         
         const nuevaVentaPayload = {
           usuario_id: Number(ventaData.usuario_id), 
@@ -143,15 +201,18 @@ export const MeseroService = {
         ventaId = nuevaVenta.id;
       }
 
-      // 3. PREPARAR DETALLES DE PRODUCTOS
+      // 3. PREPARAR DETALLES DE PRODUCTOS (AQUÍ GUARDAMOS LOS EXTRAS)
       const detalles = carrito.map(item => ({
         venta_id: ventaId, 
         producto_id: parseInt(item.id),
         cantidad: parseInt(item.cantidad),
-        precio_unitario: parseFloat(item.precio_venta),
+        // Usar precio_calculado para el precio unitario final de este detalle
+        precio_unitario: parseFloat(item.precio_calculado || item.precio_venta),
         costo_unitario_historico: parseFloat(item.costo_actual || 0), 
-        subtotal: parseFloat(item.cantidad * item.precio_venta),
-        notas: item.notes || item.notas || ''
+        subtotal: parseFloat(item.cantidad * (item.precio_calculado || item.precio_venta)),
+        notas: item.notes || item.notas || '',
+        // 🚀 GUARDAR EL JSON DE EXTRAS EN LA BASE DE DATOS
+        extras_seleccionados: item.extras_seleccionados || [] 
       }));
 
       // 4. INSERTAR DETALLES EN 'ventas_detalle'

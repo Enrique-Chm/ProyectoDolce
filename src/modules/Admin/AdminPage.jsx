@@ -29,15 +29,15 @@ const AdminPage = () => {
   const isAdmin = userSession?.user?.rol === 'Administrador' || userSession?.user?.rol_id === 1;
 
   const tabsConfig = useMemo(() => [
-    { id: 'analitica', label: 'Dashboard Analítica', permiso: 'ver_analitica' }, 
-    { id: 'mesero', label: 'Mesero', permiso: 'ver_comandas' },
-    { id: 'cajero', label: 'Caja', permiso: 'ver_ventas' },
-    { id: 'insumos', label: 'Catálogo Insumos', permiso: 'ver_insumos' },
-    { id: 'kardex', label: 'Auditoría Inventarios', permiso: 'ver_inventario' },
+    { id: 'analitica', label: 'Dashboard', permiso: 'ver_analitica' }, 
+    { id: 'kardex', label: 'Inventarios', permiso: 'ver_inventario' },
     { id: 'estimaciones', label: 'Proyección Compras', permiso: 'ver_inventario' },
     { id: 'gastos', label: 'Gastos Operativos', permiso: 'ver_gastos' }, 
+    { id: 'mesero', label: 'Mesero', permiso: 'ver_comandas' },
+    { id: 'cajero', label: 'Caja', permiso: 'ver_ventas' },
+    { id: 'insumos', label: 'Insumos', permiso: 'ver_insumos' },
     { id: 'recetas', label: 'Recetas', permiso: 'ver_recetas' }, 
-    { id: 'productos', label: 'Productos', permiso: 'crear_productos' }, 
+    { id: 'productos', label: 'Menú ', permiso: 'crear_productos' }, 
     { id: 'proveedores', label: 'Proveedores', permiso: 'ver_proveedores' },
     { id: 'empleados', label: 'Empleados', permiso: 'ver_usuarios' }, 
     { id: 'impresoras', label: 'Impresoras', permiso: 'ver_configuracion' },
