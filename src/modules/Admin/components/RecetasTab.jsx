@@ -15,8 +15,8 @@ export const RecetasTab = ({ sucursalId }) => {
     removeIngrediente, resetForm, handleEdit, handleSubmit, handleDeleteReceta
   } = useRecetasTab(sucursalId);
 
-  // 💡 LÓGICA DE VISIBILIDAD DINÁMICA
   const mostrarFormulario = puedeCrear || isEditing;
+  const noTienePermisoAccion = isEditing ? !puedeEditar : !puedeCrear;
 
   const handleCancelClick = () => {
     if (nombreReceta.trim() !== "" || ingredientes.length > 0) {
@@ -53,53 +53,51 @@ export const RecetasTab = ({ sucursalId }) => {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+    <div className={s.tabWrapperRecetas}>
       <header className={s.pageHeader}>
         <h2 className={s.pageTitle}>Ingeniería de Recetas</h2>
         {loading && <span className={s.syncBadge}>SINCRONIZANDO...</span>}
       </header>
 
-      {/* 💡 LAYOUT DINÁMICO: splitLayout (2 cols en escritorio, 1 col en móvil gracias al CSS) */}
       <div className={mostrarFormulario ? s.splitLayout : s.fullLayout}>
         
         {/* FORMULARIO LATERAL */}
-        <aside className={s.adminCard} style={{ display: mostrarFormulario ? 'block' : 'none' }}>
+        <aside className={`${s.adminCard} ${!mostrarFormulario ? s.hidden : ''}`}>
           <h3 className={s.cardTitle}>
             {isEditing ? (puedeEditar ? " Editando Receta" : "Ver Receta") : " Nueva Preparación"}
           </h3>
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+          <form onSubmit={handleSubmit} className={s.formColumn}>
             <div className={s.formGroup}>
               <label className={s.label}>NOMBRE DE LA PREPARACIÓN</label>
               <input
-                className={s.inputField}
+                className={`${s.inputField} ${noTienePermisoAccion ? s.inputDisabled : ''}`}
                 value={nombreReceta}
                 onChange={(e) => setNombreReceta(e.target.value)}
                 required
-                disabled={isEditing ? !puedeEditar : !puedeCrear}
+                disabled={noTienePermisoAccion}
                 placeholder="Ej. Salsa Roja Especial"
-                style={{ backgroundColor: (isEditing ? !puedeEditar : !puedeCrear) ? "var(--color-bg-muted)" : "white" }}
               />
             </div>
 
-            <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                <label className={s.checkboxLabel} style={{ flex: 1 }}>
+            <div className={s.checkboxRow}> {/* Usando clase de utilidad */}
+                <label className={s.checkboxLabel}>
                 <input
                     type="checkbox"
                     className={s.checkbox}
                     checked={isSubreceta}
                     onChange={(e) => setIsSubreceta(e.target.checked)}
-                    disabled={isEditing ? !puedeEditar : !puedeCrear}
+                    disabled={noTienePermisoAccion}
                 />
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontWeight: 700 }}>¿Es Sub-receta?</span>
+                <div className={s.flexColumn}>
+                    <span className={s.fontWeight700}>¿Es Sub-receta?</span>
                     <small className={s.textMuted}>Insumo para otra receta</small>
                 </div>
                 </label>
             </div>
 
-            <div className={s.formGrid} style={{ backgroundColor: 'var(--color-bg-muted)', padding: '12px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
-                <div className={s.formGroup} style={{ marginBottom: 0 }}>
-                    <label className={s.label} style={{ fontSize: '10px' }}>RENDIMIENTO (CUÁNTO SALE)</label>
+            <div className={`${s.formGrid} ${s.summaryBox}`}>
+                <div className={s.formGroupNoMargin}>
+                    <label className={`${s.label} ${s.labelSmall}`}>RENDIMIENTO (CUÁNTO SALE)</label>
                     <input
                         type="number"
                         step="0.001"
@@ -107,17 +105,17 @@ export const RecetasTab = ({ sucursalId }) => {
                         value={rendimiento}
                         onChange={(e) => setRendimiento(e.target.value)}
                         required
-                        disabled={isEditing ? !puedeEditar : !puedeCrear}
+                        disabled={noTienePermisoAccion}
                     />
                 </div>
-                <div className={s.formGroup} style={{ marginBottom: 0 }}>
-                    <label className={s.label} style={{ fontSize: '10px' }}>UNIDAD DEL RESULTADO</label>
+                <div className={s.formGroupNoMargin}>
+                    <label className={`${s.label} ${s.labelSmall}`}>UNIDAD DEL RESULTADO</label>
                     <select 
                         className={s.inputField}
                         value={unidadMedidaFinal}
                         onChange={(e) => setUnidadMedidaFinal(e.target.value)}
                         required
-                        disabled={isEditing ? !puedeEditar : !puedeCrear}
+                        disabled={noTienePermisoAccion}
                     >
                         <option value="">Seleccionar...</option>
                         {unidades.map(u => (
@@ -130,27 +128,26 @@ export const RecetasTab = ({ sucursalId }) => {
             <hr className={s.hr} />
 
             <div className={s.flexColumnGap10}>
-              <label className={s.label} style={{ fontSize: '10px' }}>INGREDIENTES Y CANTIDADES</label>
+              <label className={`${s.label} ${s.labelSmall}`}>INGREDIENTES Y CANTIDADES</label>
 
               {ingredientes.map((ing, idx) => {
                 const listaActual = ing.tipo === 'insumo' ? insumos : subrecetasLista;
                 const selectedInsumo = listaActual.find(i => String(i.id) === String(ing.insumo_id));
                 const costoFilaVivo = ((selectedInsumo?.costo_unitario || 0) * (parseFloat(ing.cantidad) || 0)).toFixed(2);
-                const deshabilitarCampos = isEditing ? !puedeEditar : !puedeCrear;
 
                 return (
                   <div key={idx} className={s.itemCardRelative}>
-                    {!deshabilitarCampos && (
+                    {!noTienePermisoAccion && (
                       <button type="button" className={`${s.btnSecondary} ${s.btnRemoveCircle} ${s.btnSmall}`} onClick={() => removeIngrediente(idx)}>X</button>
                     )}
                     
-                    <div style={{ display: 'flex', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
-                      <label style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                    <div className={s.radioGroup}>
+                      <label className={s.radioLabel}>
                         <input 
                           type="radio" 
                           name={`tipo_${idx}`} 
                           checked={ing.tipo === 'insumo'} 
-                          disabled={deshabilitarCampos}
+                          disabled={noTienePermisoAccion}
                           onChange={() => {
                             const n = [...ingredientes];
                             n[idx].tipo = 'insumo';
@@ -160,12 +157,12 @@ export const RecetasTab = ({ sucursalId }) => {
                         />
                         Insumo
                       </label>
-                      <label style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                      <label className={s.radioLabel}>
                         <input 
                           type="radio" 
                           name={`tipo_${idx}`} 
                           checked={ing.tipo === 'subreceta'} 
-                          disabled={deshabilitarCampos}
+                          disabled={noTienePermisoAccion}
                           onChange={() => {
                             const n = [...ingredientes];
                             n[idx].tipo = 'subreceta';
@@ -177,11 +174,11 @@ export const RecetasTab = ({ sucursalId }) => {
                       </label>
                     </div>
 
-                    <div className={s.formGroup} style={{ marginBottom: '10px' }}>
+                    <div className={s.formGroup}>
                       <SearchableSelect 
                         options={listaActual} 
                         value={ing.insumo_id}
-                        disabled={deshabilitarCampos}
+                        disabled={noTienePermisoAccion}
                         placeholder={ing.tipo === 'insumo' ? "Buscar insumo..." : "Buscar sub-receta..."}
                         onChange={(selectedId) => {
                           const n = [...ingredientes];
@@ -194,8 +191,8 @@ export const RecetasTab = ({ sucursalId }) => {
                     </div>
 
                     <div className={s.formGrid}>
-                      <div className={s.formGroup} style={{ marginBottom: 0 }}>
-                        <label className={s.label} style={{ fontSize: '9px' }}>CANTIDAD</label>
+                      <div className={s.formGroupNoMargin}>
+                        <label className={`${s.label} ${s.labelTiny}`}>CANTIDAD</label>
                         <input
                           type="number" step="0.001"
                           className={s.inputField}
@@ -206,7 +203,7 @@ export const RecetasTab = ({ sucursalId }) => {
                             setIngredientes(n);
                           }}
                           required
-                          disabled={deshabilitarCampos}
+                          disabled={noTienePermisoAccion}
                         />
                       </div>
                       <div className={s.unitDisplayBox}>
@@ -222,7 +219,7 @@ export const RecetasTab = ({ sucursalId }) => {
               })}
             </div>
 
-            {(isEditing ? puedeEditar : puedeCrear) && (
+            {!noTienePermisoAccion && (
               <button 
                 type="button" 
                 onClick={() => setIngredientes([...ingredientes, { tipo: 'insumo', insumo_id: "", cantidad: "", unidad_id: "" }])}
@@ -231,8 +228,8 @@ export const RecetasTab = ({ sucursalId }) => {
               </button>
             )}
 
-            <div className={s.flexColumnGap10} style={{ marginTop: '10px' }}>
-              {(isEditing ? puedeEditar : puedeCrear) && (
+            <div className={`${s.flexColumnGap10} ${s.marginTop10}`}>
+              {!noTienePermisoAccion && (
                 <button type="submit" className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`} disabled={loading}>
                   {loading ? "..." : isEditing ? "ACTUALIZAR" : "GUARDAR RECETA"}
                 </button>
@@ -246,15 +243,15 @@ export const RecetasTab = ({ sucursalId }) => {
           </form>
         </aside>
 
-        {/* TABLA DE RECETAS (Con scroll horizontal en móvil mediante tableContainer) */}
+        {/* TABLA DE RECETAS */}
         <div className={`${s.adminCard} ${s.tableContainer}`}>
           <table className={s.table}>
             <thead className={s.thead}>
               <tr>
-                <th className={s.th} style={{ textAlign: "left" }}>PREPARACIÓN / RENDIMIENTO</th>
-                <th className={s.th} style={{ textAlign: "center" }}>COMPOSICIÓN</th>
-                <th className={s.th} style={{ textAlign: "center" }}>COSTO UNITARIO</th>
-                <th className={s.th} style={{ textAlign: "center" }}>ACCIONES</th>
+                <th className={s.th}>PREPARACIÓN / RENDIMIENTO</th>
+                <th className={`${s.th} s.thCenter`}>COMPOSICIÓN</th>
+                <th className={`${s.th} s.thCenter`}>COSTO UNITARIO</th>
+                <th className={`${s.th} s.thCenter`}>ACCIONES</th>
               </tr>
             </thead>
             <tbody>
@@ -268,41 +265,35 @@ export const RecetasTab = ({ sucursalId }) => {
                   return (
                     <tr key={idx}>
                       <td className={s.td}>
-                        <div style={{ fontWeight: "600", fontSize: '15px' }}>{r.nombre}</div>
-                        <div style={{ marginTop: '4px' }}>
+                        <div className={s.productTitle}>{r.nombre}</div>
+                        <div className={s.marginTop4}>
                             <span className={s.syncBadge} style={{ background: '#f3f4f6', color: '#374151' }}>
                                 Rinde: {r.rendimiento_cantidad} {unidadFinal}
                             </span>
-                            {r.subreceta && <span className={s.badge} style={{ marginLeft: '5px' }}>SUB-RECETA</span>}
+                            {r.subreceta && <span className={`${s.badge} ${s.marginLeft5}`}>SUB-RECETA</span>}
                         </div>
                       </td>
-                      <td className={s.td} style={{ textAlign: "center" }}>
+                      <td className={`${s.td} ${s.tdCenter}`}>
                         <div className={s.flexColumnGap5}>
                           {r.detalle_ingredientes.map((ing, iidx) => (
                             <div key={iidx} className={s.miniBadge}>
                               • {ing.insumo}: <strong>{ing.cantidad} {ing.unidad}</strong>
-                              <span style={{ color: "var(--color-primary)", marginLeft: "5px" }}> (${(ing.costo_fila || 0).toFixed(2)})</span>
+                              <span className={s.textPrimary} style={{ marginLeft: "5px" }}> (${(ing.costo_fila || 0).toFixed(2)})</span>
                             </div>
                           ))}
                         </div>
                       </td>
-                      <td className={s.td} style={{ textAlign: "center" }}>
-                        <div className={s.totalAmount} style={{ 
-                          color: 'var(--color-primary)', 
-                          display: 'flex', 
-                          alignItems: 'baseline', 
-                          justifyContent: 'center', 
-                          gap: '4px' 
-                        }}>
+                      <td className={`${s.td} ${s.tdCenter}`}>
+                        <div className={`${s.totalAmount} ${s.costUnitWrapper}`}>
                             ${costoU.toFixed(2)}
-                            <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: '400' }}> / {unidadFinal}</span>
+                            <span className={s.textSubUnit}> / {unidadFinal}</span>
                         </div>
-                        <div style={{ fontSize: '10px', marginTop: '2px', color: '#9ca3af' }}>
+                        <div className={s.textSubDetail}>
                             Costo lote: ${(r.costo_total_receta || 0).toFixed(2)}
                         </div>
                       </td>
-                      <td className={s.td} style={{ textAlign: "center" }}>
-                        <div style={{ display: "flex", gap: "5px", justifyContent: "flex-end" }}>
+                      <td className={`${s.td} ${s.tdCenter}`}>
+                        <div className={s.actionsWrapper}>
                           <button className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`} onClick={() => handleEdit(r)}>
                             {puedeEditar ? "📝" : "👁️"}
                           </button>
@@ -325,9 +316,7 @@ export const RecetasTab = ({ sucursalId }) => {
   );
 };
 
-/**
- * SearchableSelect Homologado (Corregido para evitar reseteos)
- */
+// SearchableSelect se mantiene igual (ya es un componente de UI)
 const SearchableSelect = ({ options, value, onChange, disabled, placeholder = "Buscar..." }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -342,7 +331,7 @@ const SearchableSelect = ({ options, value, onChange, disabled, placeholder = "B
   );
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div className={s.relative}>
       <input
         type="text"
         className={s.inputField}
@@ -364,7 +353,7 @@ const SearchableSelect = ({ options, value, onChange, disabled, placeholder = "B
       />
       
       {isOpen && !disabled && (
-        <ul className={s.dropdownList} style={{ zIndex: 100, maxHeight: '200px', overflowY: 'auto' }}>
+        <ul className={s.dropdownList}>
           {filteredOptions.length > 0 ? filteredOptions.map(opt => (
             <li
               key={opt.id}
@@ -379,7 +368,7 @@ const SearchableSelect = ({ options, value, onChange, disabled, placeholder = "B
               {opt.nombre}
             </li>
           )) : (
-            <li className={s.dropdownItem} style={{ color: 'var(--color-text-muted)' }}>No hay resultados</li>
+            <li className={s.dropdownItemMuted}>No hay resultados</li>
           )}
         </ul>
       )}

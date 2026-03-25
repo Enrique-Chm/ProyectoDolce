@@ -5,6 +5,10 @@ import { IVA_FACTOR } from '../../../utils/taxConstants';
 import { useProductosTab } from '../../../hooks/useProductosTab'; 
 import Swal from 'sweetalert2'; 
 
+/**
+ * Determina el color del margen de forma dinámica.
+ * Se mantiene como función porque devuelve un valor hexadecimal variable.
+ */
 const getMarginColor = (margen) => {
   const m = parseFloat(margen);
   if (m < 0) return '#dc3545';  
@@ -26,6 +30,8 @@ export const ProductosTab = ({ sucursalId }) => {
 
   const mostrarFormularioProd = puedeCrear || editProdId;
   const mostrarFormularioGrupo = puedeCrear || editGrupoId;
+  const noTienePermisoProd = editProdId ? !puedeEditar : !puedeCrear;
+  const noTienePermisoGrupo = editGrupoId ? !puedeEditar : !puedeCrear;
 
   // ==========================================
   // 🛡️ ALERTAS SWEETALERT2: PRODUCTOS
@@ -131,12 +137,11 @@ export const ProductosTab = ({ sucursalId }) => {
       {/* ============================================================== */}
       {activeSubTab === 'productos' && (
         <div className={mostrarFormularioProd ? s.splitLayout : s.fullLayout}>
-          <aside className={s.adminCard} style={{ display: mostrarFormularioProd ? 'block' : 'none' }}>
+          <aside className={`${s.adminCard} ${!mostrarFormularioProd ? s.hidden : ''}`}>
             <h3 className={s.cardTitle}>{editProdId ? 'Ajustar Producto' : 'Nuevo Producto'}</h3>
             
-            <form onSubmit={handleSubmitProducto} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <form onSubmit={handleSubmitProducto} className={s.formColumn}>
               
-              {/* Uso de formGrid para que el buscador y el costo se apilen en móvil de forma natural */}
               <div className={s.formGrid}>
                 <div className={s.formGroup}>
                   <label className={s.label}>RECETA PRINCIPAL</label>
@@ -147,7 +152,7 @@ export const ProductosTab = ({ sucursalId }) => {
                     labelKey="nombre"
                     placeholder="Buscar receta costeada..."
                     formatLabel={(opt) => `${opt.nombre} ($${opt.costo_final.toFixed(2)})`}
-                    disabled={editProdId ? !puedeEditar : !puedeCrear}
+                    disabled={noTienePermisoProd}
                     onChange={(val) => {
                       const rec = recetasCosteadas.find(r => r.nombre === val);
                       setProdFormData(prev => ({
@@ -163,18 +168,10 @@ export const ProductosTab = ({ sucursalId }) => {
                   <label className={s.label}>COSTO</label>
                   <input 
                     type="text" 
-                    className={s.inputField}
+                    className={`${s.inputField} ${s.inputReadOnlyEmphasized}`}
                     value={`$${(prodFormData.costo_referencia || 0).toFixed(2)}`}
                     readOnly
                     disabled
-                    style={{ 
-                      backgroundColor: "var(--color-bg-muted)", 
-                      textAlign: "center", 
-                      fontWeight: "bold",
-                      color: "var(--color-text-main)",
-                      cursor: "not-allowed",
-                      padding: "10px 14px"
-                    }}
                   />
                 </div>
               </div>
@@ -183,22 +180,23 @@ export const ProductosTab = ({ sucursalId }) => {
                 <div className={s.formGroup}>
                   <label className={s.label}>PRECIO PÚBLICO ($)</label>
                   <input 
-                    type="number" step="0.01" className={s.inputField}
-                    style={{ fontWeight: '600', backgroundColor: (editProdId ? !puedeEditar : !puedeCrear) ? "var(--color-bg-muted)" : "white" }}
+                    type="number" step="0.01" 
+                    className={`${s.inputField} ${s.fontWeight600} ${noTienePermisoProd ? s.inputDisabled : ''}`}
                     value={prodFormData.precio_venta} 
                     onChange={e => setProdFormData({...prodFormData, precio_venta: e.target.value})} 
-                    required readOnly={editProdId ? !puedeEditar : !puedeCrear} 
+                    required 
+                    disabled={noTienePermisoProd}
                   />
                 </div>
                 <div className={s.formGroup}>
                   <label className={s.label}>MARGEN NETO %</label>
-                  <div className={s.unitDisplayBox} style={{ width: '100%', fontWeight: '700', color: getMarginColor(prodFormData.margen_en_vivo) }}>
+                  <div className={s.unitDisplayBox} style={{ color: getMarginColor(prodFormData.margen_en_vivo), fontWeight: '700' }}>
                     {prodFormData.margen_en_vivo}%
                   </div>
                 </div>
               </div>
 
-              <div className={s.formGroup} style={{ borderTop: '1px dashed var(--color-border)', paddingTop: '15px' }}>
+              <div className={`${s.formGroup} ${s.sectionDivider}`}>
                 <label className={s.label}>VINCULAR GRUPOS DE EXTRAS</label>
                 <SearchableSelect 
                   options={gruposMaestros.filter(g => !prodFormData.grupos_vinculados.includes(g.id))} 
@@ -206,24 +204,21 @@ export const ProductosTab = ({ sucursalId }) => {
                   valueKey="id" 
                   labelKey="nombre"
                   placeholder="Buscar grupo para añadir..."
-                  disabled={editProdId ? !puedeEditar : !puedeCrear}
+                  disabled={noTienePermisoProd}
                   onChange={(val) => {
                     if (val) toggleGrupoEnProducto(val);
                   }}
                 />
 
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px' }}>
+                <div className={`${s.flexWrap} ${s.marginTop10}`}>
                   {prodFormData.grupos_vinculados.map(gId => {
                     const grupo = gruposMaestros.find(gm => gm.id === gId);
                     if (!grupo) return null;
                     return (
-                      <div key={gId} className={s.badge} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: 'var(--color-primary)', color: 'white' }}>
+                      <div key={gId} className={s.badgeInteractive}>
                         <span>{grupo.nombre}</span>
-                        {(editProdId ? puedeEditar : puedeCrear) && (
-                          <b 
-                            style={{ cursor: 'pointer', fontSize: '12px', borderLeft: '1px solid rgba(255,255,255,0.3)', paddingLeft: '8px' }} 
-                            onClick={() => toggleGrupoEnProducto(gId)}
-                          > × </b>
+                        {!noTienePermisoProd && (
+                          <b className={s.badgeCloseBtn} onClick={() => toggleGrupoEnProducto(gId)}> × </b>
                         )}
                       </div>
                     );
@@ -231,7 +226,7 @@ export const ProductosTab = ({ sucursalId }) => {
                 </div>
               </div>
 
-              <div className={s.formGroup} style={{ borderTop: '1px dashed var(--color-border)', paddingTop: '15px' }}>
+              <div className={`${s.formGroup} ${s.sectionDivider}`}>
                 <label className={s.label}>CATEGORÍA EN MENÚ</label>
                 <SearchableSelect 
                   options={categorias} 
@@ -239,13 +234,13 @@ export const ProductosTab = ({ sucursalId }) => {
                   valueKey="id" 
                   labelKey="nombre"
                   placeholder="Seleccionar categoría..."
-                  disabled={editProdId ? !puedeEditar : !puedeCrear}
+                  disabled={noTienePermisoProd}
                   onChange={(val) => setProdFormData({...prodFormData, categoria: val})}
                 />
               </div>
 
-              <div className={s.flexColumnGap10} style={{ marginTop: '10px' }}>
-                {(editProdId ? puedeEditar : puedeCrear) && (
+              <div className={`${s.formColumn} ${s.marginTop10}`}>
+                {!noTienePermisoProd && (
                   <button type="submit" className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`} disabled={loading}>
                     {loading ? '...' : (editProdId ? 'ACTUALIZAR' : 'GUARDAR EN MENÚ')}
                   </button>
@@ -259,7 +254,6 @@ export const ProductosTab = ({ sucursalId }) => {
             </form>
           </aside>
 
-          {/* Contenedor .tableContainer para scroll lateral en móviles */}
           <div className={`${s.adminCard} ${s.tableContainer}`}>
             <table className={s.table}>
               <thead className={s.thead}>
@@ -268,7 +262,7 @@ export const ProductosTab = ({ sucursalId }) => {
                   <th className={s.th}>CATEGORÍA</th>
                   <th className={s.th}>COSTO RECETA</th>
                   <th className={s.th}>VENTA (CON IVA)</th>
-                  <th className={s.th} style={{ textAlign: 'right' }}>ACCIONES</th>
+                  <th className={`${s.th} ${s.tdRight}`}>ACCIONES</th>
                 </tr>
               </thead>
               <tbody>
@@ -283,27 +277,27 @@ export const ProductosTab = ({ sucursalId }) => {
                   return (
                     <tr key={p.id}>
                       <td className={s.td}>
-                        <div style={{ fontWeight: '600', color: 'var(--color-text-main)' }}>{p.nombre}</div>
-                        <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '5px' }}>
+                        <div className={s.fontWeight600}>{p.nombre}</div>
+                        <div className={`${s.flexWrap} ${s.marginTop5}`}>
                           {(p.grupos || []).map(g => (
-                            <span key={g.id} className={s.badge} style={{ background: '#e0e7ff', color: '#3730a3', fontSize: '10px' }}>+ {g.nombre}</span>
+                            <span key={g.id} className={`${s.badge} ${s.badgeBlue}`}>+ {g.nombre}</span>
                           ))}
                         </div>
                       </td>
                       <td className={s.td}>
-                        <span className={s.badge} style={{ background: '#f3f4f6', color: '#4b5563', fontSize: '11px', fontWeight: '500', padding: '4px 8px' }}>
+                        <span className={`${s.badge} ${s.badgeGray} ${s.labelSmall} ${s.fontWeight600}`}>
                           {nombreCategoria}
                         </span>
                       </td>
                       <td className={s.td}>${costoBase.toFixed(2)}</td>
                       <td className={s.td}>
-                        <div className={s.totalAmount} style={{ color: 'var(--color-primary)' }}>${ventaBase.toFixed(2)}</div>
-                        <div style={{ fontSize: '12px', fontWeight: '700', color: getMarginColor(margenBase) }}>
+                        <div className={`${s.totalAmount} ${s.textPrimary}`}>${ventaBase.toFixed(2)}</div>
+                        <div className={s.labelSmall} style={{ fontWeight: '700', color: getMarginColor(margenBase) }}>
                           {margenBase}% Margen Real
                         </div>
                       </td>
-                      <td className={s.td} style={{ textAlign: 'right' }}>
-                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                      <td className={`${s.td} ${s.tdRight}`}>
+                        <div className={s.actionsWrapper}>
                           <button className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`} onClick={() => handleEditProd(p)}>
                             {puedeEditar ? '📝' : '👁️'}
                           </button>
@@ -328,61 +322,63 @@ export const ProductosTab = ({ sucursalId }) => {
       {/* ============================================================== */}
       {activeSubTab === 'grupos' && (
         <div className={mostrarFormularioGrupo ? s.splitLayout : s.fullLayout}>
-          <aside className={s.adminCard} style={{ display: mostrarFormularioGrupo ? 'block' : 'none' }}>
+          <aside className={`${s.adminCard} ${!mostrarFormularioGrupo ? s.hidden : ''}`}>
             <h3 className={s.cardTitle}>{editGrupoId ? 'Editar Grupo Maestro' : 'Crear Grupo Maestro'}</h3>
             
-            <form onSubmit={handleSubmitGrupo} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <form onSubmit={handleSubmitGrupo} className={s.formColumn}>
               <div className={s.formGroup}>
                 <label className={s.label}>NOMBRE DEL GRUPO</label>
                 <input 
                   type="text" 
-                  className={s.inputField} 
+                  className={`${s.inputField} ${noTienePermisoGrupo ? s.inputDisabled : ''}`} 
                   placeholder="Ej. Elige tu Proteína, Extras..." 
                   value={grupoFormData.nombre_grupo} 
                   onChange={e => setGrupoFormData({...grupoFormData, nombre_grupo: e.target.value})} 
-                  required readOnly={editGrupoId ? !puedeEditar : !puedeCrear}
+                  required 
+                  disabled={noTienePermisoGrupo}
                 />
               </div>
 
-              <div className={s.formGrid} style={{ marginBottom: '5px' }}>
+              <div className={s.formGrid}>
                 <label className={s.checkboxLabel}>
                   <input 
                     type="checkbox" 
                     className={s.checkbox} 
                     checked={grupoFormData.obligatorio} 
                     onChange={(e) => setGrupoFormData({...grupoFormData, obligatorio: e.target.checked})} 
-                    disabled={editGrupoId ? !puedeEditar : !puedeCrear}
+                    disabled={noTienePermisoGrupo}
                   />
-                  <span>Selección Obligatoria</span>
+                  <span className={s.fontWeight600}>Selección Obligatoria</span>
                 </label>
-                <div className={s.formGroup} style={{ marginBottom: -10 }}>
-                  <label className={s.label} >MÁXIMO PERMITIDO</label>
+                <div className={s.formGroupNoMargin}>
+                  <label className={`${s.label} ${s.labelSmall}`} >MÁXIMO PERMITIDO</label>
                   <input 
                     type="number" min="1" step="1" 
-                    className={s.inputField} 
+                    className={`${s.inputField} ${noTienePermisoGrupo ? s.inputDisabled : ''}`} 
                     value={grupoFormData.maximo} 
                     onChange={e => setGrupoFormData({...grupoFormData, maximo: parseInt(e.target.value)})} 
-                    required readOnly={editGrupoId ? !puedeEditar : !puedeCrear}
+                    required 
+                    disabled={noTienePermisoGrupo}
                   />
                 </div>
               </div>
 
               <hr className={s.hr} />
 
-              <div className={s.flexColumnGap10} style={{ padding: '15px', background: 'var(--color-bg-muted)', borderRadius: '8px' }}>
-                <label className={s.label}>OPCIONES (COSTEO E INVENTARIO)</label>
+              <div className={`${s.formColumn} ${s.summaryBox}`}>
+                <label className={`${s.label} ${s.labelSmall}`}>OPCIONES (COSTEO E INVENTARIO)</label>
                 
                 {grupoFormData.opciones.map((opcion, idx) => {
                   const subData = subrecetasDisponibles.find(s => s.nombre === opcion.subreceta_id);
                   const unidadAbrev = subData?.unidad_abreviatura || "Pz";
 
                   return (
-                    <div key={idx} className={s.itemCardRelative} style={{ background: 'white', padding: '10px' }}>
-                      {(editGrupoId ? puedeEditar : puedeCrear) && (
-                        <button type="button" className={`${s.btnSecondary} ${s.btnRemoveCircle} ${s.btnSmall}`} onClick={() => removeOpcion(idx)} style={{top:'5px', right:'5px'}}>X</button>
+                    <div key={idx} className={`${s.itemCardRelative} ${s.bgWhite}`}>
+                      {!noTienePermisoGrupo && (
+                        <button type="button" className={`${s.btnSecondary} ${s.btnRemoveCircle} ${s.btnSmall}`} onClick={() => removeOpcion(idx)}>X</button>
                       )}
                       
-                      <div style={{ marginBottom: '10px', paddingRight: '20px' }}>
+                      <div className={s.formGroup}>
                         <SearchableSelect 
                           options={subrecetasDisponibles} 
                           value={opcion.subreceta_id} 
@@ -390,36 +386,37 @@ export const ProductosTab = ({ sucursalId }) => {
                           labelKey="nombre"
                           placeholder="Buscar preparación..." 
                           formatLabel={(opt) => `${opt.nombre} - $${opt.costo_final.toFixed(2)} por ${opt.unidad_abreviatura || 'unidad'}`}
-                          disabled={editGrupoId ? !puedeEditar : !puedeCrear}
+                          disabled={noTienePermisoGrupo}
                           onChange={(val) => updateOpcion(idx, 'subreceta_id', val)}
                         />
                       </div>
                       
-                      {/* En lugar del gridTemplateColumns fijo, usamos flex-wrap para responsividad fluida */}
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                        <div style={{ flex: '1 1 80px' }}>
-                          <label className={s.label}>CANTIDAD ({unidadAbrev})</label>
+                      <div className={s.flexWrap}>
+                        <div className={s.flex1}>
+                          <label className={`${s.label} ${s.labelTiny}`}>CANTIDAD ({unidadAbrev})</label>
                           <input 
                             type="number" step="0.001" 
-                            className={s.inputField} 
+                            className={`${s.inputField} ${noTienePermisoGrupo ? s.inputDisabled : ''}`} 
                             value={opcion.cantidad} 
                             onChange={e => updateOpcion(idx, 'cantidad', e.target.value)} 
-                            required readOnly={editGrupoId ? !puedeEditar : !puedeCrear}
+                            required 
+                            disabled={noTienePermisoGrupo}
                           />
                         </div>
-                        <div style={{ flex: '1 1 80px' }}>
-                          <label className={s.label}>PRECIO</label>
+                        <div className={s.flex1}>
+                          <label className={`${s.label} ${s.labelTiny}`}>PRECIO</label>
                           <input 
                             type="number" step="0.01" 
-                            className={s.inputField} 
+                            className={`${s.inputField} ${noTienePermisoGrupo ? s.inputDisabled : ''}`} 
                             value={opcion.precio_venta} 
                             onChange={e => updateOpcion(idx, 'precio_venta', e.target.value)} 
-                            required readOnly={editGrupoId ? !puedeEditar : !puedeCrear}
+                            required 
+                            disabled={noTienePermisoGrupo}
                           />
                         </div>
-                        <div style={{ flex: '1 1 80px' }}>
-                          <label className={s.label}>MARGEN</label>
-                          <div className={s.unitDisplayBox} style={{ width:'100%', fontSize: '15px', fontWeight: '700', color: getMarginColor(opcion.margen) }}>
+                        <div className={s.flex1}>
+                          <label className={`${s.label} ${s.labelTiny}`}>MARGEN</label>
+                          <div className={s.unitDisplayBox} style={{ color: getMarginColor(opcion.margen), fontWeight: '700' }}>
                             {opcion.margen}%
                           </div>
                         </div>
@@ -428,15 +425,15 @@ export const ProductosTab = ({ sucursalId }) => {
                   );
                 })}
                 
-                {(editGrupoId ? puedeEditar : puedeCrear) && (
-                  <button type="button" onClick={addOpcion} className={`${s.btn} ${s.btnOutlineEditar} ${s.btnSmall}`} style={{ alignSelf: 'flex-start' }}>
+                {!noTienePermisoGrupo && (
+                  <button type="button" onClick={addOpcion} className={`${s.btn} ${s.btnOutlineEditar} ${s.btnSmall}`}>
                     + AÑADIR OPCIÓN
                   </button>
                 )}
               </div>
 
-              <div className={s.flexColumnGap10} style={{ marginTop: '10px' }}>
-                {(editGrupoId ? puedeEditar : puedeCrear) && (
+              <div className={`${s.formColumn} ${s.marginTop10}`}>
+                {!noTienePermisoGrupo && (
                   <button type="submit" className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`} disabled={loading}>
                     {loading ? '...' : (editGrupoId ? 'ACTUALIZAR GRUPO MAESTRO' : 'GUARDAR GRUPO MAESTRO')}
                   </button>
@@ -450,25 +447,24 @@ export const ProductosTab = ({ sucursalId }) => {
             </form>
           </aside>
 
-          {/* Contenedor .tableContainer para scroll lateral en móviles */}
           <div className={`${s.adminCard} ${s.tableContainer}`}>
             <table className={s.table}>
               <thead className={s.thead}>
                 <tr>
                   <th className={s.th}>GRUPO MAESTRO</th>
                   <th className={s.th}>OPCIONES (DETALLE OPERATIVO)</th>
-                  <th className={s.th} style={{textAlign:'right'}}>ACCIONES</th>
+                  <th className={`${s.th} ${s.tdRight}`}>ACCIONES</th>
                 </tr>
               </thead>
               <tbody>
                 {gruposMaestros.map(g => (
                   <tr key={g.id}>
                     <td className={s.td}>
-                      <div style={{ fontWeight: '600', color: 'var(--color-text-main)' }}>{g.nombre}</div>
+                      <div className={s.fontWeight600}>{g.nombre}</div>
                       <small className={s.textMuted}>{g.min_seleccion > 0 ? 'Obligatorio' : 'Opcional'} • Máx: {g.max_seleccion}</small>
                     </td>
                     <td className={s.td}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div className={s.formColumnGap5}>
                         {(g.opciones_modificadores || []).map((op, i) => {
                           const vNeta = parseFloat(op.precio_venta) / IVA_FACTOR;
                           const subData = subrecetasDisponibles.find(s => s.nombre === op.subreceta_id);
@@ -477,16 +473,16 @@ export const ProductosTab = ({ sucursalId }) => {
                           const mSub = vNeta > 0 ? (((vNeta - cSub) / vNeta) * 100).toFixed(1) : 0;
 
                           return (
-                            <div key={i} style={{ fontSize: '12px', padding: '2px 0' }}>
-                              • <span style={{ fontWeight: 'bold' }}>{op.cantidad || 1} {unidadAbrev}</span> de {op.subreceta_id} (+${parseFloat(op.precio_venta).toFixed(2)}) 
+                            <div key={i} className={s.labelSmall}>
+                              • <span className={s.fontWeight700}>{op.cantidad || 1} {unidadAbrev}</span> de {op.subreceta_id} (+${parseFloat(op.precio_venta).toFixed(2)}) 
                               <span style={{ color: getMarginColor(mSub), fontWeight: 'bold', marginLeft: '5px' }}>{mSub}% Margen</span>
                             </div>
                           );
                         })}
                       </div>
                     </td>
-                    <td className={s.td} style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                    <td className={`${s.td} ${s.tdRight}`}>
+                      <div className={s.actionsWrapper}>
                         <button className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`} onClick={() => handleEditGrupo(g)}>
                           {puedeEditar ? '📝' : '👁️'}
                         </button>
@@ -508,6 +504,9 @@ export const ProductosTab = ({ sucursalId }) => {
   );
 };
 
+/**
+ * SearchableSelect Homologado
+ */
 const SearchableSelect = ({ options, value, onChange, disabled, placeholder = "Buscar...", valueKey = "id", labelKey = "nombre", formatLabel }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -522,10 +521,10 @@ const SearchableSelect = ({ options, value, onChange, disabled, placeholder = "B
   );
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div className={s.relative}>
       <input
         type="text"
-        className={s.inputField}
+        className={`${s.inputField} ${disabled ? s.inputDisabled : ''}`}
         value={searchTerm}
         disabled={disabled}
         placeholder={placeholder}
@@ -541,10 +540,9 @@ const SearchableSelect = ({ options, value, onChange, disabled, placeholder = "B
             setSearchTerm(selected ? selected[labelKey] : "");
           }, 200);
         }}
-        style={{ backgroundColor: disabled ? "var(--color-bg-muted)" : "white" }}
       />
       {isOpen && !disabled && (
-        <ul className={s.dropdownList} style={{ zIndex: 100, maxHeight: '200px', overflowY: 'auto' }}>
+        <ul className={s.dropdownList}>
           {filteredOptions.length > 0 ? filteredOptions.map((opt, index) => (
             <li 
               key={index} 
@@ -558,9 +556,11 @@ const SearchableSelect = ({ options, value, onChange, disabled, placeholder = "B
             >
               {formatLabel ? formatLabel(opt) : opt[labelKey]}
             </li>
-          )) : <li className={s.dropdownItem} style={{ color: 'var(--color-text-muted)' }}>Sin resultados...</li>}
+          )) : <li className={s.dropdownItemMuted}>Sin resultados...</li>}
         </ul>
       )}
     </div>
   );
 };
+
+export default ProductosTab;

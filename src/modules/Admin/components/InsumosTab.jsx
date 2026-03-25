@@ -222,11 +222,11 @@ export const InsumosTab = ({ sucursalId }) => {
                     </td>
                     <td className={s.td}>
                       <div style={{ fontWeight: '600', color: 'var(--color-primary)' }}>${i.costo_unitario?.toFixed(2)}</div>
-                      <small style={{ fontSize: '10px' }}>por {i.cat_unidades_medida?.abreviatura}</small>
+                      <small style={{ fontSize: '12px' }}>por {i.cat_unidades_medida?.abreviatura}</small>
                     </td>
                     <td className={s.td}>
                       <div style={{ fontWeight: '700', fontSize: '13px' }}>{i.cat_categoria_insumos?.nombre}</div>
-                      <small style={{ fontSize: '10px' }}>{i.dias_reabastecimiento} días reabast.</small>
+                      <small style={{ fontSize: '12px' }}>{i.dias_reabastecimiento} días reabast.</small>
                     </td>
                     <td className={s.td} style={{ textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: '5px', justifyContent: 'flex-end' }}>
