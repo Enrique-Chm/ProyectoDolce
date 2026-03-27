@@ -58,7 +58,7 @@ export const ProveedoresTab = () => {
   };
 
   return (
-    <div className={s.flexColumnGap20}>
+    <div className={s.tabWrapper}>
       <header className={s.pageHeader}>
         <h2 className={s.pageTitle}>Directorio de Proveedores</h2>
         {loading && <span className={s.syncBadge}>CARGANDO...</span>}
@@ -73,6 +73,7 @@ export const ProveedoresTab = () => {
             {editId ? (puedeEditar ? 'Editar Proveedor' : 'Ficha Técnica') : 'Nuevo Proveedor'}
           </h3>
           <form onSubmit={handleSubmit} className={s.formColumn}>
+            
             <div className={s.formGroup}>
               <label className={s.label}>NOMBRE DE LA EMPRESA</label>
               <input 
@@ -91,7 +92,7 @@ export const ProveedoresTab = () => {
                 className={`${s.inputField} ${noTienePermisoAccion ? s.inputDisabled : ''}`}
                 value={formData.contacto_nombre} 
                 onChange={e => setFormData({...formData, contacto_nombre: e.target.value})} 
-                placeholder="Persona de ventas/atención"
+                placeholder="Persona de ventas"
                 readOnly={noTienePermisoAccion}
               />
             </div>
@@ -103,7 +104,7 @@ export const ProveedoresTab = () => {
                   className={`${s.inputField} ${noTienePermisoAccion ? s.inputDisabled : ''}`}
                   value={formData.telefono} 
                   onChange={e => setFormData({...formData, telefono: e.target.value})} 
-                  placeholder="WhatsApp/Oficina"
+                  placeholder="WhatsApp"
                   readOnly={noTienePermisoAccion}
                 />
               </div>
@@ -171,15 +172,15 @@ export const ProveedoresTab = () => {
                 proveedores.map(p => (
                   <tr key={p.id} className={editId === p.id ? s.rowHighlight : ''}>
                     <td className={s.td}>
-                      <div className={s.fontWeight600}>{p.nombre_empresa}</div>
-                      <div className={`${s.textMuted} ${s.labelTiny}`}>{p.correo || 'Sin correo registrado'}</div>
+                      <div className={s.priceValue}>{p.nombre_empresa}</div>
+                      <div className={s.textMuted}>{p.correo || 'Sin correo registrado'}</div>
                     </td>
                     <td className={s.td}>
-                      <div className={`${s.fontWeight600} ${s.fontSize13}`}>{p.contacto_nombre || '---'}</div>
-                      <div className={`${s.textPrimary} ${s.fontWeight700} ${s.labelTiny}`}>{p.telefono || 'Sin número'}</div>
+                      <div className={s.priceValue}>{p.contacto_nombre || '---'}</div>
+                      <div className={s.syncBadge}>{p.telefono || 'Sin número'}</div>
                     </td>
                     <td className={`${s.td} ${s.tdCenter}`}>
-                      <span className={`${s.fontWeight600} ${p.dias_credito <= 0 ? s.opacity50 : ''}`}>
+                      <span className={`${s.textMuted} ${p.dias_credito <= 0 ? s.opacity50 : ''}`}>
                         {p.dias_credito} Días
                       </span>
                     </td>

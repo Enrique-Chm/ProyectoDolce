@@ -147,7 +147,7 @@ export const ProductosTab = ({ sucursalId }) => {
                     value={prodFormData.nombre} 
                     valueKey="nombre" 
                     labelKey="nombre"
-                    placeholder="Buscar receta costeada..."
+                    placeholder="Seleccionar receta ..."
                     formatLabel={(opt) => `${opt.nombre} ($${(opt.costo_final || 0).toFixed(2)})`}
                     disabled={noTienePermisoProd}
                     onChange={(val) => {
@@ -164,11 +164,12 @@ export const ProductosTab = ({ sucursalId }) => {
                 <div className={s.formGroup} title="Costo de la Receta">
                   <label className={s.label}>COSTO</label>
                   <input 
-                    type="text" 
-                    className={`${s.inputField} ${s.inputReadOnlyEmphasized}`}
+                    type="text"
+                    className={s.unitDisplayBox}
                     value={`$${(prodFormData.costo_referencia || 0).toFixed(2)}`}
                     readOnly
                     disabled
+                    style={{ textAlign: 'center' }}
                   />
                 </div>
               </div>
@@ -177,7 +178,7 @@ export const ProductosTab = ({ sucursalId }) => {
                 <div className={s.formGroup}>
                   <label className={s.label}>PRECIO PÚBLICO ($)</label>
                   <input 
-                    type="number" step="0.01" 
+                    type="number" step="0.01" placeholder="Ej.200"
                     className={`${s.inputField} ${s.fontWeight600} ${noTienePermisoProd ? s.inputDisabled : ''}`}
                     value={prodFormData.precio_venta} 
                     onChange={e => setProdFormData({...prodFormData, precio_venta: e.target.value})} 
@@ -193,21 +194,21 @@ export const ProductosTab = ({ sucursalId }) => {
                 </div>
               </div>
 
-              <div className={`${s.formGroup} ${s.sectionDivider}`}>
+              <div className={s.textMuted}>
                 <label className={s.label}>VINCULAR GRUPOS DE EXTRAS</label>
                 <SearchableSelect 
                   options={gruposMaestros.filter(g => !prodFormData.grupos_vinculados.includes(g.id))} 
                   value="" 
                   valueKey="id" 
                   labelKey="nombre"
-                  placeholder="Buscar grupo para añadir..."
+                  placeholder="Seleccionar grupo ..."
                   disabled={noTienePermisoProd}
                   onChange={(val) => {
                     if (val) toggleGrupoEnProducto(val);
                   }}
                 />
 
-                <div className={`${s.flexWrap} ${s.marginTop10}`}>
+                <div className={s.textMuted} style={{ marginTop: '10px', flexWrap: 'wrap',fontSize: '13px' }}>
                   {prodFormData.grupos_vinculados.map(gId => {
                     const grupo = gruposMaestros.find(gm => gm.id === gId);
                     if (!grupo) return null;
@@ -223,14 +224,14 @@ export const ProductosTab = ({ sucursalId }) => {
                 </div>
               </div>
 
-              <div className={`${s.formGroup} ${s.sectionDivider}`}>
+              <div className={s.textMuted}>
                 <label className={s.label}>CATEGORÍA EN MENÚ</label>
                 <SearchableSelect 
                   options={categorias} 
                   value={prodFormData.categoria} 
                   valueKey="id" 
                   labelKey="nombre"
-                  placeholder="Seleccionar categoría..."
+                  placeholder="Seleccionar categoría ..."
                   disabled={noTienePermisoProd}
                   onChange={(val) => setProdFormData({...prodFormData, categoria: val})}
                 />
@@ -273,23 +274,23 @@ export const ProductosTab = ({ sucursalId }) => {
                   return (
                     <tr key={p.id}>
                       <td className={s.td}>
-                        <div className={s.fontWeight600}>{p.nombre}</div>
-                        <div className={`${s.flexWrap} ${s.marginTop5}`}>
+                        <div className={s.productTitle}>{p.nombre}</div>
+                        <div className={s.textMuted}>
                           {(p.grupos || []).map(g => (
-                            <span key={g.id} className={`${s.badge} ${s.badgeBlue}`}>+ {g.nombre}</span>
+                            <span key={g.id} className={s.badge}>+ {g.nombre}</span>
                           ))}
                         </div>
                       </td>
                       <td className={s.td}>
-                        <span className={`${s.badge} ${s.badgeGray} ${s.labelSmall} ${s.fontWeight600}`}>
+                        <span className={s.textMuted}>
                           {nombreCategoria}
                         </span>
                       </td>
                       <td className={s.td}>${costoBase.toFixed(2)}</td>
                       <td className={s.td}>
-                        <div className={`${s.totalAmount} ${s.textPrimary}`}>${ventaBase.toFixed(2)}</div>
+                        <div className={s.priceValue}>${ventaBase.toFixed(2)}</div>
                         <div className={s.labelSmall} style={{ fontWeight: '700', color: getMarginColor(margenBase) }}>
-                          {margenBase}% Margen Real
+                          {margenBase}% Margen Neto
                         </div>
                       </td>
                       <td className={`${s.td} ${s.tdRight}`}>
@@ -342,12 +343,12 @@ export const ProductosTab = ({ sucursalId }) => {
                     onChange={(e) => setGrupoFormData({...grupoFormData, obligatorio: e.target.checked})} 
                     disabled={noTienePermisoGrupo}
                   />
-                  <span className={s.fontWeight600}>Selección Obligatoria</span>
+                  <span className={s.formGroup}>Selección Obligatoria</span>
                 </label>
-                <div className={s.formGroupNoMargin}>
+                <div className={s.formGroup}>
                   <label className={`${s.label} ${s.labelSmall}`} >MÁXIMO PERMITIDO</label>
                   <input 
-                    type="number" min="1" step="1" 
+                    type="number" min="0" step="1" 
                     className={`${s.inputField} ${noTienePermisoGrupo ? s.inputDisabled : ''}`} 
                     value={grupoFormData.maximo} 
                     onChange={e => {
@@ -364,7 +365,7 @@ export const ProductosTab = ({ sucursalId }) => {
               <hr className={s.hr} />
 
               <div className={`${s.formColumn} ${s.summaryBox}`}>
-                <label className={`${s.label} ${s.labelSmall}`}>OPCIONES (COSTEO E INVENTARIO)</label>
+                <label className={s.label}>OPCIONES</label>
                 
                 {grupoFormData.opciones.map((opcion, idx) => {
                   const subData = subrecetasDisponibles.find(s => s.nombre === opcion.subreceta_id);
@@ -389,8 +390,8 @@ export const ProductosTab = ({ sucursalId }) => {
                         />
                       </div>
                       
-                      <div className={s.flexWrap}>
-                        <div className={s.flex1}>
+                      <div className={s.formGrid}>
+                        <div className={s.formGroup}>
                           <label className={`${s.label} ${s.labelTiny}`}>CANTIDAD ({unidadAbrev})</label>
                           <input 
                             type="number" step="0.001" 
@@ -401,7 +402,7 @@ export const ProductosTab = ({ sucursalId }) => {
                             disabled={noTienePermisoGrupo}
                           />
                         </div>
-                        <div className={s.flex1}>
+                        <div className={s.formGroup}>
                           <label className={`${s.label} ${s.labelTiny}`}>PRECIO</label>
                           <input 
                             type="number" step="0.01" 
@@ -412,7 +413,7 @@ export const ProductosTab = ({ sucursalId }) => {
                             disabled={noTienePermisoGrupo}
                           />
                         </div>
-                        <div className={s.flex1}>
+                        <div className={s.formGroup}>
                           <label className={`${s.label} ${s.labelTiny}`}>MARGEN</label>
                           <div className={s.unitDisplayBox} style={{ color: getMarginColor(opcion.margen), fontWeight: '700' }}>
                             {opcion.margen}%
@@ -424,7 +425,8 @@ export const ProductosTab = ({ sucursalId }) => {
                 })}
                 
                 {!noTienePermisoGrupo && (
-                  <button type="button" onClick={addOpcion} className={`${s.btn} ${s.btnOutlineEditar} ${s.btnSmall}`}>
+                  <button type="button" onClick={addOpcion}                 className={`${s.btn} ${s.btnSuccess} ${s.btnSmall}`}
+                                  style={{ alignSelf: "flex-end", marginTop: "3px" }}>
                     + AÑADIR OPCIÓN
                   </button>
                 )}
@@ -458,7 +460,7 @@ export const ProductosTab = ({ sucursalId }) => {
                 {gruposMaestros.map(g => (
                   <tr key={g.id}>
                     <td className={s.td}>
-                      <div className={s.fontWeight600}>{g.nombre}</div>
+                      <div className={s.productTitle}>{g.nombre}</div>
                       <small className={s.textMuted}>{g.min_seleccion > 0 ? 'Obligatorio' : 'Opcional'} • Máx: {g.max_seleccion}</small>
                     </td>
                     <td className={s.td}>
@@ -473,7 +475,7 @@ export const ProductosTab = ({ sucursalId }) => {
                           return (
                             <div key={i} className={s.labelSmall}>
                               • <span className={s.fontWeight700}>{op.cantidad || 1} {unidadAbrev}</span> de {op.subreceta_id} (+${parseFloat(op.precio_venta).toFixed(2)}) 
-                              <span style={{ color: getMarginColor(mSub), fontWeight: 'bold', marginLeft: '5px' }}>{mSub}% Margen</span>
+                              <span className={s.labelSmall} style={{ fontWeight: '700',color: getMarginColor(mSub), marginLeft: '5px' }}>{mSub}% Margen</span>
                             </div>
                           );
                         })}

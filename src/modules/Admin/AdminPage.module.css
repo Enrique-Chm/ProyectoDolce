@@ -203,21 +203,7 @@
 /* =========================================
    TARJETAS Y CONTENEDORES GLOBALES
    ========================================= */
-.pageHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-  flex-wrap: wrap;
-  gap: 15px;
-}
 
-.pageTitle {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: var(--color-text-main);
-  margin: 0;
-}
 
 .adminCard {
   background-color: var(--color-bg-card);
@@ -289,9 +275,9 @@
 .formGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 15px;
+  gap: 10px;
   align-items: flex-end;
-  margin-top: 15px;
+  margin-top: 10px;
 }
 
 .formGroup {
@@ -457,26 +443,6 @@
 /* =========================================
    ESTADOS, BADGES Y TEXTOS UTILITARIOS
    ========================================= */
-.badge {
-  font-size: 9px;
-  font-weight: 800;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background-color: var(--color-bg-app);
-  color: var(--color-primary);
-  margin-top: 4px;
-  display: inline-block;
-  text-transform: uppercase;
-}
-
-.miniBadge {
-  font-size: 11px;
-  color: var(--color-text-muted);
-  background: var(--color-bg-app);
-  padding: 4px 4px;
-  border-radius: 4px;
-  border: 1px solid var(--color-border);
-}
 
 .badgeSuccess {
   background-color: #dcfce7;
@@ -498,22 +464,12 @@
   display: inline-block;
 }
 
-.syncBadge {
-  font-size: 12px;
-  color: var(--color-primary);
-  font-weight: 700;
-}
 
-.totalAmount {
-  font-weight: 600;
-  color: var(--color-text-main);
-  font-size: 1.2rem;
-}
-
-.textSuccess { color: #10b981; }
+.textSuccess { color: var(--color-success) }
 .textDanger { color: var(--color-danger); }
 .textPrimary { color: var(--color-primary); }
-.textMuted { color: var(--color-text-muted); }
+
+
 
 /* =========================================
    LOGIN
@@ -580,13 +536,6 @@
   display: block;
   margin-top: 5px;
   font-weight: 700;
-}
-
-.flexColumnGap20 {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  flex: 1;
 }
 
 .tableHeader {
@@ -679,24 +628,11 @@
   font-weight: bold;
 }
 
-.unitDisplayBox {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 38px; 
-  width: 60px;
-  background-color: #f9fafb;
-  border: 1px solid #d1d5db; 
-  border-radius: var(--radius-ui);
-  font-weight: 600;
-  color: var(--color-text-main);
-  box-sizing: border-box;
-}
+
 
 .costHint {
   display: block;
   width: fit-content;
-  margin-left: auto; 
   margin-top: 15px; 
   background-color: white;
   color: var(--color-primary);
@@ -1018,11 +954,7 @@
 }
 /* --- Nuevas Utilidades para Recetas --- */
 
-.tabWrapperRecetas {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
+
 
 .formColumn {
   display: flex;
@@ -1037,8 +969,7 @@
   border: 1px solid var(--color-border);
 }
 
-.labelSmall { font-size: 10px !important; }
-.labelTiny { font-size: 9px !important; }
+
 
 .radioGroup {
   display: flex;
@@ -1058,10 +989,7 @@
 .thCenter, .tdCenter { text-align: center; }
 .tdRight { text-align: right; }
 
-.productTitle {
-  font-weight: 600;
-  font-size: 15px;
-}
+
 
 .costUnitWrapper {
   display: flex;
@@ -1090,3 +1018,80 @@
   background-color: var(--color-bg-muted) !important;
   cursor: not-allowed;
 }
+
+
+/* Se Usa para las tablas */
+.priceValue {
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.syncBadge {
+  font-size: 12px;
+  color: var(--color-primary);
+  font-weight: 600;
+  color: var(--color-text-muted) 
+}
+.textMuted {
+  color: var(--color-text-muted);
+  font-weight: 600; /* Grosor de letra */
+  font-size: 0.85rem; /* Tamaño de letra */
+}
+.productTitle {
+  font-weight: 600;
+  font-size: 15px;
+}
+.badge {
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: var(--color-bg-app);
+  color: var(--color-primary);
+  margin-top: 4px;
+  display: inline-block;
+  text-transform: uppercase;
+}
+.miniBadge {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  background: var(--color-bg-app);
+  padding: 2px 40px;
+  border-radius: 4px;
+  border: 1px solid var(--color-border);
+}
+.tabWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.pageHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.pageTitle {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--color-text-main);
+  margin: 0;
+}
+.unitDisplayBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px; 
+  width: 60px;
+  background-color: #f9fafb;
+  border: 1px solid #d1d5db; 
+  border-radius: var(--radius-ui);
+  font-weight: 600;
+  color: var(--color-text-main);
+  box-sizing: border-box;
+}
+.labelSmall { font-size: 12px !important; }
+.labelTiny { font-size: 9px !important; }

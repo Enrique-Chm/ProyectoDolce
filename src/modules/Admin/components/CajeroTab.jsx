@@ -349,8 +349,7 @@ export const CajeroTab = ({ usuarioId, sucursalId }) => {
                   </button>
                 </aside>
 
-                <div className={`${stylesAdmin.adminCard} ${stylesAdmin.tableContainer}`}>
-                  <h3 className={stylesAdmin.cardTitle} style={{ padding: '20px' }}>Bitácora de Caja (Turno Actual)</h3>
+                <div className={s.tableHeader}>
                   <table className={stylesAdmin.table}>
                     <thead className={stylesAdmin.thead}>
                       <tr>

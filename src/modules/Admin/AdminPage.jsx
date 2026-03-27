@@ -89,27 +89,47 @@ const AdminPage = () => {
       {/* 🔝 TOPBAR UNIFICADO - Se apoya en la clase nativa .topBar que maneja el flex-wrap */}
       <header className={s.topBar}>
         
-        {/* Bloque Izquierdo: Logo y Selector de Sucursal */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
-          <h2 className={s.logoTitle} style={{ margin: 0, fontSize: '1.3rem', letterSpacing: '-0.5px' }}>CloudKitchen</h2>
+{/* Bloque Izquierdo: Logo y Selector de Sucursal */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
           
-          <div className={s.userInfo}>
-            {isAdmin && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <label className={s.label} style={{ marginBottom: 0 }}>SUCURSAL:</label>
-                <select 
-                  className={s.inputField}
-                  style={{ width: 'auto', padding: '6px 12px', height: '36px', fontSize: '13px' }}
-                  value={filterSucursal} 
-                  onChange={(e) => setFilterSucursal(parseInt(e.target.value))}
-                >
-                  {listaSucursales.map(suc => (
-                    <option key={suc.id} value={suc.id}>{suc.nombre}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
+          <h2 className={s.logoTitle} style={{ margin: 0, fontSize: '1.4rem', letterSpacing: '-0.5px' }}>
+            Ki<span style={{ color: 'var(--color-primary)' }}>Kitchen</span>
+          </h2>
+          
+          {isAdmin && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span className={s.label} style={{ margin: 0, fontSize: '11px' }}>
+                SUCURSAL:
+              </span>
+              <select 
+              className={"s.priceValue"}style={{  
+                  border: 'none', 
+                  background: 'transparent', 
+                  color: 'var(--color-primary)', 
+                  fontSize: '13px',
+                  fontWeight: '700',
+                  outline: 'none', 
+                  cursor: 'pointer',
+                  minWidth: '50px',
+                  padding: 0,
+                  appearance: 'auto'
+                }}
+                value={filterSucursal} 
+                onChange={(e) => setFilterSucursal(parseInt(e.target.value))}
+              >
+                {listaSucursales.map(suc => (
+                  <option 
+                    key={suc.id} 
+                    value={suc.id}
+                    style={{ color: 'var(--color-text-main)', background: 'white' }}
+                  >
+                    {suc.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          
         </div>
 
         {/* Bloque Derecho: Info del Usuario y Logout */}

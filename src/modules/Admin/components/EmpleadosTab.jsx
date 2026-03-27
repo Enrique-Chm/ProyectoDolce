@@ -50,6 +50,7 @@ export const EmpleadosTab = () => {
                 <input
                   className={s.inputField}
                   value={emp.formData.nombre}
+                  placeholder="Ej. Enrique Chavez"
                   onChange={(e) => emp.setFormData({ ...emp.formData, nombre: e.target.value })}
                   required
                   readOnly={emp.editId ? !emp.puedeEditarUsuarios : !emp.puedeCrearUsuarios}
@@ -75,6 +76,7 @@ export const EmpleadosTab = () => {
                   <input
                     className={s.inputField}
                     value={emp.formData.username}
+                    placeholder="Nombre de usuario..."
                     onChange={(e) => emp.setFormData({ ...emp.formData, username: e.target.value })}
                     required
                     readOnly={emp.editId ? !emp.puedeEditarUsuarios : !emp.puedeCrearUsuarios}
@@ -87,7 +89,7 @@ export const EmpleadosTab = () => {
                     value={emp.formData.rol_id}
                     valueKey="id"
                     labelKey="nombre_rol"
-                    placeholder="Elegir rol..."
+                    placeholder="Seleccionar rol..."
                     onChange={(val) => emp.setFormData({ ...emp.formData, rol_id: val })}
                     disabled={emp.editId ? !emp.puedeEditarUsuarios : !emp.puedeCrearUsuarios}
                   />
@@ -101,6 +103,7 @@ export const EmpleadosTab = () => {
                     type="password"
                     className={s.inputField}
                     value={emp.formData.password_hash}
+                    placeholder="Definir contraseña..."
                     onChange={(e) => emp.setFormData({ ...emp.formData, password_hash: e.target.value })}
                     required={!emp.editId}
                     readOnly={emp.editId ? !emp.puedeEditarUsuarios : !emp.puedeCrearUsuarios}
@@ -147,13 +150,13 @@ export const EmpleadosTab = () => {
                 {emp.usuarios.map((u) => (
                   <tr key={u.id}>
                     <td className={s.td}>
-                      <div style={{ fontWeight: "600", color: "var(--color-text-main)" }}>{u.nombre}</div>
-                      <small style={{ color: "var(--color-primary)", fontWeight: "bold" }}>
+                      <div className={s.productTitle}>{u.nombre}</div>
+                      <small className={s.priceValue}>
                         {u.cat_sucursales?.nombre || "Sin Sucursal"}
                       </small>
                     </td>
                     <td className={s.td}>
-                      <span className={s.badge}>{u.roles?.nombre_rol?.toUpperCase() || "SIN ROL"}</span>
+                      <span className={s.textMuted}>{u.roles?.nombre_rol?.toUpperCase() || "SIN ROL"}</span>
                     </td>
                     <td className={s.td} style={{ textAlign: "right" }}>
                       <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
@@ -355,7 +358,7 @@ export const EmpleadosTab = () => {
               <div className={s.formGroup}>
                 <label className={s.label}>NOMBRE</label>
                 <input
-                  className={s.inputField} value={emp.sucursalFormData.nombre}
+                  className={s.inputField} value={emp.sucursalFormData.nombre} placeholder="Nombre de la sucursal..."
                   onChange={(e) => emp.setSucursalFormData({ ...emp.sucursalFormData, nombre: e.target.value })}
                   required readOnly={emp.editSucursalId ? !emp.puedeEditarSucursales : !emp.puedeCrearSucursales}
                 />
@@ -363,7 +366,7 @@ export const EmpleadosTab = () => {
               <div className={s.formGroup}>
                 <label className={s.label}>DIRECCIÓN</label>
                 <input
-                  className={s.inputField} value={emp.sucursalFormData.direccion}
+                  className={s.inputField} value={emp.sucursalFormData.direccion} placeholder="Dirección de la sucursal..."
                   onChange={(e) => emp.setSucursalFormData({ ...emp.sucursalFormData, direccion: e.target.value })}
                   readOnly={emp.editSucursalId ? !emp.puedeEditarSucursales : !emp.puedeCrearSucursales}
                 />
