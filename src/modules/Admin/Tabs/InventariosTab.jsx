@@ -1,7 +1,7 @@
-// Archivo: src/modules/TabsTabs/InventariosTab.jsx
+// Archivo: src/modules/Admin/Tabs/InventariosTab.jsx
 import React, { useState, useMemo, useEffect } from "react";
 import { useInventarios } from "../../../hooks/useInventariosTab";
-import s from "../EstilosGenerales.module.css";
+import s from "../../../assets/styles/EstilosGenerales.module.css";
 
 const InventariosTab = ({ sucursalId, usuarioId }) => {
   // Consumimos estados, métodos y las banderas de seguridad del hook sincronizado
@@ -138,18 +138,49 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
       </nav>
 
       <div className={mostrarFormulario ? s.splitLayout : s.fullLayout}>
-        
-        {/* PANEL LATERAL DE MOVIMIENTO MANUAL */}
+        {/* PANEL LATERAL DE MOVIMIENTO MANUAL (KARDEX) 
+  Estructura: aside > h3 > form > (formGroup | formGrid)
+*/}
         <aside
           className={s.adminCard}
-          style={{ display: mostrarFormulario ? "block" : "none" }}
+          style={{
+            display: mostrarFormulario ? "block" : "none",
+            position: "sticky",
+            top: "20px",
+          }}
         >
           <h3 className={s.cardTitle}>
             {puedeCrear ? "Registrar Movimiento" : "Detalles de Insumo"}
           </h3>
-          {/* Se usa s.formColumn que sí existe en tu CSS */}
+
+          {/* Uso de s.formColumn: Asegura que los elementos fluyan verticalmente con espaciado constante
+           */}
           <form onSubmit={handleSubmitMovimiento} className={s.formColumn}>
-                        <div className={s.formGrid}>
+            {/* 1. SELECCIÓN DE INSUMO (Ocupa el 100% del ancho para facilitar la lectura del saldo) */}
+            <div className={s.formGroup}>
+              <label className={s.label}>INSUMO</label>
+              <SearchableSelect
+                options={insumos || []}
+                value={nuevoMov.insumo_id}
+                valueKey="id"
+                labelKey="nombre"
+                placeholder="Buscar insumo por nombre..."
+                formatLabel={(opt) =>
+                  `${opt.nombre} (Saldo: ${opt.stock_fisico} ${opt.unidad})`
+                }
+                disabled={loading || !puedeCrear}
+                onChange={(val) => setNuevoMov({ ...nuevoMov, insumo_id: val })}
+              />
+            </div>
+
+            {/* 2. FILA DOBLE (Grid): Operación y Cantidad 
+      Se agrupan aquí porque son datos cortos que caben perfectamente lado a lado.
+    */}
+            <div
+              className={s.formGrid}
+              style={{ gridTemplateColumns: "1fr 1fr", gap: "15px" }}
+            >
+              {/* Campo: Operación */}
               <div className={s.formGroup}>
                 <label className={s.label}>OPERACIÓN</label>
                 <select
@@ -160,12 +191,13 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                     backgroundColor: !puedeCrear
                       ? "var(--color-bg-muted)"
                       : "white",
+                    cursor: !puedeCrear ? "not-allowed" : "pointer",
                   }}
                   onChange={(e) =>
                     setNuevoMov({
                       ...nuevoMov,
                       tipo: e.target.value,
-                      motivo: "",
+                      motivo: "", // Reiniciamos motivo al cambiar tipo de operación
                     })
                   }
                 >
@@ -174,23 +206,8 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                   <option value="SALIDA">Salida (-)</option>
                 </select>
               </div>
-            <div className={s.formGrou}>
-              <label className={s.label}>INSUMO</label>
-              <SearchableSelect
-                options={insumos || []}
-                value={nuevoMov.insumo_id}
-                valueKey="id"
-                labelKey="nombre"
-                placeholder=" Buscar insumo..."
-                formatLabel={(opt) =>
-                  `${opt.nombre} (Saldo: ${opt.stock_fisico} ${opt.unidad})`
-                }
-                disabled={loading || !puedeCrear}
-                onChange={(val) =>
-                  setNuevoMov({ ...nuevoMov, insumo_id: val })
-                }
-              />
-            </div>
+
+              {/* Campo: Cantidad con detección de unidad dinámica */}
               <div className={s.formGroup}>
                 <label
                   className={s.label}
@@ -206,17 +223,18 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                       style={{
                         color: "var(--color-primary)",
                         textTransform: "none",
-                        fontSize: "13px",
+                        fontSize: "11px",
                         fontWeight: "700",
                       }}
                     >
-                      (en {insumoSeleccionado.unidad})
+                      ({insumoSeleccionado.unidad})
                     </span>
                   )}
                 </label>
                 <input
                   type="number"
                   step="0.01"
+                  placeholder="0.00"
                   className={s.inputField}
                   value={nuevoMov.cantidad}
                   onChange={(e) =>
@@ -233,23 +251,25 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
               </div>
             </div>
 
+            {/* 3. MOTIVO (Vuelve a ocupar el 100% del ancho para descripciones largas) */}
             <div className={s.formGroup}>
-              <label className={s.label}>MOTIVO</label>
+              <label className={s.label}>MOTIVO DEL MOVIMIENTO</label>
               <select
                 className={s.inputField}
                 value={nuevoMov.motivo}
                 disabled={!puedeCrear || !nuevoMov.tipo}
                 style={{
-                  backgroundColor: !puedeCrear
-                    ? "var(--color-bg-muted)"
-                    : "white",
+                  backgroundColor:
+                    !puedeCrear || !nuevoMov.tipo
+                      ? "var(--color-bg-muted)"
+                      : "white",
                 }}
                 onChange={(e) =>
                   setNuevoMov({ ...nuevoMov, motivo: e.target.value })
                 }
                 required
               >
-                <option value="">-- Selecciona Motivo --</option>
+                <option value="">-- Selecciona el motivo --</option>
                 {motivosDisponibles.map((m) => (
                   <option key={m.id} value={m.nombre_motivo}>
                     {m.nombre_motivo}
@@ -258,20 +278,38 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
               </select>
             </div>
 
-            <div className={s.formGroup} style={{ marginTop: "10px" }}>
+            {/* 4. ACCIÓN FINAL: Botón de Guardado */}
+            <div className={s.formGroup} style={{ marginTop: "12px" }}>
               {puedeCrear && (
                 <button
                   type="submit"
                   className={`${s.btn} ${s.btnPrimary} ${s.btnFull}`}
                   disabled={loading}
+                  style={{
+                    height: "45px",
+                    fontSize: "14px",
+                    letterSpacing: "0.5px",
+                  }}
                 >
-                  {loading ? "PROCESANDO..." : "GUARDAR EN KARDEX"}
+                  {loading ? (
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "8px",
+                      }}
+                    >
+                      <div className={s.spinnerSmall}></div> PROCESANDO...
+                    </div>
+                  ) : (
+                    "GUARDAR EN KARDEX"
+                  )}
                 </button>
               )}
             </div>
           </form>
         </aside>
-
         {/* =========================================
             TABLAS: DIRECTAMENTE COMO EL SEGUNDO HIJO DEL GRID
             Esto evita que el Grid estalle en móvil.
@@ -318,13 +356,31 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                         </small>
                       </td>
                       <td className={s.td}>
-                        <div className={s.priceValue} style={{ color: "var(--color-text-main)" }}>
-                          {insumo.stock_fisico} <small className={s.textMuted} style={{fontSize: '11px'}}>{insumo.unidad}</small>
+                        <div
+                          className={s.priceValue}
+                          style={{ color: "var(--color-text-main)" }}
+                        >
+                          {insumo.stock_fisico}{" "}
+                          <small
+                            className={s.textMuted}
+                            style={{ fontSize: "11px" }}
+                          >
+                            {insumo.unidad}
+                          </small>
                         </div>
                       </td>
                       <td className={s.td}>
-                        <div className={s.priceValue} style={{ color: "var(--color-primary)" }}>
-                          {insumo.stock_estimado} <small className={s.textMuted} style={{fontSize: '11px'}}>{insumo.unidad}</small>
+                        <div
+                          className={s.priceValue}
+                          style={{ color: "var(--color-primary)" }}
+                        >
+                          {insumo.stock_estimado}{" "}
+                          <small
+                            className={s.textMuted}
+                            style={{ fontSize: "11px" }}
+                          >
+                            {insumo.unidad}
+                          </small>
                         </div>
                       </td>
                     </tr>
@@ -346,7 +402,11 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                 </h3>
                 {contrasteData.length > 0 && (
                   <div
-                    style={{ fontSize: "13px", marginTop: "5px", fontWeight: "700" }}
+                    style={{
+                      fontSize: "13px",
+                      marginTop: "5px",
+                      fontWeight: "700",
+                    }}
                     className={
                       auditados.length === contrasteData.length
                         ? s.textSuccess
@@ -386,7 +446,9 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                 />
                 <button
                   className={`${s.btn} ${s.btnDark}`}
-                  onClick={() => generarContraste(filtroFechas.inicio, filtroFechas.fin)}
+                  onClick={() =>
+                    generarContraste(filtroFechas.inicio, filtroFechas.fin)
+                  }
                   disabled={loading}
                 >
                   {loading ? "..." : "BALANCE"}
@@ -399,7 +461,10 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                 <tr>
                   <th className={s.th}>INSUMO ESPERADO</th>
                   <th className={s.th}>VENTAS (-)</th>
-                  <th className={s.th} style={{ backgroundColor: "var(--color-bg-muted)" }}>
+                  <th
+                    className={s.th}
+                    style={{ backgroundColor: "var(--color-bg-muted)" }}
+                  >
                     FÍSICO REAL
                   </th>
                   <th className={s.th}>DIFERENCIA</th>
@@ -420,31 +485,49 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                 ) : (
                   contrasteDataFiltrado.map((row) => {
                     const inputVal = conteos[row.id];
-                    const tieneConteo = inputVal !== undefined && inputVal !== "";
+                    const tieneConteo =
+                      inputVal !== undefined && inputVal !== "";
                     const diferenciaReal = tieneConteo
-                      ? (parseFloat(inputVal) - parseFloat(row.stock_esperado)).toFixed(2)
+                      ? (
+                          parseFloat(inputVal) - parseFloat(row.stock_esperado)
+                        ).toFixed(2)
                       : "-";
                     const yaAuditado = auditados.includes(row.id);
 
                     let difColorClass = "";
                     if (tieneConteo) {
-                      if (parseFloat(diferenciaReal) < 0) difColorClass = s.textDanger;
-                      else if (parseFloat(diferenciaReal) > 0) difColorClass = s.textSuccess;
+                      if (parseFloat(diferenciaReal) < 0)
+                        difColorClass = s.textDanger;
+                      else if (parseFloat(diferenciaReal) > 0)
+                        difColorClass = s.textSuccess;
                     }
 
                     return (
-                      <tr key={row.id} className={yaAuditado ? s.rowAudited : ""}>
+                      <tr
+                        key={row.id}
+                        className={yaAuditado ? s.rowAudited : ""}
+                      >
                         <td className={s.td}>
-                          <div className={s.productTitle}>{row.insumo}</div> <div> {row.stock_esperado} {row.unidad}</div>
+                          <div className={s.productTitle}>{row.insumo}</div>{" "}
+                          <div>
+                            {" "}
+                            {row.stock_esperado} {row.unidad}
+                          </div>
                         </td>
-                        <td className={s.td} style={{ fontWeight: "700" }}>
-                        </td>
-                        <td className={`${s.td} ${s.textDanger}`} style={{ fontWeight: "700" }}>
+                        <td className={s.td} style={{ fontWeight: "700" }}></td>
+                        <td
+                          className={`${s.td} ${s.textDanger}`}
+                          style={{ fontWeight: "700" }}
+                        >
                           {row.vendido !== "0.00" ? `-${row.vendido}` : "0.00"}
                         </td>
                         <td
                           className={s.td}
-                          style={{ backgroundColor: yaAuditado ? "transparent" : "var(--color-bg-muted)" }}
+                          style={{
+                            backgroundColor: yaAuditado
+                              ? "transparent"
+                              : "var(--color-bg-muted)",
+                          }}
                         >
                           <input
                             type="number"
@@ -452,10 +535,15 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                             placeholder="0.00"
                             value={conteos[row.id] || ""}
                             readOnly={!puedeEditar || yaAuditado}
-                            onChange={(e) => actualizarConteo(row.id, e.target.value)}
+                            onChange={(e) =>
+                              actualizarConteo(row.id, e.target.value)
+                            }
                           />
                         </td>
-                        <td className={`${s.td} ${difColorClass}`} style={{ fontWeight: "900" }}>
+                        <td
+                          className={`${s.td} ${difColorClass}`}
+                          style={{ fontWeight: "900" }}
+                        >
                           {tieneConteo
                             ? parseFloat(diferenciaReal) > 0
                               ? `+${diferenciaReal}`
@@ -528,7 +616,10 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                         <div
                           className={s.priceValue}
                           style={{
-                            color: m.tipo === "ENTRADA" ? "var(--color-success)" : "var(--color-danger)",
+                            color:
+                              m.tipo === "ENTRADA"
+                                ? "var(--color-success)"
+                                : "var(--color-danger)",
                           }}
                         >
                           {m.tipo === "ENTRADA" ? "+" : "-"}
@@ -623,7 +714,10 @@ const SearchableSelect = ({
               </li>
             ))
           ) : (
-            <li className={s.dropdownItem} style={{ color: "var(--color-text-muted)" }}>
+            <li
+              className={s.dropdownItem}
+              style={{ color: "var(--color-text-muted)" }}
+            >
               Sin resultados...
             </li>
           )}

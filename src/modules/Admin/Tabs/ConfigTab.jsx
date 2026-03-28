@@ -1,6 +1,6 @@
 // Archivo: src/modules/Admin/Tabs/ConfigTab.jsx
 import React, { useState } from 'react';
-import s from '../../../assets/styles/EstilosGenerales.module.css'; 
+import s from '../../../../assets/styles/EstilosGenerales.module.css'; 
 import { useConfigTab } from '../../../hooks/useConfigTab';
 import { hasPermission } from '../../../utils/checkPermiso'; // 🛡️ Importamos seguridad
 

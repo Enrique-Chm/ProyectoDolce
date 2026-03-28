@@ -1,7 +1,7 @@
-// Archivo: src/modules/TabsTabs/GastosTab.jsx
+// Archivo: src/modules/Admin/Tabs/GastosTab.jsx
 import React, { useState } from "react";
 import { useGastos } from "../../../hooks/useGastos";
-import s from "../EstilosGenerales.module.css";
+import s from "../../../assets/styles/EstilosGenerales.module.css";
 
 export const GastosTab = () => {
   const g = useGastos();

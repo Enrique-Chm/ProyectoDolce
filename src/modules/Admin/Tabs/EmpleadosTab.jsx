@@ -1,8 +1,8 @@
-// Archivo: src/modules/TabsTabs/EmpleadosTab.jsx
+// Archivo: src/modules/Admin/Tabs/EmpleadosTab.jsx
 import React, { useState, useEffect } from "react";
 import { useEmpleados } from "../../../hooks/useEmpleados";
 import { MATRIZ_MODULOS, hasPermission } from "../../../utils/checkPermiso";
-import s from "../EstilosGenerales.module.css";
+import s from "../../../assets/styles/EstilosGenerales.module.css";
 
 export const EmpleadosTab = () => {
   const [subTab, setSubTab] = useState("usuarios");

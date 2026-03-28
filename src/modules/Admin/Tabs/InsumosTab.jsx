@@ -1,6 +1,6 @@
-// Archivo: src/modules/TabsTabs/InsumosTab.jsx
+// Archivo: src/modules/Admin/Tabs/InsumosTab.jsx
 import React, { useState, useEffect } from "react";
-import s from "../EstilosGenerales.module.css";
+import s from "../../../assets/styles/EstilosGenerales.module.css";
 import { useInsumosTab } from "../../../hooks/useInsumosTab";
 import Swal from "sweetalert2";
 

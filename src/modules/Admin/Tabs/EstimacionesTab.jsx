@@ -1,7 +1,7 @@
-// Archivo: src/modules/TabsTabs/EstimacionesTab.jsx
+// Archivo: src/modules/Admin/Tabs/EstimacionesTab.jsx
 import React, { useState, useMemo } from 'react';
 import { useEstimacionesTab } from "../../../hooks/useEstimacionesTab"; 
-import s from "../EstilosGenerales.module.css"; 
+import s from "../../../assets/styles/EstilosGenerales.module.css";
 import { formatCurrency } from "../../../utils/formatCurrency"; 
 import { hasPermission } from '../../../utils/checkPermiso'; // Importamos seguridad
 

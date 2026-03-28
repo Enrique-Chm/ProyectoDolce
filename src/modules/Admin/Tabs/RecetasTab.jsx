@@ -1,6 +1,6 @@
-// Archivo: src/modules/TabsTabs/RecetasTab.jsx
+// Archivo: src/modules/Admin/Tabs/RecetasTab.jsx
 import React, { useState, useEffect, useRef } from "react";
-import s from "../EstilosGenerales.module.css";
+import s from "../../../assets/styles/EstilosGenerales.module.css";
 import { useRecetasTab } from "../../../hooks/useRecetasTab";
 import Swal from "sweetalert2";
 

@@ -1,6 +1,6 @@
 // Archivo: src/modules/Admin/Tabs/ProveedoresTab.jsx
 import React, { useState } from 'react';
-import s from '../../../assets/styles/EstilosGenerales.module.css';
+import s from "../../../assets/styles/EstilosGenerales.module.css";
 import { useProveedoresTab } from '../../../hooks/useProveedoresTab'; 
 import Swal from 'sweetalert2'; 
 
