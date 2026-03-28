@@ -1,7 +1,7 @@
 // Archivo: src/hooks/useAnalitica.js
 import { useState, useEffect, useCallback } from 'react';
-import { analiticaService } from '../services/analitica.service';
-import { hasPermission } from '../utils/checkPermiso'; // 🛡️ Importación de seguridad
+import { analiticaService } from './Analitica.service';
+import { hasPermission } from '../../../../utils/checkPermiso'; // 🛡️ Importación de seguridad
 
 export const useAnalitica = (sucursalId) => {
   const [loading, setLoading] = useState(true);

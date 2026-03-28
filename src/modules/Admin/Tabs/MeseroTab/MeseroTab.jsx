@@ -1,10 +1,9 @@
-// Archivo: src/modules/Admin/components/MeseroTab.jsx
+// Archivo: src/modules/Admin/Tabs/MeseroTab.jsx
 import React, { useState } from "react";
-import s from "./MeseroTab.module.css";
-import stylesAdmin from "../AdminPage.module.css";
-import { useMeseroTab } from "../../../hooks/useMeseroTab";
-import { hasPermission } from "../../../utils/checkPermiso";
-
+import s from "../../../../assets/styles/ServicioTab.module.css";
+import stylesAdmin from "../../../../assets/styles/EstilosGenerales.module.css";
+import { useMeseroTab } from "./useMeseroTab"; 
+import { hasPermission } from "../../../../utils/checkPermiso";
 /**
  * Componente de Punto de Venta para Meseros.
  * Gestiona el ciclo de vida de la orden: Salón -> Toma de Pedido -> Cocina -> Caja.

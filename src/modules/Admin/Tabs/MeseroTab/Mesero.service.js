@@ -1,6 +1,6 @@
 // Archivo: src/services/Mesero.service.js
-import { supabase } from '../lib/supabaseClient';
-import { hasPermission } from '../utils/checkPermiso'; 
+import { supabase } from '../../../../lib/supabaseClient';
+import { hasPermission } from '../../../../utils/checkPermiso'; 
 
 export const MeseroService = {
   

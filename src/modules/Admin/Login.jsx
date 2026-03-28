@@ -1,9 +1,9 @@
-// Archivo: src/modules/Auth/components/Login.jsx
+// Archivo: src/modules/Auth/Tabs/Login.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom'; // 👈 IMPORTANTE: Agregamos el hook de navegación
 import { authService } from '../../services/Auth.service';
 // Ajusta la ruta de importación de tu CSS general de Admin
-import s from '../Admin/AdminPage.module.css';
+import s from "../../assets/styles/EstilosGenerales.module.css";
 
 export const Login = ({ onLoginSuccess }) => {
   const [username, setUsername] = useState('');

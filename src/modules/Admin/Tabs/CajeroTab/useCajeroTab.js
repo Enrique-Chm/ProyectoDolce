@@ -1,7 +1,7 @@
 // Archivo: src/hooks/useCajeroTab.js
 import { useState, useEffect, useCallback } from "react";
-import { CajaService } from "../services/Caja.service";
-import { hasPermission } from "../utils/checkPermiso"; 
+import { CajaService } from "./Caja.service";
+import { hasPermission } from "../../../../utils/checkPermiso"; 
 import Swal from "sweetalert2";
 
 export const useCajeroTab = (usuarioId, sucursalId) => {

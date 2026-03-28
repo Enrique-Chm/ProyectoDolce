@@ -1,7 +1,7 @@
 // Archivo: src/hooks/useImpresoras.js
 import { useState, useEffect, useCallback } from 'react';
 import { impresorasService } from '../services/Impresoras.service';
-import { CajaService } from '../services/Caja.service';
+import { CajaService } from '../modules/TabsTabs/CajeroTab/Caja.service';
 import { hasPermission } from '../utils/checkPermiso'; // 🛡️ Blindaje de seguridad
 
 /**

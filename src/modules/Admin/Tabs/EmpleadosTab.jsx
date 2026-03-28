@@ -1,16 +1,39 @@
-// Archivo: src/modules/Admin/components/EmpleadosTab.jsx
+// Archivo: src/modules/TabsTabs/EmpleadosTab.jsx
 import React, { useState, useEffect } from "react";
 import { useEmpleados } from "../../../hooks/useEmpleados";
 import { MATRIZ_MODULOS, hasPermission } from "../../../utils/checkPermiso";
-import s from "../AdminPage.module.css";
+import s from "../EstilosGenerales.module.css";
 
 export const EmpleadosTab = () => {
   const [subTab, setSubTab] = useState("usuarios");
   const [activePermisoTab, setActivePermisoTab] = useState("SERVICIO");
   
+  // Estados para los filtros de búsqueda
+  const [filtroUsuarios, setFiltroUsuarios] = useState("");
+  const [filtroSucursales, setFiltroSucursales] = useState("");
+  
   const emp = useEmpleados();
 
   const getPermisoId = (clave) => emp.permisos.find((p) => p.clave_permiso === clave)?.id;
+
+  // Filtrado de usuarios
+  const usuariosFiltrados = emp.usuarios.filter(u => {
+    if (!filtroUsuarios) return true;
+    const texto = filtroUsuarios.toLowerCase();
+    const matchNombre = u.nombre?.toLowerCase().includes(texto);
+    const matchSucursal = u.cat_sucursales?.nombre?.toLowerCase().includes(texto);
+    const matchRol = u.roles?.nombre_rol?.toLowerCase().includes(texto);
+    return matchNombre || matchSucursal || matchRol;
+  });
+
+  // Filtrado de sucursales
+  const sucursalesFiltradas = emp.sucursales.filter(suc => {
+    if (!filtroSucursales) return true;
+    const texto = filtroSucursales.toLowerCase();
+    const matchNombre = suc.nombre?.toLowerCase().includes(texto);
+    const matchDireccion = suc.direccion?.toLowerCase().includes(texto);
+    return matchNombre || matchDireccion;
+  });
 
   return (
     <div className={s.tabWrapper}>
@@ -138,6 +161,17 @@ export const EmpleadosTab = () => {
 
           {/* Listado de Empleados */}
           <div className={`${s.adminCard} ${s.tableContainer}`}>
+            {/* Buscador de Empleados */}
+            <div style={{ padding: "15px", borderBottom: "1px solid var(--color-border)" }}>
+              <input
+                type="text"
+                className={s.inputField}
+                placeholder="Buscar por empleado, sucursal o rol..."
+                value={filtroUsuarios}
+                onChange={(e) => setFiltroUsuarios(e.target.value)}
+              />
+            </div>
+
             <table className={s.table}>
               <thead className={s.thead}>
                 <tr>
@@ -147,40 +181,50 @@ export const EmpleadosTab = () => {
                 </tr>
               </thead>
               <tbody>
-                {emp.usuarios.map((u) => (
-                  <tr key={u.id}>
-                    <td className={s.td}>
-                      <div className={s.productTitle}>{u.nombre}</div>
-                      <small className={s.priceValue}>
-                        {u.cat_sucursales?.nombre || "Sin Sucursal"}
-                      </small>
-                    </td>
-                    <td className={s.td}>
-                      <span className={s.textMuted}>{u.roles?.nombre_rol?.toUpperCase() || "SIN ROL"}</span>
-                    </td>
-                    <td className={s.td} style={{ textAlign: "right" }}>
-                      <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-                        <button
-                          className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`}
-                          onClick={() => {
-                            emp.setEditId(u.id);
-                            emp.setFormData({ ...u, password_hash: '' });
-                          }}
-                        >
-                          {emp.puedeEditarUsuarios ? '📝' : 'VER'}
-                        </button>
-                        {emp.puedeBorrarUsuarios && (
-                          <button
-                            className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`}
-                            onClick={() => emp.handleDeleteUsuario(u.id, u.nombre)}
-                          >
-                            ❌
-                          </button>
-                        )}
-                      </div>
+                {usuariosFiltrados.length === 0 ? (
+                  <tr>
+                    <td colSpan="3" style={{ padding: "40px", textAlign: "center", color: "var(--color-text-muted)" }}>
+                      {emp.usuarios.length === 0
+                        ? "No hay empleados registrados."
+                        : "No se encontraron resultados para su búsqueda."}
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  usuariosFiltrados.map((u) => (
+                    <tr key={u.id}>
+                      <td className={s.td}>
+                        <div className={s.productTitle}>{u.nombre}</div>
+                        <small className={s.priceValue}>
+                          {u.cat_sucursales?.nombre || "Sin Sucursal"}
+                        </small>
+                      </td>
+                      <td className={s.td}>
+                        <span className={s.textMuted}>{u.roles?.nombre_rol?.toUpperCase() || "SIN ROL"}</span>
+                      </td>
+                      <td className={s.td} style={{ textAlign: "right" }}>
+                        <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                          <button
+                            className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`}
+                            onClick={() => {
+                              emp.setEditId(u.id);
+                              emp.setFormData({ ...u, password_hash: '' });
+                            }}
+                          >
+                            {emp.puedeEditarUsuarios ? '📝' : 'VER'}
+                          </button>
+                          {emp.puedeBorrarUsuarios && (
+                            <button
+                              className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`}
+                              onClick={() => emp.handleDeleteUsuario(u.id, u.nombre)}
+                            >
+                              ❌
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -336,7 +380,7 @@ export const EmpleadosTab = () => {
                                 </tr>
                               </React.Fragment>
                             );
-                        });
+                          });
                       })()}
                     </tbody>
                   </table>
@@ -388,6 +432,17 @@ export const EmpleadosTab = () => {
           </aside>
 
           <div className={`${s.adminCard} ${s.tableContainer}`}>
+            {/* Buscador de Sucursales */}
+            <div style={{ padding: "15px", borderBottom: "1px solid var(--color-border)" }}>
+              <input
+                type="text"
+                className={s.inputField}
+                placeholder="Buscar por nombre o dirección..."
+                value={filtroSucursales}
+                onChange={(e) => setFiltroSucursales(e.target.value)}
+              />
+            </div>
+
             <table className={s.table} style={{ minWidth: "500px" }}>
               <thead className={s.thead}>
                 <tr>
@@ -397,25 +452,35 @@ export const EmpleadosTab = () => {
                 </tr>
               </thead>
               <tbody>
-                {emp.sucursales.map((suc) => (
-                  <tr key={suc.id}>
-                    <td className={s.td}><strong>{suc.nombre}</strong></td>
-                    <td className={s.td}>{suc.direccion || "N/A"}</td>
-                    <td className={s.td} style={{ textAlign: "right" }}>
-                      <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-                        <button
-                          className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`}
-                          onClick={() => { emp.setEditSucursalId(suc.id); emp.setSucursalFormData(suc); }}
-                        >
-                          {emp.puedeEditarSucursales ? '📝' : '👁️'}
-                        </button>
-                        {emp.puedeBorrarSucursales && (
-                          <button className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`} onClick={() => emp.handleDeleteSucursal(suc.id, suc.nombre)}>❌</button>
-                        )}
-                      </div>
+                {sucursalesFiltradas.length === 0 ? (
+                  <tr>
+                    <td colSpan="3" style={{ padding: "40px", textAlign: "center", color: "var(--color-text-muted)" }}>
+                      {emp.sucursales.length === 0
+                        ? "No hay sucursales registradas."
+                        : "No se encontraron resultados para su búsqueda."}
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  sucursalesFiltradas.map((suc) => (
+                    <tr key={suc.id}>
+                      <td className={s.td}><strong>{suc.nombre}</strong></td>
+                      <td className={s.td}>{suc.direccion || "N/A"}</td>
+                      <td className={s.td} style={{ textAlign: "right" }}>
+                        <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                          <button
+                            className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`}
+                            onClick={() => { emp.setEditSucursalId(suc.id); emp.setSucursalFormData(suc); }}
+                          >
+                            {emp.puedeEditarSucursales ? '📝' : '👁️'}
+                          </button>
+                          {emp.puedeBorrarSucursales && (
+                            <button className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`} onClick={() => emp.handleDeleteSucursal(suc.id, suc.nombre)}>❌</button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

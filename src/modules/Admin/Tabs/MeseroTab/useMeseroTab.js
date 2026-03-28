@@ -1,9 +1,9 @@
 // Archivo: src/hooks/useMeseroTab.js
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabaseClient'; // Asegúrate de tener esta importación
-import { productosService } from '../services/productos.service';
-import { MeseroService } from '../services/Mesero.service'; 
-import { hasPermission } from '../utils/checkPermiso';
+import { supabase } from '../../../../lib/supabaseClient'; // Asegúrate de tener esta importación
+import { productosService } from '../../../../services/Menu.service';
+import { MeseroService } from './Mesero.service'; 
+import { hasPermission } from '../../../../utils/checkPermiso';
 
 /**
  * Hook Maestro para la gestión de Salón y Comandas.

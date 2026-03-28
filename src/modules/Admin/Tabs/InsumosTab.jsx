@@ -1,6 +1,6 @@
-// Archivo: src/modules/Admin/components/InsumosTab.jsx
+// Archivo: src/modules/TabsTabs/InsumosTab.jsx
 import React, { useState, useEffect } from "react";
-import s from "../AdminPage.module.css";
+import s from "../EstilosGenerales.module.css";
 import { useInsumosTab } from "../../../hooks/useInsumosTab";
 import Swal from "sweetalert2";
 
@@ -21,6 +21,9 @@ export const InsumosTab = ({ sucursalId }) => {
     handleDelete,
     prepararEdicion,
   } = useInsumosTab(sucursalId);
+
+  // Estado para el filtro de búsqueda
+  const [filtroBuscar, setFiltroBuscar] = useState("");
 
   // 💡 Lógica de Diseño Dinámico
   const mostrarFormulario = puedeEditar || editId;
@@ -56,6 +59,17 @@ export const InsumosTab = ({ sucursalId }) => {
       if (result.isConfirmed) handleDelete(id);
     });
   };
+
+  // Filtrado de insumos basado en el texto de búsqueda
+  const insumosFiltrados = insumos.filter((i) => {
+    if (!filtroBuscar) return true;
+    const texto = filtroBuscar.toLowerCase();
+    const matchNombre = i.nombre?.toLowerCase().includes(texto);
+    const matchModelo = i.modelo?.toLowerCase().includes(texto);
+    const matchCategoria = i.cat_categoria_insumos?.nombre?.toLowerCase().includes(texto);
+    const matchProveedor = i.proveedores?.nombre_empresa?.toLowerCase().includes(texto);
+    return matchNombre || matchModelo || matchCategoria || matchProveedor;
+  });
 
   return (
     <div className={s.tabWrapper}>
@@ -283,6 +297,17 @@ export const InsumosTab = ({ sucursalId }) => {
 
         {/* 💡 Eliminamos el minWidth forzado en la tabla, el contenedor .tableContainer manejará el scroll lateral */}
         <div className={`${s.adminCard} ${s.tableContainer}`}>
+          {/* Componente visual para la Búsqueda */}
+          <div style={{ padding: "15px", borderBottom: "1px solid var(--color-border)" }}>
+            <input
+              type="text"
+              className={s.inputField}
+              placeholder="Buscar por nombre, modelo, proveedor o categoría..."
+              value={filtroBuscar}
+              onChange={(e) => setFiltroBuscar(e.target.value)}
+            />
+          </div>
+
           <table className={s.table}>
             <thead className={s.thead}>
               <tr>
@@ -295,7 +320,7 @@ export const InsumosTab = ({ sucursalId }) => {
               </tr>
             </thead>
             <tbody>
-              {insumos.length === 0 ? (
+              {insumosFiltrados.length === 0 ? (
                 <tr>
                   <td
                     colSpan="4"
@@ -307,11 +332,13 @@ export const InsumosTab = ({ sucursalId }) => {
                   >
                     {loading
                       ? "Cargando insumos..."
-                      : "No hay insumos registrados."}
+                      : insumos.length === 0
+                      ? "No hay insumos registrados."
+                      : "No se encontraron resultados para su búsqueda."}
                   </td>
                 </tr>
               ) : (
-                insumos.map((i) => (
+                insumosFiltrados.map((i) => (
                   <tr
                     key={i.id}
                     style={{

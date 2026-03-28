@@ -1,12 +1,12 @@
-// Archivo: src/modules/Admin/components/CajeroTab.jsx
+// Archivo: src/modules/Admin/Tabs/CajeroTab.jsx
 import React, { useState } from "react";
-import { useCajeroTab } from "../../../hooks/useCajeroTab";
-import { CajaService } from "../../../services/Caja.service"; 
-import stylesAdmin from "../AdminPage.module.css"; 
-import s from "./MeseroTab.module.css"; // UNIFICADO: Usamos el mismo CSS que el mesero
-import { formatCurrency } from "../../../utils/formatCurrency";
+import { useCajeroTab } from "./useCajeroTab"; //  4 niveles hacia atrás
+import { CajaService } from "./Caja.service"; //  4 niveles hacia atrás
+import stylesAdmin from "../../../../assets/styles/EstilosGenerales.module.css";
+import s from "../../../../assets/styles/ServicioTab.module.css";
+import { formatCurrency } from "../../../../utils/formatCurrency"; //  4 niveles hacia atrás
 import Swal from "sweetalert2";
-import { hasPermission } from "../../../utils/checkPermiso"; 
+import { hasPermission } from "../../../../utils/checkPermiso"; //  4 niveles hacia atrás
 
 export const CajeroTab = ({ usuarioId, sucursalId }) => {
   // 🛡️ SEGURIDAD INTERNA (RBAC)
@@ -219,7 +219,7 @@ export const CajeroTab = ({ usuarioId, sucursalId }) => {
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
                     
-                    {/*  SECCIÓN 1: MESAS POR COBRAR (PRIORIDAD ALTA) */}
+                    {/* SECCIÓN 1: MESAS POR COBRAR (PRIORIDAD ALTA) */}
                     {mesasPorCobrar.length > 0 && (
                       <div>
                         <h3 className={stylesAdmin.cardTitle} style={{ marginBottom: '15px', color: 'var(--color-warning)' }}>
@@ -246,7 +246,7 @@ export const CajeroTab = ({ usuarioId, sucursalId }) => {
                       </div>
                     )}
 
-                    {/*  SECCIÓN 2: MESAS ACTIVAS / CONSUMIENDO */}
+                    {/* SECCIÓN 2: MESAS ACTIVAS / CONSUMIENDO */}
                     {mesasActivas.length > 0 && (
                       <div>
                         <h3 className={stylesAdmin.cardTitle} style={{ marginBottom: '15px', color: 'var(--color-text-muted)', borderTop: mesasPorCobrar.length > 0 ? '1px dashed var(--color-border)' : 'none', paddingTop: mesasPorCobrar.length > 0 ? '20px' : '0' }}>
@@ -273,7 +273,7 @@ export const CajeroTab = ({ usuarioId, sucursalId }) => {
                       </div>
                     )}
 
-                    {/*  SECCIÓN 3: MESAS COBRADAS EN ESTE TURNO */}
+                    {/* SECCIÓN 3: MESAS COBRADAS EN ESTE TURNO */}
                     {cuentasCobradas.length > 0 && (
                       <div>
                         <h3 className={stylesAdmin.cardTitle} style={{ marginBottom: '15px', color: 'var(--color-success)', borderTop: (mesasPorCobrar.length > 0 || mesasActivas.length > 0) ? '1px dashed var(--color-border)' : 'none', paddingTop: '20px' }}>
@@ -316,6 +316,7 @@ export const CajeroTab = ({ usuarioId, sucursalId }) => {
               <div className={stylesAdmin.emptyState} style={{ gridColumn: '1/-1' }}>Acción no disponible sin turno abierto.</div>
             ) : (
               <>
+                {/* Formulario de Registro */}
                 <aside className={stylesAdmin.adminCard} style={{ opacity: puedeEditarCaja ? 1 : 0.6 }}>
                   <h3 className={stylesAdmin.cardTitle}>Entrada / Salida de Efectivo</h3>
                   <div className={stylesAdmin.formGroup}>
@@ -349,7 +350,9 @@ export const CajeroTab = ({ usuarioId, sucursalId }) => {
                   </button>
                 </aside>
 
-                <div className={s.tableHeader}>
+                {/* Tabla de Movimientos Mejorada */}
+                <div className={`${stylesAdmin.adminCard} ${stylesAdmin.tableContainer}`}>
+                  <h3 className={s.cardTitle} style={{ margin: 15 }}>Historial de Movimientos</h3>
                   <table className={stylesAdmin.table}>
                     <thead className={stylesAdmin.thead}>
                       <tr>
@@ -359,18 +362,26 @@ export const CajeroTab = ({ usuarioId, sucursalId }) => {
                       </tr>
                     </thead>
                     <tbody>
-                      {movimientos.map((m) => {
-                        const esIngreso = ["ingreso", "entrada", "venta"].includes(m.tipo?.toLowerCase().trim());
-                        return (
-                          <tr key={m.id}>
-                            <td className={stylesAdmin.td}>{new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
-                            <td className={stylesAdmin.td}><strong>{m.motivo}</strong></td>
-                            <td className={`${stylesAdmin.td} ${s.tdMonto} ${esIngreso ? s.textGreen : s.textRed}`}>
-                              {esIngreso ? "+" : "-"}{formatCurrency(m.monto)}
-                            </td>
-                          </tr>
-                        );
-                      })}
+                      {movimientos.length === 0 ? (
+                        <tr>
+                          <td colSpan="3" className={stylesAdmin.emptyState} style={{ padding: "40px 0" }}>
+                            No hay movimientos registrados en este turno.
+                          </td>
+                        </tr>
+                      ) : (
+                        movimientos.map((m) => {
+                          const esIngreso = ["ingreso", "entrada", "venta"].includes(m.tipo?.toLowerCase().trim());
+                          return (
+                            <tr key={m.id}>
+                              <td className={stylesAdmin.td}>{new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
+                              <td className={stylesAdmin.td}><strong>{m.motivo}</strong></td>
+                              <td className={`${stylesAdmin.td} ${s.tdMonto} ${esIngreso ? s.textGreen : s.textRed}`}>
+                                {esIngreso ? "+" : "-"}{formatCurrency(m.monto)}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -424,7 +435,7 @@ export const CajeroTab = ({ usuarioId, sucursalId }) => {
                   <h3 className={s.arqueoTitle}>Arqueo Final</h3>
                   <p className={s.arqueoDesc}>Cuenta el efectivo total del cajón y regístralo aquí.</p>
                   <div className={stylesAdmin.formGroup}>
-                    <label className={`${stylesAdmin.label} ${s.arqueoLabel}`}>Total Efectivo Contado ($)</label>
+                    <label className={stylesAdmin.label}>Total Efectivo Contado ($)</label>
                     <input type="number" className={`${stylesAdmin.inputField} ${s.arqueoInput}`} value={montoArqueo} onChange={e => setMontoArqueo(e.target.value)} placeholder="0.00" />
                   </div>
                   <button className={`${stylesAdmin.btn} ${stylesAdmin.btnFull} ${s.arqueoBtn}`} onClick={() => cerrarTurno(montoArqueo)}>

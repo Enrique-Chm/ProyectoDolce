@@ -1,6 +1,6 @@
-// Archivo: src/modules/Admin/components/ImpresorasTab.jsx
+// Archivo: src/modules/Admin/Tabs/ImpresorasTab.jsx
 import React, { useState } from 'react';
-import s from '../AdminPage.module.css'; 
+import s from '../../../assets/styles/EstilosGenerales.module.css'; 
 import { useImpresoras } from '../../../hooks/useImpresoras';
 import { generarHTMLTicket } from '../../../utils/impresion.util';
 import { hasPermission } from '../../../utils/checkPermiso'; 

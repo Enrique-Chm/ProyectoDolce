@@ -1,9 +1,9 @@
-// Archivo: src/modules/Admin/components/AnaliticaTab.jsx
+// Archivo: src/modules/Admin/Tabs/AnaliticaTab.jsx
 import React from 'react';
-import s from '../AdminPage.module.css';
-import { useAnalitica } from '../../../hooks/useAnalitica';
-import { formatCurrency } from '../../../utils/formatCurrency';
-import { hasPermission } from '../../../utils/checkPermiso'; // 🛡️ Importamos seguridad
+import s from '../../../../assets/styles/EstilosGenerales.module.css'; // 👈 Agregamos un ../ extra aquí
+import { useAnalitica } from './useAnalitica';
+import { formatCurrency } from '../../../../utils/formatCurrency';
+import { hasPermission } from '../../../../utils/checkPermiso'; // 🛡️ Importamos seguridad
 
 export const AnaliticaTab = ({ sucursalId }) => {
   // 🛡️ SEGURIDAD INTERNA (RBAC)

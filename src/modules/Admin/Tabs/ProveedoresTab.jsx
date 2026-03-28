@@ -1,6 +1,6 @@
-// Archivo: src/modules/Admin/components/ProveedoresTab.jsx
-import React from 'react';
-import s from '../AdminPage.module.css';
+// Archivo: src/modules/Admin/Tabs/ProveedoresTab.jsx
+import React, { useState } from 'react';
+import s from '../../../assets/styles/EstilosGenerales.module.css';
 import { useProveedoresTab } from '../../../hooks/useProveedoresTab'; 
 import Swal from 'sweetalert2'; 
 
@@ -11,6 +11,9 @@ export const ProveedoresTab = () => {
     puedeCrear, puedeEditar, puedeBorrar,
     resetForm, prepararEdicion, handleSubmit, handleDelete
   } = useProveedoresTab();
+
+  // Estado para el filtro de búsqueda
+  const [filtroBuscar, setFiltroBuscar] = useState("");
 
   const mostrarFormulario = puedeCrear || editId;
   const noTienePermisoAccion = editId ? !puedeEditar : !puedeCrear;
@@ -56,6 +59,17 @@ export const ProveedoresTab = () => {
       }
     });
   };
+
+  // Filtrado de proveedores basado en el texto de búsqueda
+  const proveedoresFiltrados = proveedores.filter((p) => {
+    if (!filtroBuscar) return true;
+    const texto = filtroBuscar.toLowerCase();
+    const matchEmpresa = p.nombre_empresa?.toLowerCase().includes(texto);
+    const matchContacto = p.contacto_nombre?.toLowerCase().includes(texto);
+    const matchCorreo = p.correo?.toLowerCase().includes(texto);
+    const matchTelefono = p.telefono?.toLowerCase().includes(texto);
+    return matchEmpresa || matchContacto || matchCorreo || matchTelefono;
+  });
 
   return (
     <div className={s.tabWrapper}>
@@ -158,6 +172,17 @@ export const ProveedoresTab = () => {
 
         {/* TABLA DE PROVEEDORES */}
         <div className={`${s.adminCard} ${s.tableContainer}`}>
+          {/* Componente visual para la Búsqueda */}
+          <div style={{ padding: "15px", borderBottom: "1px solid var(--color-border)" }}>
+            <input
+              type="text"
+              className={s.inputField}
+              placeholder="Buscar por empresa, contacto, correo o teléfono..."
+              value={filtroBuscar}
+              onChange={(e) => setFiltroBuscar(e.target.value)}
+            />
+          </div>
+
           <table className={s.table}>
             <thead className={s.thead}>
               <tr>
@@ -168,8 +193,8 @@ export const ProveedoresTab = () => {
               </tr>
             </thead>
             <tbody>
-              {proveedores.length > 0 ? (
-                proveedores.map(p => (
+              {proveedoresFiltrados.length > 0 ? (
+                proveedoresFiltrados.map(p => (
                   <tr key={p.id} className={editId === p.id ? s.rowHighlight : ''}>
                     <td className={s.td}>
                       <div className={s.priceValue}>{p.nombre_empresa}</div>
@@ -206,8 +231,12 @@ export const ProveedoresTab = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="4" className={s.emptyState}>
-                    {loading ? 'Sincronizando...' : 'No hay proveedores registrados.'}
+                  <td colSpan="4" className={s.emptyState} style={{ padding: "40px", textAlign: "center", color: "var(--color-text-muted)" }}>
+                    {loading
+                      ? 'Sincronizando...'
+                      : proveedores.length === 0
+                      ? 'No hay proveedores registrados.'
+                      : 'No se encontraron resultados para su búsqueda.'}
                   </td>
                 </tr>
               )}

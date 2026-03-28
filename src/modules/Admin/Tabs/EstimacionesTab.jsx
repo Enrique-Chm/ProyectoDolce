@@ -1,7 +1,7 @@
-// Archivo: src/modules/Admin/components/EstimacionesTab.jsx
+// Archivo: src/modules/TabsTabs/EstimacionesTab.jsx
 import React, { useState, useMemo } from 'react';
 import { useEstimacionesTab } from "../../../hooks/useEstimacionesTab"; 
-import s from "../AdminPage.module.css"; 
+import s from "../EstilosGenerales.module.css"; 
 import { formatCurrency } from "../../../utils/formatCurrency"; 
 import { hasPermission } from '../../../utils/checkPermiso'; // Importamos seguridad
 
@@ -21,11 +21,15 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
   const [editandoId, setEditandoId] = useState(null);
   const [tempPolitica, setTempPolitica] = useState({ cobertura: 7, seguridad: 2 });
 
+  // Estado para el filtro de búsqueda por texto
+  const [filtroBuscar, setFiltroBuscar] = useState("");
+
   const listaParaComprar = useMemo(() => {
-    return sugerenciasFiltradas.filter(item => 
-      item.cajas_a_pedir > 0 && !compradosIds.includes(item.insumo_id)
-    );
-  }, [sugerenciasFiltradas, compradosIds]);
+    return sugerenciasFiltradas.filter(item => {
+      const matchTexto = !filtroBuscar || item.insumo_nombre?.toLowerCase().includes(filtroBuscar.toLowerCase());
+      return item.cajas_a_pedir > 0 && !compradosIds.includes(item.insumo_id) && matchTexto;
+    });
+  }, [sugerenciasFiltradas, compradosIds, filtroBuscar]);
 
   const handleSavePolicy = async (id) => {
     // Bloqueo de seguridad en función
@@ -33,6 +37,12 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
     const res = await guardarPolitica(id, tempPolitica.cobertura, tempPolitica.seguridad);
     if (res.success) setEditandoId(null);
   };
+
+  // Filtrado local para la tabla
+  const proyeccionesMostradas = sugerenciasFiltradas.filter((item) => {
+    if (!filtroBuscar) return true;
+    return item.insumo_nombre?.toLowerCase().includes(filtroBuscar.toLowerCase());
+  });
 
   if (loading && !sugerenciasFiltradas.length) return <div className={s.tabContent}> Cargando proyecciones...</div>;
 
@@ -83,6 +93,30 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
       {/* --- VISTA 1: ESTRATEGIA (TABLA RESPONSIVA) --- */}
       {subTab === 'config' && (
         <div className={`${s.adminCard} ${s.tableContainer}`}>
+          
+          {/* Controles de Filtro para la Tabla */}
+          <div style={{ padding: "15px", borderBottom: "1px solid var(--color-border)", display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            <input
+              type="text"
+              className={s.inputField}
+              placeholder="Buscar por nombre de insumo..."
+              value={filtroBuscar}
+              onChange={(e) => setFiltroBuscar(e.target.value)}
+              style={{ flex: "1 1 200px" }}
+            />
+            <select
+              className={s.inputField}
+              value={filtroProveedor || ""}
+              onChange={(e) => setFiltroProveedor(e.target.value)}
+              style={{ flex: "1 1 200px" }}
+            >
+              <option value="">Todos los proveedores</option>
+              {proveedores?.map((p) => (
+                <option key={p.id} value={p.id}>{p.nombre_empresa}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Se elimina minWidth en la tabla para que .tableContainer maneje el scroll lateral */}
           <table className={s.table}>
             <thead className={s.thead}>
@@ -97,10 +131,16 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
               </tr>
             </thead>
             <tbody>
-              {sugerenciasFiltradas.length === 0 ? (
-                 <tr><td colSpan="7" className={s.emptyState}>No hay proyecciones generadas.</td></tr>
+              {proyeccionesMostradas.length === 0 ? (
+                 <tr>
+                   <td colSpan="7" className={s.emptyState} style={{ padding: "40px", textAlign: "center", color: "var(--color-text-muted)" }}>
+                     {sugerenciasFiltradas.length === 0 
+                       ? "No hay proyecciones generadas." 
+                       : "No se encontraron resultados para su búsqueda."}
+                   </td>
+                 </tr>
               ) : (
-                sugerenciasFiltradas.map((item) => (
+                proyeccionesMostradas.map((item) => (
                   <tr key={item.insumo_id}>
                     <td className={s.td} style={{ fontWeight: '700', color: 'var(--color-text-main)' }}>
                       {item.insumo_nombre}
@@ -170,6 +210,17 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
           gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
           gap: '20px' 
         }}>
+          {/* Se añade el input de búsqueda arriba del grid de compras también */}
+          <div style={{ gridColumn: '1/-1', padding: "0 0 10px 0" }}>
+            <input
+              type="text"
+              className={s.inputField}
+              placeholder="Filtrar lista de mandado..."
+              value={filtroBuscar}
+              onChange={(e) => setFiltroBuscar(e.target.value)}
+            />
+          </div>
+
           {listaParaComprar.map(ins => (
             <div key={ins.insumo_id} className={s.adminCard} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '15px' }}>
               <div>
@@ -196,7 +247,9 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
           ))}
           {listaParaComprar.length === 0 && (
             <div className={s.emptyState} style={{ gridColumn: '1/-1' }}>
-              No hay compras sugeridas para los niveles actuales de stock.
+              {filtroBuscar 
+                ? "No se encontraron insumos para comprar con esa búsqueda."
+                : "No hay compras sugeridas para los niveles actuales de stock."}
             </div>
           )}
         </div>

@@ -1,6 +1,6 @@
 // Archivo: src/services/Caja.service.js
-import { supabase } from '../lib/supabaseClient';
-import { hasPermission } from '../utils/checkPermiso'; // 🛡️ Importamos el validador
+import { supabase } from '../../../../lib/supabaseClient';
+import { hasPermission } from '../../../../utils/checkPermiso'; // 🛡️ Importamos el validador
 
 export const CajaService = {
 

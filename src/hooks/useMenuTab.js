@@ -1,11 +1,11 @@
-// Archivo: src/hooks/useProductosTab.js
+// Archivo: src/hooks/useMenuTab.js
 import { useState, useEffect, useCallback } from 'react';
-import { productosService } from '../services/productos.service'; 
+import { productosService } from '../services/Menu.service'; 
 import { hasPermission } from '../utils/checkPermiso';
 import { IVA_FACTOR } from '../utils/taxConstants'; 
 import toast from 'react-hot-toast'; 
 
-export const useProductosTab = (sucursalId) => {
+export const useMenuTab = (sucursalId) => {
   const [productos, setProductos] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [recetasCosteadas, setRecetasCosteadas] = useState([]);

@@ -1,7 +1,7 @@
-// Archivo: src/services/analitica.service.js
-import { supabase } from '../lib/supabaseClient';
-import { IVA_FACTOR } from '../utils/taxConstants';
-import { hasPermission } from '../utils/checkPermiso'; // 🛡️ Blindaje de seguridad
+// Archivo: src/modules/TabsTabs/AnaliticaTab/Analitica.service.js
+import { supabase } from '../../../../lib/supabaseClient';
+import { IVA_FACTOR } from '../../../../utils/taxConstants';
+import { hasPermission } from '../../../../utils/checkPermiso';
 
 export const analiticaService = {
 

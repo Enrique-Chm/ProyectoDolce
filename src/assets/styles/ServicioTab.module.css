@@ -1,4 +1,4 @@
-/* src/modules/Admin/components/MeseroTab.module.css */
+/* src/modules/TabsTabs/ServicioTab.module.css */
 
 /* =========================================
    SISTEMA POS PRO - MESERO TAB (HOMOLOGADO)
@@ -288,4 +288,11 @@
     border: 1px solid var(--color-border);
   }
   .dragHandle { display: none; } /* Ocultamos la barrita de arrastrar en PC */
+}
+.cardTitle {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: var(--color-primary);
+  margin-top: 0;
 }

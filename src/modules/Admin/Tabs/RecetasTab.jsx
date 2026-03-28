@@ -1,6 +1,6 @@
-// Archivo: src/modules/Admin/components/RecetasTab.jsx
+// Archivo: src/modules/TabsTabs/RecetasTab.jsx
 import React, { useState, useEffect, useRef } from "react";
-import s from "../AdminPage.module.css";
+import s from "../EstilosGenerales.module.css";
 import { useRecetasTab } from "../../../hooks/useRecetasTab";
 import Swal from "sweetalert2";
 
@@ -31,6 +31,9 @@ export const RecetasTab = ({ sucursalId }) => {
     handleSubmit,
     handleDeleteReceta,
   } = useRecetasTab(sucursalId);
+
+  // Estado para el filtro de búsqueda
+  const [filtroBuscar, setFiltroBuscar] = useState("");
 
   const mostrarFormulario = puedeCrear || isEditing;
   const noTienePermisoAccion = isEditing ? !puedeEditar : !puedeCrear;
@@ -68,6 +71,17 @@ export const RecetasTab = ({ sucursalId }) => {
       if (result.isConfirmed) handleDeleteReceta(nombre);
     });
   };
+
+  // Filtrado de recetas basado en el texto de búsqueda
+  const recetasFiltradas = recetasAgrupadas.filter((r) => {
+    if (!filtroBuscar) return true;
+    const texto = filtroBuscar.toLowerCase();
+    const matchNombre = r.nombre?.toLowerCase().includes(texto);
+    const matchIngrediente = r.detalle_ingredientes?.some((ing) =>
+      ing.insumo?.toLowerCase().includes(texto)
+    );
+    return matchNombre || matchIngrediente;
+  });
 
   return (
     <div className={s.tabWrapper}>
@@ -142,16 +156,16 @@ export const RecetasTab = ({ sucursalId }) => {
                   placeholder="Cant."
                 />
               </div>
-<div className={s.formGroup} style={{ marginBottom: 0 }}>
-  <label className={s.label}>UNIDAD RESULTADO</label>
-  <SearchableSelect
-    options={unidades}
-    value={unidadMedidaFinal}
-    onChange={(val) => setUnidadMedidaFinal(val)}
-    disabled={noTienePermisoAccion}
-    placeholder="Elegir unidad..."
-    formatLabel={(opt) => `${opt.nombre} (${opt.abreviatura})`}
-  />
+              <div className={s.formGroup} style={{ marginBottom: 0 }}>
+                <label className={s.label}>UNIDAD RESULTADO</label>
+                <SearchableSelect
+                  options={unidades}
+                  value={unidadMedidaFinal}
+                  onChange={(val) => setUnidadMedidaFinal(val)}
+                  disabled={noTienePermisoAccion}
+                  placeholder="Elegir unidad..."
+                  formatLabel={(opt) => `${opt.nombre} (${opt.abreviatura})`}
+                />
               </div>
             </div>
 
@@ -160,9 +174,7 @@ export const RecetasTab = ({ sucursalId }) => {
             {/* SECCIÓN 3: INGREDIENTES */}
             <div className={s.stack} style={{ gap: "15px" }}>
               <label
-                className={s.label}
-                style={{ color: "var(--color-primary)" }}
-              >
+                className={s.label}>
                 INGREDIENTES Y CANTIDADES
               </label>
 
@@ -381,6 +393,17 @@ export const RecetasTab = ({ sucursalId }) => {
 
         {/* TABLA DE RECETAS */}
         <div className={`${s.adminCard} ${s.tableContainer}`}>
+          {/* Componente visual para la Búsqueda */}
+          <div style={{ padding: "15px", borderBottom: "1px solid var(--color-border)" }}>
+            <input
+              type="text"
+              className={s.inputField}
+              placeholder="Buscar por nombre de preparación o ingrediente..."
+              value={filtroBuscar}
+              onChange={(e) => setFiltroBuscar(e.target.value)}
+            />
+          </div>
+
           <table className={s.table}>
             <thead className={s.thead}>
               <tr>
@@ -391,14 +414,18 @@ export const RecetasTab = ({ sucursalId }) => {
               </tr>
             </thead>
             <tbody>
-              {recetasAgrupadas.length === 0 ? (
+              {recetasFiltradas.length === 0 ? (
                 <tr>
-                  <td colSpan="4" className={s.emptyState}>
-                    No hay recetas registradas.
+                  <td colSpan="4" className={s.emptyState} style={{ padding: "40px", textAlign: "center", color: "var(--color-text-muted)" }}>
+                    {loading
+                      ? "Cargando recetas..."
+                      : recetasAgrupadas.length === 0
+                      ? "No hay recetas registradas."
+                      : "No se encontraron resultados para su búsqueda."}
                   </td>
                 </tr>
               ) : (
-                recetasAgrupadas.map((r, idx) => {
+                recetasFiltradas.map((r, idx) => {
                   const unidadFinal =
                     unidades.find((u) => u.id === r.unidad_medida_final)
                       ?.abreviatura || "Ud";
