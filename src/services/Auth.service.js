@@ -1,5 +1,6 @@
 // Archivo: src/services/Auth.service.js
 import { supabase } from '../lib/supabaseClient';
+import { v4 as uuidv4 } from 'uuid';
 
 export const authService = {
   async login(username, password) {
@@ -25,7 +26,7 @@ export const authService = {
 
       if (error || !usuario) throw new Error('Credenciales inválidas o usuario inactivo.');
 
-      const uniqueSessionId = crypto.randomUUID();
+      const uniqueSessionId = uuidv4();
 
       const { error: updateError } = await supabase
         .from('usuarios_internos')

@@ -8,7 +8,7 @@ import { useSessionGuard } from "../../hooks/useSessionGuard";
 
 // 🚀 LAZY LOADING: Componentes de las pestañas
 const AnaliticaTab = React.lazy(() => import("./Tabs/AnaliticaTab/AnaliticaTab").then(module => ({ default: module.AnaliticaTab })));
-const ConfigTab = React.lazy(() => import("./Tabs/ConfigTab").then(module => ({ default: module.ConfigTab }))); 
+const ConfigTab = React.lazy(() => import("./Tabs/ConfigTab/ConfigTab").then(module => ({ default: module.ConfigTab }))); 
 const ProveedoresTab = React.lazy(() => import("./Tabs/ProveedoresTab").then(module => ({ default: module.ProveedoresTab })));
 const InsumosTab = React.lazy(() => import("./Tabs/InsumosTab").then(module => ({ default: module.InsumosTab })));
 const RecetasTab = React.lazy(() => import("./Tabs/RecetasTab").then(module => ({ default: module.RecetasTab })));

@@ -1,12 +1,11 @@
-// Archivo: src/hooks/useMeseroTab.js
+// Archivo: src/modules/Admin/Tabs/MeseroTab/useMeseroTab.js
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../../../../lib/supabaseClient'; // Asegúrate de tener esta importación
-import { productosService } from '../../../../services/Menu.service';
+import { supabase } from '../../../../lib/supabaseClient';
 import { MeseroService } from './Mesero.service'; 
 import { hasPermission } from '../../../../utils/checkPermiso';
 
 /**
- * Hook Maestro para la gestión de Salón y Comandas.
+ * Hook Maestro para la gestión de Salón y Comandas (VERSIÓN PRO).
  * Controla el flujo desde la apertura de mesa hasta el envío a cocina.
  */
 export const useMeseroTab = (sucursalId, usuarioId) => {
@@ -14,13 +13,22 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   const [cuentasAbiertas, setCuentasAbiertas] = useState([]);
   const [cuentasCobradas, setCuentasCobradas] = useState([]);
   const [ventaActiva, setVentaActiva] = useState(null);
-  const [mesaInput, setMesaInput] = useState('');
+  
+  // 🚀 ESTADOS: MAPA DE MESAS (Incluye grid_size por zona)
+  const [zonasMesas, setZonasMesas] = useState([]);
+  const [mesaId, setMesaId] = useState(null); 
+  const [mesaInput, setMesaInput] = useState(''); // Fallback de texto
+  const [tipoOrden, setTipoOrden] = useState('salon'); // 'salon', 'mostrador', 'domicilio'
+  const [comensales, setComensales] = useState(1);
+  const [clienteNombre, setClienteNombre] = useState('');
+  const [notasOrden, setNotasOrden] = useState('');
+
   const [productos, setProductos] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [carrito, setCarrito] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // 🚀 ESTADOS NUEVOS PARA EL MODAL DE EXTRAS
+  // ESTADOS PARA EL MODAL DE EXTRAS
   const [mostrarModalExtras, setMostrarModalExtras] = useState(false);
   const [productoParaExtras, setProductoParaExtras] = useState(null);
 
@@ -35,6 +43,11 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   const resetTodo = useCallback(() => {
     setVentaActiva(null);
     setMesaInput('');
+    setMesaId(null);
+    setTipoOrden('salon');
+    setComensales(1);
+    setClienteNombre('');
+    setNotasOrden('');
     setCarrito([]);
     setView('cuentas');
     setMostrarModalExtras(false);
@@ -48,9 +61,7 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   const verificarCajaAntesDeAccion = async () => {
     setLoading(true);
     try {
-      // Forzamos el ID de sucursal a número para evitar fallos de búsqueda
       const { abierta, error } = await MeseroService.verificarCajaAbierta(Number(sucursalId));
-      
       if (error) throw new Error(error);
 
       if (!abierta) {
@@ -68,7 +79,22 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   };
 
   /**
-   * Carga las mesas activas de la sucursal
+   * 🚀 ACTUALIZADO: Carga el catálogo de zonas y mesas (con grid_size y coordenadas)
+   */
+  const cargarZonas = useCallback(async () => {
+    if (!puedeVerVentas || !sucursalId) return;
+    try {
+      const { data, error } = await MeseroService.getZonasYMesas(Number(sucursalId));
+      if (error) throw error;
+      // 'data' ahora contiene grid_size por zona gracias al servicio actualizado
+      setZonasMesas(data || []);
+    } catch (err) {
+      console.error("Error al cargar zonas:", err);
+    }
+  }, [sucursalId, puedeVerVentas]);
+
+  /**
+   * Carga las mesas (cuentas) activas de la sucursal
    */
   const cargarCuentas = useCallback(async () => {
     if (!puedeVerVentas || !sucursalId) return;
@@ -79,7 +105,7 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
       
       setCuentasAbiertas(data || []);
       
-      // Sincronización: Si la mesa se cerró en otra terminal, sacamos al mesero de esa vista
+      // Sincronización de mesa activa
       setVentaActiva((prev) => {
         if (!prev) return null;
         const actualizada = (data || []).find(v => v.id === prev.id);
@@ -98,16 +124,14 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   }, [sucursalId, puedeVerVentas, resetTodo]);
 
   /**
-   * Carga el catálogo de platillos (MODIFICADO PARA EXTRAS)
+   * Carga el catálogo de platillos y categorías
    */
   const cargarMenu = useCallback(async () => {
     if (!puedeVerVentas || !sucursalId) return;
     try {
-      // 1. Cargamos el menú desde el nuevo método POS
       const menuRes = await MeseroService.getMenuPOS(Number(sucursalId));
       setProductos(menuRes.data || []);
 
-      // 2. Cargamos las categorías (podemos usar supabase directo o el service antiguo solo para esto)
       const { data: catData } = await supabase.from('cat_categorias_menu').select('*').order('nombre');
       setCategorias(catData || []);
     } catch (err) {
@@ -133,15 +157,31 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   }, [sucursalId, puedeVerVentas]);
 
   // Manejo de vistas automáticas
-  useEffect(() => { if (view === 'cuentas') cargarCuentas(); }, [view, cargarCuentas]);
-  useEffect(() => { if (view === 'menu' && productos.length === 0) cargarMenu(); }, [view, productos.length, cargarMenu]);
-  useEffect(() => { if (view === 'historial') cargarHistorial(); }, [view, cargarHistorial]);
+  useEffect(() => { 
+    if (view === 'cuentas') {
+      cargarCuentas(); 
+      cargarZonas(); 
+    }
+  }, [view, cargarCuentas, cargarZonas]);
+  
+  useEffect(() => { 
+    if (view === 'menu' && productos.length === 0) cargarMenu(); 
+  }, [view, productos.length, cargarMenu]);
+  
+  useEffect(() => { 
+    if (view === 'historial') cargarHistorial(); 
+  }, [view, cargarHistorial]);
   
   const iniciarNuevaMesa = async () => {
     if (!puedeCrearVentas) return;
     const ok = await verificarCajaAntesDeAccion();
     if (ok) {
-      setMesaInput("");
+      setMesaInput('');
+      setMesaId(null);
+      setTipoOrden('salon');
+      setComensales(1);
+      setClienteNombre('');
+      setNotasOrden('');
       setView("mesas");
     }
   };
@@ -152,40 +192,41 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
     if (ok) {
       setVentaActiva(venta);
       setMesaInput(venta?.mesa || '');
+      setMesaId(venta?.mesa_id || null);
+      setTipoOrden(venta?.tipo_orden || 'salon');
+      setComensales(venta?.comensales || 1);
+      setClienteNombre(venta?.cliente_nombre || '');
+      setNotasOrden(venta?.notas_orden || '');
+      
       setCarrito([]); 
       setView('menu');
     }
   };
 
   /**
-   * 🚀 AGREGAR AL CARRITO INTERCEPTADO
-   * Si tiene modificadores, abre el modal. Si no, lo agrega directo.
+   * AGREGAR AL CARRITO INTERCEPTADO
    */
   const agregarAlCarrito = (p) => {
     if (!puedeCrearVentas) return alert("Sin permisos.");
     if (ventaActiva?.estado === 'por_cobrar') return alert("Mesa bloqueada por solicitud de cuenta.");
 
-    // INTERCEPCIÓN: ¿Tiene grupos de extras vinculados?
     if (p.grupos && p.grupos.length > 0) {
       setProductoParaExtras(p);
       setMostrarModalExtras(true);
-      return; // Detenemos la ejecución aquí, el flujo sigue en confirmarProductoConExtras
+      return; 
     }
 
-    // SI NO TIENE EXTRAS, FLUJO NORMAL
     setCarrito(prev => {
-      // Buscar si ya existe el producto (y que no tenga extras seleccionados previamente)
       const existe = prev.find(item => item.id === p.id && (!item.extras_seleccionados || item.extras_seleccionados.length === 0));
-      
       if (existe) {
         return prev.map(item => item.cartItemId === existe.cartItemId ? { ...item, cantidad: item.cantidad + 1 } : item);
       }
       return [...prev, { 
-        cartItemId: Date.now().toString() + Math.random().toString(), // ID ÚNICO DE FILA
+        cartItemId: Date.now().toString() + Math.random().toString(), 
         id: p.id, 
         nombre: p.nombre, 
         precio_venta: p.precio_venta, 
-        precio_calculado: p.precio_venta, // Si no hay extras, es el mismo
+        precio_calculado: p.precio_venta, 
         costo_actual: p.costo_actual || 0, 
         cantidad: 1, 
         notas: '',
@@ -195,28 +236,24 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   };
 
   /**
-   * 🚀 CONFIRMAR PRODUCTO CON EXTRAS (DESDE EL MODAL)
-   * Recibe el producto y el array de extras que el mesero palomeó.
+   * CONFIRMAR PRODUCTO CON EXTRAS
    */
   const confirmarProductoConExtras = (producto, extrasSeleccionados) => {
-    // 1. Calcular el precio total sumando el producto base + los extras
     const precioDeExtras = extrasSeleccionados.reduce((sum, ext) => sum + parseFloat(ext.precio_venta || 0), 0);
     const precioTotalCalculado = parseFloat(producto.precio_venta) + precioDeExtras;
 
-    // 2. Insertarlo en el carrito como una línea completamente nueva
     setCarrito(prev => [...prev, {
-      cartItemId: Date.now().toString() + Math.random().toString(), // ID Único vital para que no se agrupen mal
+      cartItemId: Date.now().toString() + Math.random().toString(), 
       id: producto.id,
       nombre: producto.nombre,
       precio_venta: producto.precio_venta,
       precio_calculado: precioTotalCalculado,
       costo_actual: producto.costo_actual || 0,
-      cantidad: 1, // Siempre entra como 1 al personalizarse
+      cantidad: 1, 
       notas: '',
       extras_seleccionados: extrasSeleccionados
     }]);
 
-    // 3. Cerrar el modal
     setMostrarModalExtras(false);
     setProductoParaExtras(null);
   };
@@ -226,9 +263,6 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
     setProductoParaExtras(null);
   };
 
-  /**
-   * Eliminar del carrito AHORA USA cartItemId para no borrar productos distintos
-   */
   const eliminarDelCarrito = (cartItemId) => {
     if (ventaActiva?.estado === 'por_cobrar') return;
     setCarrito(prev => prev.filter(item => item.cartItemId !== cartItemId));
@@ -240,7 +274,7 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   };
 
   /**
-   * ENVÍO DE COMANDA
+   * 🚀 ENVÍO DE COMANDA
    */
   const handleEnviarOrden = async () => {
     if (!puedeCrearVentas) return alert("No tienes permisos para esta acción.");
@@ -248,18 +282,22 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
     
     setLoading(true);
     try {
-      // Payload limpio con IDs numéricos
       const payload = {
         id: ventaActiva?.id, 
         sucursal_id: Number(sucursalId),
         usuario_id: Number(usuarioId),
-        mesa: mesaInput || 'S/N'
+        mesa: mesaInput || 'S/N',
+        mesa_id: mesaId,
+        tipo_orden: tipoOrden,
+        comensales: comensales,
+        cliente_nombre: clienteNombre,
+        notas_orden: notasOrden
       };
 
       const res = await MeseroService.procesarVenta(payload, carrito);
 
       if (res.success) {
-        alert("✅ Orden enviada correctamente.");
+        alert("✅ Orden enviada a cocina.");
         resetTodo();
       } else {
         alert("❌ Error al procesar: " + res.error);
@@ -292,17 +330,21 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   return {
     view, setView,
     cuentasAbiertas, cuentasCobradas,
-    ventaActiva, mesaInput, setMesaInput,
+    ventaActiva, 
+    zonasMesas,
+    mesaId, setMesaId,
+    mesaInput, setMesaInput,
+    tipoOrden, setTipoOrden,
+    comensales, setComensales,
+    clienteNombre, setClienteNombre,
+    notasOrden, setNotasOrden,
     productos, categorias,
     carrito, setCarrito,
     loading,
-    
-    // EXPORTAMOS LOS NUEVOS ESTADOS Y FUNCIONES DEL MODAL
     mostrarModalExtras,
     productoParaExtras,
     confirmarProductoConExtras,
     cerrarModalExtras,
-
     seleccionarCuenta, iniciarNuevaMesa,
     agregarAlCarrito, eliminarDelCarrito, actualizarNota,
     handleEnviarOrden, pedirCuenta, resetTodo,

@@ -1,8 +1,9 @@
-// Archivo: src/modules/Admin/Tabs/ConfigTab.jsx
+// Archivo: src/modules/Admin/Tabs/ConfigTab/ConfigTab.jsx
 import React, { useState } from 'react';
-import s from '../../../../assets/styles/EstilosGenerales.module.css'; 
-import { useConfigTab } from '../../../hooks/useConfigTab';
-import { hasPermission } from '../../../utils/checkPermiso'; // 🛡️ Importamos seguridad
+import s from "../../../../assets/styles/EstilosGenerales.module.css";
+import { useConfigTab } from './useConfigTab';
+import { hasPermission } from '../../../../utils/checkPermiso'; // 🛡️ Importamos seguridad
+import { ZonasMesasView } from './ZonasMesasView'; // 👈 Importamos el nuevo componente
 
 export const ConfigTab = () => {
   const [subTab, setSubTab] = useState('unidades');
@@ -13,6 +14,10 @@ export const ConfigTab = () => {
     catMenu,
     catInsumos,
     motivosInventario,
+    
+    // 🚀 ESTADOS DE ZONAS Y MESAS
+    zonas,
+    
     uNombre, setUNombre,
     uAbrev, setUAbrev,
     uEditId, setUEditId,
@@ -24,34 +29,42 @@ export const ConfigTab = () => {
     mNombre, setMNombre,
     mTipo, setMTipo,
     mEditId, setMEditId,
+    
+    // 🚀 SETTERS Y HANDLERS DE ZONAS/MESAS
+    zEditId, setZEditId, zFormData, setZFormData, handleSubmitZona, resetZona,
+    mesaEditId, setMesaEditId, mesaFormData, setMesaFormData, handleSubmitMesa, resetMesa,
+    handleSavePlano, // 👈 Acción para guardar el drag & drop
+
     handleSubmitUnidad,
     handleSubmitCatMenu,
     handleSubmitCatInsumo,
     handleSubmitMotivo,
-    handleDelete, // 👈 Importamos la acción de borrado
+    handleDelete, 
     // 🛡️ Facultades importadas del hook
+    puedeVerConfig,
     puedeCrearU, puedeEditarU,
     puedeCrearC, puedeEditarC,
     puedeCrearM, puedeEditarM,
-    puedeBorrarConfig // 🛡️ Facultad de borrado global
+    puedeBorrarConfig 
   } = useConfigTab(subTab);
 
   const handleTabChange = (newTab) => {
     setSubTab(newTab);
-    // Reset de estados al cambiar de pestaña
     setUEditId(null); setUNombre(''); setUAbrev('');
     setCMenuEditId(null); setCMenuNombre(''); setCMenuColor('#005696');
     setCInsumoEditId(null); setCInsumoNombre('');
     setMEditId(null); setMNombre(''); setMTipo('ENTRADA');
+    resetZona();
+    resetMesa();
   };
 
-  // 💡 ESTÁNDAR: Controles de visibilidad del Layout Dinámico por cada subsección
   const mostrarFormularioU = puedeCrearU || uEditId;
   const mostrarFormularioCMenu = puedeCrearC || cMenuEditId;
   const mostrarFormularioCInsumo = puedeCrearC || cInsumoEditId;
   const mostrarFormularioM = puedeCrearM || mEditId;
+  const mostrarFormularioZ = puedeVerConfig; 
 
-  if (loading) return <div className={s.tabContent}><p>Cargando configuración...</p></div>;
+  if (loading && !zonas.length) return <div className={s.tabContent}><p>Cargando configuración...</p></div>;
 
   return (
     <div className={s.tabWrapper}>
@@ -84,6 +97,14 @@ export const ConfigTab = () => {
             onClick={() => handleTabChange('motivos')}
           >
             Motivos Inventario
+          </button>
+        )}
+        {hasPermission('ver_configuracion') && (
+          <button
+            className={`${s.tabButton} ${subTab === 'zonas' ? s.activeTabButton : ''}`}
+            onClick={() => handleTabChange('zonas')}
+          >
+            Zonas y Mesas
           </button>
         )}
       </nav>
@@ -127,7 +148,6 @@ export const ConfigTab = () => {
             </form>
           </aside>
 
-          {/* Se elimina minWidth en la tabla para delegar el control a .tableContainer */}
           <div className={`${s.adminCard} ${s.tableContainer}`}>
             <table className={s.table}>
               <thead className={s.thead}>
@@ -383,6 +403,31 @@ export const ConfigTab = () => {
             </table>
           </div>
         </div>
+      )}
+
+      {/* --- 🚀 SECCIÓN ZONAS Y MESAS CON CUADRÍCULA ESCALABLE --- */}
+      {subTab === 'zonas' && hasPermission('ver_configuracion') && (
+        <ZonasMesasView 
+          zonas={zonas}
+          zEditId={zEditId} 
+          setZEditId={setZEditId} 
+          zFormData={zFormData} 
+          setZFormData={setZFormData} 
+          handleSubmitZona={handleSubmitZona} 
+          resetZona={resetZona}
+          mesaEditId={mesaEditId} 
+          setMesaEditId={setMesaEditId} 
+          mesaFormData={mesaFormData} 
+          setMesaFormData={setMesaFormData} 
+          handleSubmitMesa={handleSubmitMesa} 
+          resetMesa={resetMesa}
+          handleSavePlano={handleSavePlano}
+          handleDelete={handleDelete}
+          puedeCrearM={puedeCrearM} 
+          puedeEditarM={puedeEditarM} 
+          puedeBorrarConfig={puedeBorrarConfig} 
+          mostrarFormularioZ={mostrarFormularioZ}
+        />
       )}
     </div>
   );

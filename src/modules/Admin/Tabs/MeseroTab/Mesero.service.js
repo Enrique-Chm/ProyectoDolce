@@ -1,16 +1,61 @@
-// Archivo: src/services/Mesero.service.js
+// Archivo: src/modules/Admin/Tabs/MeseroTab/Mesero.service.js
 import { supabase } from '../../../../lib/supabaseClient';
 import { hasPermission } from '../../../../utils/checkPermiso'; 
 
 export const MeseroService = {
   
   /**
-   * 🚀 NUEVO: Obtiene el catálogo de productos con sus extras anidados
-   * Diseñado específicamente para el POS (sin exponer costos internos)
+   * 🚀 ACTUALIZADO: Obtiene el catálogo de Zonas (incluyendo grid_size) y Mesas (con pos_x, pos_y y tipo_elemento)
+   */
+  getZonasYMesas: async (sucursalId) => {
+    try {
+      if (!hasPermission('ver_comandas')) {
+        return { data: [], error: { message: 'No tienes permisos para ver el layout de mesas.' } };
+      }
+
+      const { data, error } = await supabase
+        .from('cat_zonas')
+        .select(`
+          id, 
+          nombre, 
+          orden,
+          grid_size,
+          cat_mesas (
+            id,
+            nombre,
+            capacidad,
+            activa,
+            pos_x,
+            pos_y,
+            tipo_elemento
+          )
+        `)
+        .eq('sucursal_id', Number(sucursalId))
+        .eq('activo', true)
+        .order('orden', { ascending: true });
+
+      if (error) throw error;
+
+      // Filtramos internamente para asegurar que solo devuelva mesas activas y ordenadas
+      const zonasLimpio = data.map(zona => ({
+        ...zona,
+        cat_mesas: (zona.cat_mesas || [])
+          .filter(m => m.activa)
+          .sort((a, b) => a.id - b.id) 
+      }));
+
+      return { data: zonasLimpio, error: null };
+    } catch (err) {
+      console.error("Error al obtener zonas y mesas:", err);
+      return { data: [], error: err.message };
+    }
+  },
+
+  /**
+   * Obtiene el catálogo de productos con sus extras anidados
    */
   getMenuPOS: async (sucursalId) => {
     try {
-      // Opcional: Validar permiso del mesero para ver el menú
       if (!hasPermission('ver_comandas')) {
         return { data: [], error: { message: 'No tienes permisos para ver el menú.' } };
       }
@@ -39,20 +84,18 @@ export const MeseroService = {
           )
         `)
         .eq('sucursal_id', Number(sucursalId))
-        .eq('disponible', true); // Solo productos activos
+        .eq('disponible', true); 
 
       if (error) {
         console.error("Error al obtener menú POS:", error);
         return { data: [], error };
       }
 
-      // Limpiamos la data para que sea más fácil de consumir en React
       const productosFormateados = data.map(prod => ({
         ...prod,
-        // Aplana la relación para que grupos quede como un arreglo directo de objetos 'grupos_modificadores'
         grupos: prod.producto_grupos
           .map(pg => pg.grupos_modificadores)
-          .filter(g => g !== null) // Evita nulos si hay inconsistencias en la BD
+          .filter(g => g !== null) 
       }));
 
       return { data: productosFormateados, error: null };
@@ -63,9 +106,7 @@ export const MeseroService = {
   },
 
   /**
-   * 🛡️ Verifica si existe una sesión de caja abierta para la sucursal.
-   * Al no haber triggers, este método es el encargado de obtener el UUID 
-   * necesario para vincular la venta con el turno del cajero.
+   * Verifica si existe una sesión de caja abierta
    */
   verificarCajaAbierta: async (sucursalId) => {
     try {
@@ -136,7 +177,7 @@ export const MeseroService = {
   },
 
   /**
-   * Cambia el estado de una mesa a 'por_cobrar' para notificar a caja.
+   * Cambia el estado de una mesa a 'por_cobrar'
    */
   marcarPorCobrar: async (ventaId) => {
     if (!hasPermission('editar_comandas')) {
@@ -155,8 +196,7 @@ export const MeseroService = {
   },
 
   /**
-   * 🚀 PROCESAR VENTA (MÉTODO MAESTRO ACTUALIZADO PARA EXTRAS)
-   * Ahora soporta el cálculo dinámico de precios incluyendo modificadores.
+   * 🚀 PROCESAR VENTA (Mantiene lógica de Zonas, Mesas y detalles)
    */
   procesarVenta: async (ventaData, carrito) => {
     if (!hasPermission('crear_comandas')) {
@@ -166,26 +206,30 @@ export const MeseroService = {
     try {
       let ventaId = ventaData.id;
 
-      // 1. 🛡️ VERIFICACIÓN MANUAL DE CAJA (Sustituye la seguridad del Trigger)
+      // 1. VERIFICACIÓN DE CAJA
       const { abierta, sesionId, error: errSesion } = await MeseroService.verificarCajaAbierta(ventaData.sucursal_id);
 
       if (errSesion || !abierta) {
-        throw new Error(`Operación cancelada: No se encontró una sesión de caja abierta para la sucursal ${ventaData.sucursal_id}. El cajero debe iniciar turno.`);
+        throw new Error(`Operación cancelada: No se encontró una sesión de caja abierta. El cajero debe iniciar turno.`);
       }
 
-      // 2. SI ES UNA MESA NUEVA (Crear registro en 'ventas')
+      // 2. SI ES UNA ORDEN NUEVA
       if (!ventaId) {
-        // CORRECCIÓN: Usar precio_calculado (precio base + extras) si existe, sino precio_venta
         const totalInicial = carrito.reduce((acc, item) => acc + (item.cantidad * (item.precio_calculado || item.precio_venta)), 0);
         
         const nuevaVentaPayload = {
           usuario_id: Number(ventaData.usuario_id), 
-          mesa: ventaData.mesa ? String(ventaData.mesa) : 'S/N',
+          sucursal_id: Number(ventaData.sucursal_id),
+          id_sesion_caja: sesionId, 
           estado: 'pendiente', 
           subtotal: parseFloat(totalInicial), 
           total: parseFloat(totalInicial),
-          sucursal_id: Number(ventaData.sucursal_id),
-          id_sesion_caja: sesionId // Vinculamos manualmente el ID de sesión encontrado
+          tipo_orden: ventaData.tipo_orden || 'salon',
+          mesa_id: ventaData.mesa_id ? Number(ventaData.mesa_id) : null,
+          mesa: ventaData.mesa || 'S/N',
+          comensales: ventaData.comensales ? Number(ventaData.comensales) : 1,
+          cliente_nombre: ventaData.cliente_nombre || null,
+          notas_orden: ventaData.notas_orden || null
         };
 
         const { data: nuevaVenta, error: errVenta } = await supabase
@@ -194,24 +238,19 @@ export const MeseroService = {
           .select()
           .single();
           
-        if (errVenta) {
-          console.error("Error al crear la venta padre:", errVenta);
-          throw new Error(`Error de base de datos: ${errVenta.message}`); 
-        }
+        if (errVenta) throw new Error(`Error de base de datos: ${errVenta.message}`); 
         ventaId = nuevaVenta.id;
       }
 
-      // 3. PREPARAR DETALLES DE PRODUCTOS (AQUÍ GUARDAMOS LOS EXTRAS)
+      // 3. PREPARAR DETALLES DE PRODUCTOS
       const detalles = carrito.map(item => ({
         venta_id: ventaId, 
         producto_id: parseInt(item.id),
         cantidad: parseInt(item.cantidad),
-        // Usar precio_calculado para el precio unitario final de este detalle
         precio_unitario: parseFloat(item.precio_calculado || item.precio_venta),
         costo_unitario_historico: parseFloat(item.costo_actual || 0), 
         subtotal: parseFloat(item.cantidad * (item.precio_calculado || item.precio_venta)),
         notas: item.notes || item.notas || '',
-        // 🚀 GUARDAR EL JSON DE EXTRAS EN LA BASE DE DATOS
         extras_seleccionados: item.extras_seleccionados || [] 
       }));
 
@@ -220,12 +259,9 @@ export const MeseroService = {
         .from('ventas_detalle')
         .insert(detalles);
         
-      if (errDetalles) {
-        console.error("Error al insertar los detalles:", errDetalles);
-        throw new Error(`Error al registrar productos: ${errDetalles.message}`);
-      }
+      if (errDetalles) throw new Error(`Error al registrar productos: ${errDetalles.message}`);
 
-      // 5. RECALCULAR TOTALES (Sincronización final)
+      // 5. RECALCULAR TOTALES
       const { data: allDetails, error: errCalc } = await supabase
         .from('ventas_detalle')
         .select('subtotal')
@@ -235,7 +271,7 @@ export const MeseroService = {
 
       const nuevoTotal = (allDetails || []).reduce((sum, item) => sum + item.subtotal, 0);
         
-      // Actualizamos el registro padre con los totales finales y re-aseguramos el id_sesion_caja
+      // Actualizamos el registro padre
       const { error: errUpdate } = await supabase
         .from('ventas')
         .update({ 
