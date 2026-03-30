@@ -74,7 +74,7 @@ export const CobrarView = ({
         </div>
       `,
       showCancelButton: true,
-      confirmButtonText: "FINALIZAR COBRO",
+      confirmButtonText: "FINALIZAR",
       confirmButtonColor: "#059669",
       cancelButtonText: "Volver",
       didOpen: () => {

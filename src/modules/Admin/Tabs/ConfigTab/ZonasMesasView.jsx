@@ -165,7 +165,7 @@ export const ZonasMesasView = ({
                   checked={esObstaculoForm} 
                   onChange={e => setMesaFormData({...mesaFormData, tipo_elemento: e.target.value})} 
                 />
-                Objeto (Puerta, Pared...)
+                Objeto
               </label>
             </div>
           </div>
@@ -361,7 +361,7 @@ export const ZonasMesasView = ({
                 {/* CABECERA DE LA ZONA */}
                 <div style={{ background: 'var(--color-bg-muted)', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)' }}>
                   <div>
-                    <h4 style={{ margin: 0, fontWeight: '800', color: 'var(--color-primary)' }}>📍 {zona.nombre.toUpperCase()}</h4>
+                    <h4 style={{ margin: 0, fontWeight: '800', color: 'var(--color-primary)' }}> {zona.nombre.toUpperCase()}</h4>
                     <small className={s.textMuted}>Cuadrícula: {zona.grid_size}x{zona.grid_size} • Orden de aparición: {zona.orden}</small>
                   </div>
                   <div style={{ display: 'flex', gap: '8px' }}>
@@ -369,7 +369,7 @@ export const ZonasMesasView = ({
                       className={`${s.btn} ${s.btnOutlineEditar} ${s.btnSmall}`} 
                       onClick={() => { setZEditId(zona.id); setZFormData({ nombre: zona.nombre, orden: zona.orden, activo: zona.activo, grid_size: zona.grid_size }); }}
                     >
-                      📝 EDITAR ZONA
+                      📝
                     </button>
                     {puedeBorrarConfig && (
                       <button className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`} onClick={() => handleDelete('zona', zona.id)}>
@@ -401,7 +401,7 @@ export const ZonasMesasView = ({
                           const esObstaculo = m.tipo_elemento === 'OBSTACULO';
                           return (
                             <tr key={m.id} style={{ backgroundColor: mesaEditId === m.id ? 'var(--color-bg-app)' : 'transparent' }}>
-                              <td className={s.td} style={{ fontSize: '20px', textAlign: 'center' }}>
+                              <td className={s.td} style={{ fontSize: '15px', textAlign: 'center' }}>
                                 {esObstaculo ? '🧱' : '🪑'}
                               </td>
                               <td className={s.td}>
@@ -409,7 +409,7 @@ export const ZonasMesasView = ({
                                 {esObstaculo && <span className={s.textMuted} style={{fontSize: '11px', display: 'block'}}>Objeto estático</span>}
                               </td>
                               <td className={s.td} style={{ textAlign: 'center' }}>
-                                {esObstaculo ? '—' : `👥 ${m.capacidad} PAX`}
+                                {esObstaculo ? '—' : ` ${m.capacidad} PAX`}
                               </td>
                               <td className={s.td} style={{ textAlign: 'center' }}>
                                 <span style={{ 

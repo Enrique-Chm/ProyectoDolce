@@ -216,9 +216,9 @@ export const UnidadesView = ({
                   <td className={s.td} style={{ textTransform: 'capitalize' }}>{td.tipo_calculo.replace('_', ' ')}</td>
                   <td className={s.td}>
                     {td.tipo_calculo === 'porcentaje' ? `${td.valor_defecto}%` : 
-                     td.tipo_calculo === 'monto_fijo' ? `$${td.valor_defecto}` : 'N/A'}
+                     td.tipo_calculo === 'monto_fijo' ? `$${td.valor_defecto}` : '-'}
                   </td>
-                  <td className={s.td}>{td.requiere_autorizacion ? '✅ SI' : '❌ NO'}</td>
+                  <td className={s.td}>{td.requiere_autorizacion ? '✅' : ''}</td>
                   <td className={s.td} style={{ textAlign: 'right' }}>
                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                       <button 
