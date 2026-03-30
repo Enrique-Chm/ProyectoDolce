@@ -1,4 +1,3 @@
-// Archivo: src/modules/Admin/Tabs/ConfigTab/Config.service.js
 import { supabase } from '../../../../lib/supabaseClient';
 import { hasPermission } from '../../../../utils/checkPermiso';
 
@@ -36,6 +35,43 @@ export const configService = {
     }
 
     return await supabase.from('cat_unidades_medida').delete().eq('id', id);
+  },
+
+  // =========================================
+  // 🚀 TIPOS DE DESCUENTO (Nueva sección)
+  // =========================================
+  async getTiposDescuento() {
+    // 🛡️ Blindaje de lectura
+    if (!hasPermission('ver_configuracion')) return { data: [], error: null };
+
+    return await supabase
+      .from('cat_tipos_descuento')
+      .select('*')
+      .order('nombre', { ascending: true });
+  },
+
+  async saveTipoDescuento(payload, id = null) {
+    if (id) {
+      // 🛡️ Blindaje de edición
+      if (!hasPermission('editar_configuracion')) {
+        return { data: null, error: { message: 'Acceso Denegado: No tienes permiso para modificar tipos de descuento.' } };
+      }
+      return await supabase.from('cat_tipos_descuento').update(payload).eq('id', id);
+    } else {
+      // 🛡️ Blindaje de creación
+      if (!hasPermission('crear_configuracion')) {
+        return { data: null, error: { message: 'Acceso Denegado: No tienes permiso para crear tipos de descuento.' } };
+      }
+      return await supabase.from('cat_tipos_descuento').insert([payload]);
+    }
+  },
+
+  async deleteTipoDescuento(id) {
+    // 🛡️ Blindaje de borrado
+    if (!hasPermission('borrar_configuracion')) {
+      return { data: null, error: { message: 'Acceso Denegado.' } };
+    }
+    return await supabase.from('cat_tipos_descuento').delete().eq('id', id);
   },
 
   // =========================================

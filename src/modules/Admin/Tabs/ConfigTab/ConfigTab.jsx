@@ -1,9 +1,13 @@
-// Archivo: src/modules/Admin/Tabs/ConfigTab/ConfigTab.jsx
 import React, { useState } from 'react';
 import s from "../../../../assets/styles/EstilosGenerales.module.css";
 import { useConfigTab } from './useConfigTab';
-import { hasPermission } from '../../../../utils/checkPermiso'; // 🛡️ Importamos seguridad
-import { ZonasMesasView } from './ZonasMesasView'; // 👈 Importamos el nuevo componente
+import { hasPermission } from '../../../../utils/checkPermiso';
+
+// Importación de las sub-vistas
+import { UnidadesView } from './UnidadesView';
+import { CategoriasView } from './CategoriasView';
+import { MotivosView } from './MotivosView';
+import { ZonasMesasView } from './ZonasMesasView';
 
 export const ConfigTab = () => {
   const [subTab, setSubTab] = useState('unidades');
@@ -15,7 +19,16 @@ export const ConfigTab = () => {
     catInsumos,
     motivosInventario,
     
-    // 🚀 ESTADOS DE ZONAS Y MESAS
+    // 🚀 NUEVOS DATOS: TIPOS DE DESCUENTO
+    tiposDescuento,
+    tdNombre, setTdNombre,
+    tdTipoCalculo, setTdTipoCalculo,
+    tdValorDefecto, setTdValorDefecto,
+    tdRequiereAuth, setTdRequiereAuth,
+    tdEditId, setTdEditId,
+    handleSubmitTipoDescuento,
+
+    // ESTADOS DE ZONAS Y MESAS
     zonas,
     
     uNombre, setUNombre,
@@ -30,10 +43,10 @@ export const ConfigTab = () => {
     mTipo, setMTipo,
     mEditId, setMEditId,
     
-    // 🚀 SETTERS Y HANDLERS DE ZONAS/MESAS
+    // SETTERS Y HANDLERS DE ZONAS/MESAS
     zEditId, setZEditId, zFormData, setZFormData, handleSubmitZona, resetZona,
     mesaEditId, setMesaEditId, mesaFormData, setMesaFormData, handleSubmitMesa, resetMesa,
-    handleSavePlano, // 👈 Acción para guardar el drag & drop
+    handleSavePlano,
 
     handleSubmitUnidad,
     handleSubmitCatMenu,
@@ -50,10 +63,21 @@ export const ConfigTab = () => {
 
   const handleTabChange = (newTab) => {
     setSubTab(newTab);
+    // Reset Unidades
     setUEditId(null); setUNombre(''); setUAbrev('');
+    
+    // 🚀 Reset Descuentos
+    setTdEditId(null); setTdNombre(''); setTdTipoCalculo('libre'); 
+    setTdValorDefecto(0); setTdRequiereAuth(false);
+
+    // Reset Categorías
     setCMenuEditId(null); setCMenuNombre(''); setCMenuColor('#005696');
     setCInsumoEditId(null); setCInsumoNombre('');
+    
+    // Reset Motivos
     setMEditId(null); setMNombre(''); setMTipo('ENTRADA');
+    
+    // Reset Zonas/Mesas
     resetZona();
     resetMesa();
   };
@@ -80,7 +104,7 @@ export const ConfigTab = () => {
             className={`${s.tabButton} ${subTab === 'unidades' ? s.activeTabButton : ''}`}
             onClick={() => handleTabChange('unidades')}
           >
-            Unidades
+            Unidades y Descuentos
           </button>
         )}
         {hasPermission('ver_categorias') && (
@@ -109,303 +133,91 @@ export const ConfigTab = () => {
         )}
       </nav>
 
-      {/* --- SECCIÓN UNIDADES --- */}
+      {/* --- SECCIÓN UNIDADES Y DESCUENTOS --- */}
       {subTab === 'unidades' && hasPermission('ver_unidades') && (
-        <div className={mostrarFormularioU ? s.splitLayout : s.fullLayout}>
-          <aside className={s.adminCard} style={{ display: mostrarFormularioU ? 'block' : 'none' }}>
-            <h3 className={s.cardTitle}>
-              {uEditId ? (puedeEditarU ? 'Editar' : 'Ver') : 'Nueva'} Unidad
-            </h3>
-            <form onSubmit={handleSubmitUnidad} className={s.loginForm}>
-              <div className={s.formGroup}>
-                <label className={s.label}>NOMBRE</label>
-                <input 
-                  className={s.inputField}
-                  value={uNombre} onChange={e => setUNombre(e.target.value)} required 
-                  readOnly={uEditId ? !puedeEditarU : !puedeCrearU} 
-                  style={{ backgroundColor: (uEditId ? !puedeEditarU : !puedeCrearU) ? "var(--color-bg-muted)" : "white" }}
-                />
-              </div>
-              <div className={s.formGroup}>
-                <label className={s.label}>ABREVIATURA</label>
-                <input 
-                  className={s.inputField}
-                  value={uAbrev} onChange={e => setUAbrev(e.target.value)} required 
-                  readOnly={uEditId ? !puedeEditarU : !puedeCrearU} 
-                  style={{ backgroundColor: (uEditId ? !puedeEditarU : !puedeCrearU) ? "var(--color-bg-muted)" : "white" }}
-                />
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '10px' }}>
-                {(uEditId ? puedeEditarU : puedeCrearU) && (
-                  <button type="submit" className={`${s.btn} ${s.btnPrimary}`} style={{ flex: 1 }}>GUARDAR</button>
-                )}
-                {uEditId && (
-                  <button type="button" className={`${s.btn} ${s.btnDark}`} style={{ flex: 1 }} onClick={() => { setUEditId(null); setUNombre(''); setUAbrev(''); }}>
-                    {puedeEditarU ? 'CANCELAR' : 'CERRAR'}
-                  </button>
-                )}
-              </div>
-            </form>
-          </aside>
+        <UnidadesView 
+          s={s}
+          // Props Unidades
+          unidades={unidades}
+          uEditId={uEditId}
+          setUEditId={setUEditId}
+          uNombre={uNombre}
+          setUNombre={setUNombre}
+          uAbrev={uAbrev}
+          setUAbrev={setUAbrev}
+          handleSubmitUnidad={handleSubmitUnidad}
+          
+          // 🚀 Props Descuentos
+          tiposDescuento={tiposDescuento}
+          tdEditId={tdEditId}
+          setTdEditId={setTdEditId}
+          tdNombre={tdNombre}
+          setTdNombre={setTdNombre}
+          tdTipoCalculo={tdTipoCalculo}
+          setTdTipoCalculo={setTdTipoCalculo}
+          tdValorDefecto={tdValorDefecto}
+          setTdValorDefecto={setTdValorDefecto}
+          tdRequiereAuth={tdRequiereAuth}
+          setTdRequiereAuth={setTdRequiereAuth}
+          handleSubmitTipoDescuento={handleSubmitTipoDescuento}
 
-          <div className={`${s.adminCard} ${s.tableContainer}`}>
-            <table className={s.table}>
-              <thead className={s.thead}>
-                <tr>
-                  <th className={s.th}>ID</th>
-                  <th className={s.th}>DESCRIPCIÓN</th>
-                  <th className={s.th} style={{ textAlign: 'right' }}>ACCIONES</th>
-                </tr>
-              </thead>
-              <tbody>
-                {unidades.map(u => (
-                  <tr key={u.id} style={{ backgroundColor: uEditId === u.id ? 'var(--color-bg-app)' : 'transparent' }}>
-                    <td className={s.td}>#{u.id}</td>
-                    <td className={s.td}><strong>{u.nombre}</strong> <span className={s.textMuted}>({u.abreviatura})</span></td>
-                    <td className={s.td} style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                        <button className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`} onClick={() => { setUEditId(u.id); setUNombre(u.nombre); setUAbrev(u.abreviatura); }}>
-                          {puedeEditarU ? '📝' : '👁️'}
-                        </button>
-                        {puedeBorrarConfig && (
-                          <button className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`} onClick={() => handleDelete('unidades', u.id)}>
-                            ❌
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+          // Comunes
+          handleDelete={handleDelete}
+          puedeCrearU={puedeCrearU}
+          puedeEditarU={puedeEditarU}
+          puedeBorrarConfig={puedeBorrarConfig}
+          mostrarFormularioU={mostrarFormularioU}
+        />
       )}
 
       {/* --- SECCIÓN CATEGORÍAS --- */}
       {subTab === 'categorias' && hasPermission('ver_categorias') && (
-        <div className={s.flexColumnGap20}>
-          
-          <div className={mostrarFormularioCMenu ? s.splitLayout : s.fullLayout}>
-            <aside className={s.adminCard} style={{ display: mostrarFormularioCMenu ? 'block' : 'none' }}>
-              <h3 className={s.cardTitle}>
-                {cMenuEditId ? (puedeEditarC ? 'Editar Categoría Menú' : 'Detalle Categoría Menú') : 'Nueva Categoría Menú'}
-              </h3>
-              <form onSubmit={handleSubmitCatMenu} className={s.loginForm}>
-                <div className={s.formGroup}>
-                  <label className={s.label}>NOMBRE CATEGORÍA</label>
-                  <input 
-                    className={s.inputField}
-                    value={cMenuNombre} onChange={e => setCMenuNombre(e.target.value)} placeholder="Ej: Hamburguesas" required 
-                    readOnly={cMenuEditId ? !puedeEditarC : !puedeCrearC} 
-                    style={{ backgroundColor: (cMenuEditId ? !puedeEditarC : !puedeCrearC) ? "var(--color-bg-muted)" : "white" }}
-                  />
-                </div>
-                <div className={s.formGroup}>
-                  <label className={s.label}>COLOR IDENTIFICADOR</label>
-                  <input 
-                    type="color"
-                    className={`${s.inputField} ${s.colorPicker}`}
-                    value={cMenuColor} onChange={e => setCMenuColor(e.target.value)} 
-                    disabled={cMenuEditId ? !puedeEditarC : !puedeCrearC} 
-                  />
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '10px' }}>
-                  {(cMenuEditId ? puedeEditarC : puedeCrearC) && (
-                    <button type="submit" className={`${s.btn} ${s.btnPrimary}`} style={{ flex: 1 }}>
-                      {cMenuEditId ? 'ACTUALIZAR' : 'GUARDAR'}
-                    </button>
-                  )}
-                  {cMenuEditId && (
-                    <button type="button" className={`${s.btn} ${s.btnDark}`} style={{ flex: 1 }} onClick={() => { setCMenuEditId(null); setCMenuNombre(''); setCMenuColor('#005696'); }}>
-                      {puedeEditarC ? 'CANCELAR' : 'CERRAR'}
-                    </button>
-                  )}
-                </div>
-              </form>
-            </aside>
-            <div className={`${s.adminCard} ${s.tableContainer}`}>
-              <table className={s.table}>
-                <thead className={s.thead}>
-                  <tr>
-                    <th className={s.th}>COLOR</th>
-                    <th className={s.th}>NOMBRE</th>
-                    <th className={s.th} style={{ textAlign: 'right' }}>ACCIÓN</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {catMenu.map(c => (
-                    <tr key={c.id} style={{ backgroundColor: cMenuEditId === c.id ? 'var(--color-bg-app)' : 'transparent' }}>
-                      <td className={s.td}>
-                        <div className={s.colorCircle} style={{ backgroundColor: c.color_etiqueta }}></div>
-                      </td>
-                      <td className={s.td}><strong>{c.nombre}</strong></td>
-                      <td className={s.td} style={{ textAlign: 'right' }}>
-                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                          <button className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`} onClick={() => { setCMenuEditId(c.id); setCMenuNombre(c.nombre); setCMenuColor(c.color_etiqueta); }}>
-                            {puedeEditarC ? '📝' : '👁️'}
-                          </button>
-                          {puedeBorrarConfig && (
-                            <button className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`} onClick={() => handleDelete('menu', c.id)}>
-                              ❌
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div className={mostrarFormularioCInsumo ? s.splitLayout : s.fullLayout}>
-            <aside className={s.adminCard} style={{ display: mostrarFormularioCInsumo ? 'block' : 'none' }}>
-              <h3 className={s.cardTitle}>
-                {cInsumoEditId ? (puedeEditarC ? 'Editar Almacén' : 'Detalle Almacén') : 'Nueva Categoría Almacén'}
-              </h3>
-              <form onSubmit={handleSubmitCatInsumo} className={s.loginForm}>
-                <div className={s.formGroup}>
-                  <label className={s.label}>NOMBRE CATEGORÍA</label>
-                  <input 
-                    className={s.inputField}
-                    value={cInsumoNombre} onChange={e => setCInsumoNombre(e.target.value)} placeholder="Ej: Proteínas" required 
-                    readOnly={cInsumoEditId ? !puedeEditarC : !puedeCrearC} 
-                    style={{ backgroundColor: (cInsumoEditId ? !puedeEditarC : !puedeCrearC) ? "var(--color-bg-muted)" : "white" }}
-                  />
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '10px' }}>
-                  {(cInsumoEditId ? puedeEditarC : puedeCrearC) && (
-                    <button type="submit" className={`${s.btn} ${s.btnPrimary}`} style={{ flex: 1 }}>
-                      {cInsumoEditId ? 'ACTUALIZAR' : 'GUARDAR'}
-                    </button>
-                  )}
-                  {cInsumoEditId && (
-                    <button type="button" className={`${s.btn} ${s.btnDark}`} style={{ flex: 1 }} onClick={() => { setCInsumoEditId(null); setCInsumoNombre(''); }}>
-                      {puedeEditarC ? 'CANCELAR' : 'CERRAR'}
-                    </button>
-                  )}
-                </div>
-              </form>
-            </aside>
-            <div className={`${s.adminCard} ${s.tableContainer}`}>
-              <table className={s.table}>
-                <thead className={s.thead}>
-                  <tr>
-                    <th className={s.th}>ID</th>
-                    <th className={s.th}>NOMBRE</th>
-                    <th className={s.th} style={{ textAlign: 'right' }}>ACCIÓN</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {catInsumos.map(c => (
-                    <tr key={c.id} style={{ backgroundColor: cInsumoEditId === c.id ? 'var(--color-bg-app)' : 'transparent' }}>
-                      <td className={s.td}>#{c.id}</td>
-                      <td className={s.td}><strong>{c.nombre}</strong></td>
-                      <td className={s.td} style={{ textAlign: 'right' }}>
-                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                          <button className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`} onClick={() => { setCInsumoEditId(c.id); setCInsumoNombre(c.nombre); }}>
-                            {puedeEditarC ? '📝' : '👁️'}
-                          </button>
-                          {puedeBorrarConfig && (
-                            <button className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`} onClick={() => handleDelete('insumos', c.id)}>
-                              ❌
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        <CategoriasView 
+          s={s}
+          catMenu={catMenu}
+          catInsumos={catInsumos}
+          cMenuEditId={cMenuEditId}
+          setCMenuEditId={setCMenuEditId}
+          cMenuNombre={cMenuNombre}
+          setCMenuNombre={setCMenuNombre}
+          cMenuColor={cMenuColor}
+          setCMenuColor={setCMenuColor}
+          cInsumoEditId={cInsumoEditId}
+          setCInsumoEditId={setCInsumoEditId}
+          cInsumoNombre={cInsumoNombre}
+          setCInsumoNombre={setCInsumoNombre}
+          handleSubmitCatMenu={handleSubmitCatMenu}
+          handleSubmitCatInsumo={handleSubmitCatInsumo}
+          handleDelete={handleDelete}
+          puedeCrearC={puedeCrearC}
+          puedeEditarC={puedeEditarC}
+          puedeBorrarConfig={puedeBorrarConfig}
+          mostrarFormularioCMenu={mostrarFormularioCMenu}
+          mostrarFormularioCInsumo={mostrarFormularioCInsumo}
+        />
       )}
 
       {/* --- SECCIÓN MOTIVOS INVENTARIO --- */}
       {subTab === 'motivos' && hasPermission('ver_configuracion') && (
-        <div className={mostrarFormularioM ? s.splitLayout : s.fullLayout}>
-          <aside className={s.adminCard} style={{ display: mostrarFormularioM ? 'block' : 'none' }}>
-            <h3 className={s.cardTitle}>
-              {mEditId ? (puedeEditarM ? 'Editar Motivo' : 'Detalle Motivo') : 'Nuevo Motivo'}
-            </h3>
-            <form onSubmit={handleSubmitMotivo} className={s.loginForm}>
-              <div className={s.formGroup}>
-                <label className={s.label}>NOMBRE DEL MOTIVO</label>
-                <input 
-                  className={s.inputField}
-                  value={mNombre} onChange={e => setMNombre(e.target.value)} placeholder="Ej: Compra Proveedor" required 
-                  readOnly={mEditId ? !puedeEditarM : !puedeCrearM} 
-                  style={{ backgroundColor: (mEditId ? !puedeEditarM : !puedeCrearM) ? "var(--color-bg-muted)" : "white" }}
-                />
-              </div>
-              <div className={s.formGroup}>
-                <label className={s.label}>TIPO DE MOVIMIENTO</label>
-                <select 
-                  className={s.inputField}
-                  value={mTipo} onChange={e => setMTipo(e.target.value)} 
-                  disabled={mEditId ? !puedeEditarM : !puedeCrearM}
-                  style={{ backgroundColor: (mEditId ? !puedeEditarM : !puedeCrearM) ? "var(--color-bg-muted)" : "white" }}
-                >
-                  <option value="ENTRADA">ENTRADA (+)</option>
-                  <option value="MERMA">MERMA (-)</option>
-                  <option value="SALIDA">SALIDA (-)</option>
-                  <option value="AJUSTE">AJUSTE (+/-)</option>
-                </select>
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '10px' }}>
-                {(mEditId ? puedeEditarM : puedeCrearM) && (
-                  <button type="submit" className={`${s.btn} ${s.btnPrimary}`} style={{ flex: 1 }}>GUARDAR</button>
-                )}
-                {mEditId && (
-                  <button type="button" className={`${s.btn} ${s.btnDark}`} style={{ flex: 1 }} onClick={() => { setMEditId(null); setMNombre(''); setMTipo('ENTRADA'); }}>
-                    {puedeEditarM ? 'CANCELAR' : 'CERRAR'}
-                  </button>
-                )}
-              </div>
-            </form>
-          </aside>
-
-          <div className={`${s.adminCard} ${s.tableContainer}`}>
-            <table className={s.table}>
-              <thead className={s.thead}>
-                <tr>
-                  <th className={s.th}>TIPO</th>
-                  <th className={s.th}>MOTIVO</th>
-                  <th className={s.th} style={{ textAlign: 'right' }}>ACCIONES</th>
-                </tr>
-              </thead>
-              <tbody>
-                {motivosInventario.map(m => (
-                  <tr key={m.id} style={{ backgroundColor: mEditId === m.id ? 'var(--color-bg-app)' : 'transparent' }}>
-                    <td className={s.td}>
-                      <span className={m.tipo === 'ENTRADA' ? s.badgeSuccess : s.badgeDanger}>
-                        {m.tipo}
-                      </span>
-                    </td>
-                    <td className={s.td}><strong>{m.nombre_motivo}</strong></td>
-                    <td className={s.td} style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                        <button className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`} onClick={() => { setMEditId(m.id); setMNombre(m.nombre_motivo); setMTipo(m.tipo); }}>
-                          {puedeEditarM ? '📝' : '👁️'}
-                        </button>
-                        {puedeBorrarConfig && (
-                          <button className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`} onClick={() => handleDelete('motivos', m.id)}>
-                            ❌
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <MotivosView 
+          s={s}
+          motivosInventario={motivosInventario}
+          mEditId={mEditId}
+          setMEditId={setMEditId}
+          mNombre={mNombre}
+          setMNombre={setMNombre}
+          mTipo={mTipo}
+          setMTipo={setMTipo}
+          handleSubmitMotivo={handleSubmitMotivo}
+          handleDelete={handleDelete}
+          puedeCrearM={puedeCrearM}
+          puedeEditarM={puedeEditarM}
+          puedeBorrarConfig={puedeBorrarConfig}
+          mostrarFormularioM={mostrarFormularioM}
+        />
       )}
 
-      {/* --- 🚀 SECCIÓN ZONAS Y MESAS CON CUADRÍCULA ESCALABLE --- */}
+      {/* --- SECCIÓN ZONAS Y MESAS --- */}
       {subTab === 'zonas' && hasPermission('ver_configuracion') && (
         <ZonasMesasView 
           zonas={zonas}
