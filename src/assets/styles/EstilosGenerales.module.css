@@ -1110,8 +1110,9 @@
   border: 2px dashed var(--color-border);
   border-radius: var(--radius-ui);
   overflow: hidden;
-  touch-action: none; /* Vital para que el drag funcione en tablets */
   box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+  touch-action: auto; /* 👈 Cambia 'pan-y' por 'auto' para permitir scroll en X y Y */
+  overflow: auto;
 }
 
 .mesaPlano {
@@ -1125,8 +1126,7 @@
   user-select: none;
   font-weight: 900;
   box-shadow: var(--shadow-sm);
-  
-  /* 👇 BLINDAJE GEOMÉTRICO PARA CÍRCULO PERFECTO 👇 */
+  touch-action: none;
   aspect-ratio: 1 / 1 !important; /* Fuerza siempre a ser un cuadrado perfecto */
   border-radius: 50% !important;  /* Redondea ese cuadrado a círculo */
   box-sizing: border-box;         /* El borde se dibuja hacia adentro */
@@ -1153,9 +1153,11 @@
   user-select: none;
   box-sizing: border-box;
   padding: 4px;
-  overflow: hidden;
-  /*aspect-ratio: 1 / 1; *//* Descomenta esto si quieres forzar que sean siempre cuadrados perfectos */
+  overflow: hidden;/*aspect-ratio: 1 / 1; *//* Descomenta esto si quieres forzar que sean siempre cuadrados perfectos */
+touch-action: none; /* 👈 Agrega esto */
+user-select: none;  /* Evita que se seleccione el texto al arrastrar */
 }
+
 
 /* Al arrastrar, cambiamos el cursor */
 .obstaculoPlano:active {

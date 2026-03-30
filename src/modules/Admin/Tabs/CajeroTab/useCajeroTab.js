@@ -1,4 +1,4 @@
-// Archivo: src/hooks/useCajeroTab.js
+// Archivo: src/modules/Admin/Tabs/CajeroTab/useCajeroTab.js
 import { useState, useEffect, useCallback } from "react";
 import { CajaService } from "./Caja.service";
 import { hasPermission } from "../../../../utils/checkPermiso"; 
@@ -12,6 +12,9 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
   const [motivosCatalogo, setMotivosCatalogo] = useState([]);
   const [tiposDisponibles, setTiposDisponibles] = useState([]);
   
+  // 🚀 NUEVO: Estado para el catálogo de descuentos
+  const [descuentosCatalogo, setDescuentosCatalogo] = useState([]);
+
   // Centralizamos el estado de las cuentas directamente en el Hook
   const [cuentasPendientes, setCuentasPendientes] = useState([]);
   const [cuentasCobradas, setCuentasCobradas] = useState([]);
@@ -43,19 +46,23 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
         setTiposDisponibles(tiposUnicos);
       }
 
-      // 2. Obtener sesión activa de la sucursal
+      // 🚀 2. NUEVO: Cargar catálogo de descuentos (cat_tipos_descuento)
+      const { data: descData } = await CajaService.getTiposDescuento();
+      setDescuentosCatalogo(descData || []);
+
+      // 3. Obtener sesión activa de la sucursal
       const { data: sesion } = await CajaService.getSesionActiva(sucursalId);
       setSesionActiva(sesion);
 
       if (sesion) {
-        // 3. Cargar movimientos del turno actual
+        // 4. Cargar movimientos del turno actual
         const { data: movs } = await CajaService.getMovimientosSesion(sesion.id);
         setMovimientos(movs || []);
       } else {
         setMovimientos([]); 
       }
 
-      // 4. Cargar historial de sesiones cerradas de la sucursal (para la pestaña Historial)
+      // 5. Cargar historial de sesiones cerradas de la sucursal (para la pestaña Historial)
       const { data: hist } = await CajaService.getHistorialSesiones(sucursalId);
       setHistorial(hist || []);
     } catch (error) {
@@ -183,16 +190,21 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
   };
 
   /**
-   * Proceso de Arqueo y Cierre de Turno
+   * 🚀 ACTUALIZADO: Proceso de Arqueo y Cierre de Turno con Tarjeta
    */
-  const cerrarTurno = async (montoCierre) => {
+  const cerrarTurno = async (montoCierre, montoTarjeta) => {
     if (!puedeEditar) {
       return Swal.fire("Acceso denegado", "No tienes permiso para cerrar caja.", "error");
     }
 
     const montoCierreNum = parseFloat(montoCierre);
-    if (isNaN(montoCierreNum)) {
-      return Swal.fire("Error", "Ingresa el monto físico contado", "error");
+    const montoTarjetaNum = parseFloat(montoTarjeta) || 0; // Si el cajero lo deja vacío, asumimos 0
+
+    if (isNaN(montoCierreNum) || montoCierreNum < 0) {
+      return Swal.fire("Error", "Ingresa el monto físico en efectivo contado", "error");
+    }
+    if (montoTarjetaNum < 0) {
+      return Swal.fire("Error", "El monto de tarjeta no puede ser negativo", "error");
     }
 
     // 🛡️ Obtener ventas reales en efectivo de la DB para esta sucursal
@@ -219,8 +231,12 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
       title: "¿Finalizar Turno?",
       html: `
         <div style="text-align: left; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
-            <p style="margin-bottom: 5px;">Monto Esperado: <b>$${montoEsperado.toFixed(2)}</b></p>
-            <p style="margin-bottom: 0;">Diferencia: <b style="color: ${diferencia < 0 ? "#ef4444" : "#10b981"}">$${diferencia.toFixed(2)}</b></p>
+            <p style="margin-bottom: 5px; color: #475569;">Efectivo Esperado: <b>$${montoEsperado.toFixed(2)}</b></p>
+            <p style="margin-bottom: 5px; color: #475569;">Efectivo Contado: <b>$${montoCierreNum.toFixed(2)}</b></p>
+            <p style="margin-bottom: 15px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 10px;">
+              Diferencia (Efectivo): <b style="color: ${diferencia < 0 ? "#ef4444" : "#10b981"}">$${diferencia.toFixed(2)}</b>
+            </p>
+            <p style="margin-bottom: 0; color: #475569;">Total Vouchers (Tarjeta): <b style="color: #3b82f6">$${montoTarjetaNum.toFixed(2)}</b></p>
         </div>
         <p style="margin-top: 15px; font-size: 0.9rem; color: #64748b;">Esta acción cerrará el turno y no podrá revertirse.</p>
       `,
@@ -236,6 +252,7 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
         monto_cierre_real: montoCierreNum,
         monto_cierre_esperado: montoEsperado,
         diferencia: diferencia,
+        monto_cierre_tarjeta: montoTarjetaNum, // Enviamos el dato al Service
       });
 
       if (error) {
@@ -263,6 +280,7 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
     historial: puedeVer ? historial : [],
     motivosCatalogo,
     tiposDisponibles,
+    descuentosCatalogo, // 🚀 AHORA EXPORTADO PARA TU JSX
     cuentasPendientes,
     cuentasCobradas,
     getMotivosPorTipo,

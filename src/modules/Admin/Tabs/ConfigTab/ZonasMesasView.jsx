@@ -294,7 +294,7 @@ export const ZonasMesasView = ({
                       top: `${mesa.pos_y}%`,
                       width: `${tableSize}%`, 
                       zIndex: isDragging ? 10 : 1,
-                      
+                      touchAction: 'none',
                       // 🚀 ALINEACIÓN Y ANIMACIONES FLUIDAS
                       transform: isDragging ? 'translate(-50%, -50%) scale(1.1)' : 'translate(-50%, -50%) scale(1)',
                       transition: isDragging ? 'none' : 'transform 0.2s ease, box-shadow 0.2s ease',

@@ -1,11 +1,11 @@
-// Archivo: src/services/Caja.service.js
+// Archivo: src/modules/Admin/Tabs/CajeroTab/Caja.service.js
 import { supabase } from '../../../../lib/supabaseClient';
 import { hasPermission } from '../../../../utils/checkPermiso'; // 🛡️ Importamos el validador
 
 export const CajaService = {
 
   /* ==========================================
-     1. CATÁLOGOS (cat_motivos_inventario)
+     1. CATÁLOGOS (cat_motivos_inventario y cat_tipos_descuento)
      ========================================== */
 
   getMotivosInventario: async () => {
@@ -14,6 +14,17 @@ export const CajaService = {
       .select('id, nombre_motivo, tipo, descripcion, origen')
       .eq('activo', true)
       .eq('origen', 'Caja');
+      
+    return { data, error };
+  },
+
+  // 🚀 NUEVO: Traer el catálogo de descuentos activos
+  getTiposDescuento: async () => {
+    const { data, error } = await supabase
+      .from('cat_tipos_descuento')
+      .select('id, nombre, tipo_calculo, valor_defecto, requiere_autorizacion')
+      .eq('activo', true)
+      .order('id', { ascending: true });
       
     return { data, error };
   },
@@ -55,6 +66,9 @@ export const CajaService = {
     return { data, error };
   },
 
+  /**
+   * 🚀 ACTUALIZADO: Registra el cierre de la caja e incluye monto_cierre_tarjeta
+   */
   cerrarCaja: async (sesionId, datosCierre) => {
     if (!hasPermission('editar_ventas')) {
       return { data: null, error: { message: "No tienes permisos para cerrar la caja." } };
@@ -66,6 +80,7 @@ export const CajaService = {
         monto_cierre_real: parseFloat(datosCierre.monto_cierre_real),
         monto_cierre_esperado: parseFloat(datosCierre.monto_cierre_esperado),
         diferencia: parseFloat(datosCierre.diferencia),
+        monto_cierre_tarjeta: parseFloat(datosCierre.monto_cierre_tarjeta || 0), // 👈 GUARDAMOS TARJETA
         estado: 'cerrado', 
         fecha_cierre: new Date().toISOString() 
       })
@@ -171,20 +186,33 @@ export const CajaService = {
     return { data, error };
   },
 
+  /**
+   * 🚀 ACTUALIZADO: Recibe descuentos, motivos, tipo de descuento y el nuevo total de la venta
+   */
   finalizarVenta: async (idVenta, datos) => {
     if (!hasPermission('editar_ventas')) {
       return { data: null, error: { message: "No tienes permisos para cobrar cuentas." } };
     }
 
+    // Preparamos el objeto con los datos base de cierre
+    const updatePayload = {
+      estado: datos.estado || 'pagado',
+      metodo_pago: datos.metodo_pago,
+      hora_cierre: new Date().toISOString()
+    };
+
+    // Si vienen datos de descuento o cambio de total, los agregamos
+    if (datos.tipo_descuento_id !== undefined) updatePayload.tipo_descuento_id = datos.tipo_descuento_id;
+    if (datos.descuento !== undefined) updatePayload.descuento = parseFloat(datos.descuento);
+    if (datos.motivo_descuento !== undefined) updatePayload.motivo_descuento = datos.motivo_descuento;
+    if (datos.total !== undefined) updatePayload.total = parseFloat(datos.total);
+
     const { data, error } = await supabase
       .from('ventas')
-      .update({
-        estado: datos.estado || 'pagado',
-        metodo_pago: datos.metodo_pago,
-        hora_cierre: new Date().toISOString()
-      })
+      .update(updatePayload)
       .eq('id', idVenta)
       .select();
+      
     return { data, error };
   },
 

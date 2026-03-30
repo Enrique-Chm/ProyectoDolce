@@ -20,17 +20,34 @@ export const MenuCarritoView = ({
   puedePedirCuenta
 }) => {
   const [isCartExpanded, setIsCartExpanded] = useState(false);
+  const [searchTerm, setSearchTerm] = useState(""); // 🚀 NUEVO ESTADO PARA LA BÚSQUEDA
 
   return (
     <div className={s.posGrid}>
       <div className={s.menuArea}>
         
         {/* ENCABEZADO COMPACTO */}
-        <div className={s.headerRow} style={{ borderBottom: "2px solid var(--color-border)", paddingBottom: "10px" }}>
-          <button className={`${stylesAdmin.btn} ${stylesAdmin.btnOutlineDanger}`} style={{ padding: "6px 12px", fontSize: "12px" }} onClick={resetTodo}>
-            ← VOLVER
-          </button>
-          <div style={{ textAlign: "right", lineHeight: '1.1' }}>
+        <div className={s.headerRow} style={{ borderBottom: "2px solid var(--color-border)", paddingBottom: "10px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+          
+          {/* LADO IZQUIERDO: Botón Volver y Buscador */}
+          <div style={{ display: "flex", gap: "10px", alignItems: "center", flex: "1 1 auto" }}>
+            <button className={`${stylesAdmin.btn} ${stylesAdmin.btnOutlineDanger}`} style={{ padding: "6px 12px", fontSize: "12px", whiteSpace: "nowrap" }} onClick={resetTodo}>
+              ← VOLVER
+            </button>
+            
+            {/* 🔍 NUEVO BUSCADOR */}
+            <input 
+              type="text"
+              placeholder=" Buscar producto..."
+              className={stylesAdmin.inputField}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ margin: 0, padding: "6px 12px", fontSize: "14px", width: "100%", maxWidth: "300px", borderRadius: "var(--radius-button)" }}
+            />
+          </div>
+
+          {/* LADO DERECHO: Info de la Mesa */}
+          <div style={{ textAlign: "right", lineHeight: '1.1', flexShrink: 0 }}>
             <h3 style={{ margin: 0, fontWeight: "900", color: "var(--color-primary)", fontSize: "1.2rem" }}>
               MESA {mesaInput.toUpperCase()}
             </h3>
@@ -40,11 +57,19 @@ export const MenuCarritoView = ({
           </div>
         </div>
 
-        {/* LISTA DE PRODUCTOS OPTIMIZADA */}
+        {/* LISTA DE PRODUCTOS OPTIMIZADA Y FILTRADA */}
         <div style={{ display: "flex", flexDirection: "column", gap: "15px", marginTop: "10px" }}>
           {categorias.map((cat) => {
-            const productosCat = productos.filter(p => p.categoria === cat.id);
+            // 🚀 FILTRAMOS LOS PRODUCTOS POR CATEGORÍA Y POR EL TÉRMINO DE BÚSQUEDA
+            const productosCat = productos.filter(p => {
+              const coincideCategoria = p.categoria === cat.id;
+              const coincideBusqueda = p.nombre.toLowerCase().includes(searchTerm.toLowerCase());
+              return coincideCategoria && coincideBusqueda;
+            });
+
+            // Si no hay productos que coincidan en esta categoría, no la mostramos
             if (productosCat.length === 0) return null;
+
             return (
               <div key={cat.id} className={s.categoryBlock}>
                 <h4 className={s.categoryTitle}>{cat.nombre.toUpperCase()}</h4>
@@ -68,6 +93,13 @@ export const MenuCarritoView = ({
               </div>
             );
           })}
+
+          {/* MENSAJE SI LA BÚSQUEDA NO ARROJA RESULTADOS */}
+          {categorias.every(cat => productos.filter(p => p.categoria === cat.id && p.nombre.toLowerCase().includes(searchTerm.toLowerCase())).length === 0) && (
+            <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--color-text-muted)" }}>
+              No se encontraron productos que coincidan con "<strong>{searchTerm}</strong>".
+            </div>
+          )}
         </div>
       </div>
 

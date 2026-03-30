@@ -129,7 +129,32 @@ export const MeseroService = {
   },
 
   /**
+   * 🚀 NUEVO: Verifica en tiempo real si alguien más ya ocupó la mesa (Evita duplicidad/Race Condition)
+   */
+  verificarMesaOcupada: async (sucursalId, mesaId) => {
+    if (!mesaId) return { ocupada: false }; // Si es venta de mostrador, no aplica el bloqueo
+    try {
+      const { data, error } = await supabase
+        .from('ventas')
+        // Usamos !fk_ventas_usuario aquí también por seguridad para evitar el PGRST201
+        .select('id, usuarios_internos!fk_ventas_usuario(nombre)')
+        .eq('sucursal_id', Number(sucursalId))
+        .eq('mesa_id', Number(mesaId))
+        .in('estado', ['pendiente', 'cocina', 'entregado', 'por_cobrar', 'abierta'])
+        .maybeSingle();
+
+      if (error) throw error;
+      return { ocupada: !!data, cuenta: data, error: null };
+    } catch (err) {
+      console.error("Error al verificar disponibilidad de la mesa:", err);
+      return { ocupada: false, error: err.message };
+    }
+  },
+
+  /**
    * Obtiene las mesas activas filtradas por sucursal.
+   * 🚀 SOLUCIONADO: Se agregó el nombre de la llave foránea (!fk_ventas_usuario) 
+   * para resolver el conflicto de relaciones múltiples (Error PGRST201) y tener el Table Ownership.
    */
   getCuentasAbiertas: async (sucursalId) => {
     if (!hasPermission('ver_comandas')) {
@@ -140,6 +165,7 @@ export const MeseroService = {
       .from('ventas')
       .select(`
         *,
+        usuarios_internos!fk_ventas_usuario ( nombre ),
         ventas_detalle!venta_id (*)
       `)
       .in('estado', ['pendiente', 'cocina', 'entregado', 'por_cobrar', 'abierta'])
@@ -215,6 +241,15 @@ export const MeseroService = {
 
       // 2. SI ES UNA ORDEN NUEVA
       if (!ventaId) {
+        
+        // 🚀 DOBLE VALIDACIÓN: Justo antes de insertar, revisamos si no nos ganaron la mesa
+        if (ventaData.mesa_id) {
+          const { ocupada, cuenta } = await MeseroService.verificarMesaOcupada(ventaData.sucursal_id, ventaData.mesa_id);
+          if (ocupada) {
+            throw new Error(`MESA GANADA: Esta mesa es de ${cuenta?.usuarios_internos?.nombre || 'otro mesero'}. Actualiza tu mapa.`);
+          }
+        }
+
         const totalInicial = carrito.reduce((acc, item) => acc + (item.cantidad * (item.precio_calculado || item.precio_venta)), 0);
         
         const nuevaVentaPayload = {

@@ -6,7 +6,7 @@ import { useMeseroTab } from "./useMeseroTab";
 import { hasPermission } from "../../../../utils/checkPermiso";
 import { ModalExtras } from "./ModalExtras";
 import { MenuCarritoView } from "./MenuCarritoView";
-import { MapaMesasView } from "./MapaMesasView"; // 👈 IMPORTAMOS LA NUEVA VISTA
+import { MapaMesasView } from "./MapaMesasView";
 
 export const MeseroTab = ({ sucursalId, usuarioId }) => {
   const {
@@ -38,6 +38,7 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
 
     seleccionarCuenta,
     iniciarNuevaMesa,
+    abrirMenuMesaNueva, // 🚀 NUEVO: Extraemos la función de validación contra Race Conditions
     agregarAlCarrito,
     eliminarDelCarrito,
     actualizarNota,
@@ -86,6 +87,8 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
           setView={setView}
           puedeTomarOrdenes={puedeTomarOrdenes}
           puedeVerHistorial={puedeVerHistorial}
+          usuarioIdLogueado={usuarioId} /* 👈 NUEVO: Le pasamos el ID del usuario logueado para el Bloqueo de Mesas */
+          abrirMenuMesaNueva={abrirMenuMesaNueva} /* 👈 NUEVO: Le pasamos la función para validar la base de datos antes de entrar al menú */
         />
       )}
 

@@ -186,8 +186,61 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
     }
   };
 
+  /**
+   * 🚀 NUEVO: Pre-Validación antes de entrar al menú de una mesa supuestamente vacía
+   */
+  const abrirMenuMesaNueva = async () => {
+    if (!puedeCrearVentas) return;
+
+    // Si estamos abriendo una mesa física (no de mostrador)
+    if (mesaId) {
+      setLoading(true);
+      const { ocupada, cuenta } = await MeseroService.verificarMesaOcupada(sucursalId, mesaId);
+      setLoading(false);
+
+      if (ocupada) {
+        alert(`⛔ ¡MESA GANADA!\nEsta mesa acaba de ser abierta por ${cuenta?.usuarios_internos?.nombre || 'otro mesero'} hace unos instantes.\nEl mapa se actualizará ahora.`);
+        cargarCuentas(); // Actualizamos las mesas para que aparezca bloqueada de color rojo
+        return; // Detenemos el paso hacia el menú para evitar el conflicto
+      }
+    }
+
+    const ok = await verificarCajaAntesDeAccion();
+    if (ok) {
+      setView("menu");
+    }
+  };
+
+  /**
+   * 🔒 LÓGICA DE BLOQUEO DE MESA (TABLE OWNERSHIP)
+   * Verifica si el mesero actual tiene permisos para abrir la cuenta existente.
+   */
+  const validarPropiedadDeMesa = (cuentaExistente) => {
+    if (!cuentaExistente) return true; // Si es una mesa nueva, cualquiera la abre
+
+    // Verifica si el ID del usuario actual coincide con el que abrió la cuenta
+    const esMiMesa = cuentaExistente.usuario_id === Number(usuarioId);
+    
+    // Si tienes permisos de borrar (o puedes adaptarlo al permiso de "Gerente"), puedes abrir la de todos
+    const esAdmin = hasPermission('borrar_comandas'); 
+
+    if (!esMiMesa && !esAdmin) {
+      const nombreMesero = cuentaExistente.usuarios_internos?.nombre || 'Otro Mesero';
+      alert(`⛔ MESA BLOQUEADA\n\nEsta mesa está siendo atendida por: ${nombreMesero}.\nNo tienes permisos para modificar cuentas de otros meseros.`);
+      return false;
+    }
+    return true;
+  };
+
+  /**
+   * 🚀 SELECCIONAR MESA / CUENTA (CON INTERCEPCIÓN DE BLOQUEO)
+   */
   const seleccionarCuenta = async (venta = null) => {
     if (!puedeVerVentas) return;
+    
+    // 🔒 Validación de propiedad antes de continuar
+    if (!validarPropiedadDeMesa(venta)) return;
+
     const ok = await verificarCajaAntesDeAccion();
     if (ok) {
       setVentaActiva(venta);
@@ -274,7 +327,7 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   };
 
   /**
-   * 🚀 ENVÍO DE COMANDA
+   * 🚀 ENVÍO DE COMANDA (ACTUALIZADO PARA ATAJAR RACE CONDITIONS)
    */
   const handleEnviarOrden = async () => {
     if (!puedeCrearVentas) return alert("No tienes permisos para esta acción.");
@@ -290,7 +343,7 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
         mesa_id: mesaId,
         tipo_orden: tipoOrden,
         comensales: comensales,
-        cliente_nombre: clienteNombre,
+        clienteNombre: clienteNombre,
         notas_orden: notasOrden
       };
 
@@ -301,6 +354,7 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
         resetTodo();
       } else {
         alert("❌ Error al procesar: " + res.error);
+        cargarCuentas(); // 🚀 Recarga el plano en caso de que alguien más te haya ganado la mesa justo al mandar
       }
     } catch (error) {
       alert("Error crítico de comunicación con el servidor.");
@@ -346,6 +400,7 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
     confirmarProductoConExtras,
     cerrarModalExtras,
     seleccionarCuenta, iniciarNuevaMesa,
+    abrirMenuMesaNueva, // 👈 Función exportada para el Mapa de Mesas
     agregarAlCarrito, eliminarDelCarrito, actualizarNota,
     handleEnviarOrden, pedirCuenta, resetTodo,
     puedeVerVentas, puedeCrearVentas, puedeEditarVentas

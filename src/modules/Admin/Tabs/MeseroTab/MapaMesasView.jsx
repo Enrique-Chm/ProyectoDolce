@@ -15,7 +15,9 @@ export const MapaMesasView = ({
   notasOrden, setNotasOrden,
   setView,
   puedeTomarOrdenes,
-  puedeVerHistorial
+  puedeVerHistorial,
+  usuarioIdLogueado, // 🚀 Para el Table Ownership
+  abrirMenuMesaNueva // 🚀 NUEVO: Función interceptora desde el hook para validar Race Conditions
 }) => {
   const [activeZonaId, setActiveZonaId] = useState(null);
   const [mesaSeleccionada, setMesaSeleccionada] = useState(null);
@@ -34,7 +36,7 @@ export const MapaMesasView = ({
   };
 
   const handleClickMesa = (mesa) => {
-    // 🚀 NIVEL EXTRA: Evitamos clics en obstáculos
+    // Evitamos clics en obstáculos
     if (mesa.tipo_elemento === 'OBSTACULO') return;
 
     setMesaSeleccionada(mesa);
@@ -52,7 +54,14 @@ export const MapaMesasView = ({
   const handleAbrirMesaNueva = (e) => {
     e.preventDefault();
     if (!puedeTomarOrdenes) return;
-    setView("menu");
+    
+    // 🚀 EN LUGAR DE setView("menu"), LLAMAMOS A LA VALIDACIÓN
+    if (abrirMenuMesaNueva) {
+      abrirMenuMesaNueva();
+    } else {
+      // Fallback de seguridad por si no se pasó la prop correctamente
+      setView("menu");
+    }
   };
 
   const cuentaDeMesaSeleccionada = mesaSeleccionada ? getCuentaDeMesa(mesaSeleccionada.id) : null;
@@ -76,7 +85,7 @@ export const MapaMesasView = ({
                setTipoOrden('mostrador');
                setView("menu");
              }}>
-               🛍️ VENTA MOSTRADOR
+             VENTA MOSTRADOR
              </button>
           )}
         </div>
@@ -108,7 +117,7 @@ export const MapaMesasView = ({
             
             {/* 🪟 VIEWPORT CON SCROLL */}
             <div style={{ 
-              flex: '1 1 50%', 
+              flex: '2 1 500px', // 🚀 Aumentamos flex para que tome más espacio en desktop
               minWidth: '300px',
               overflow: 'auto',
               border: '1px solid var(--color-border)',
@@ -129,7 +138,6 @@ export const MapaMesasView = ({
                   backgroundSize: `${100 / (zonaActiva?.grid_size || 10)}% ${100 / (zonaActiva?.grid_size || 10)}%`,
                   border: 'none', 
                   boxShadow: 'none',
-                  // Convertimos este lienzo en un marco de referencia (Container)
                   containerType: 'inline-size' 
                 }}
               >
@@ -137,45 +145,68 @@ export const MapaMesasView = ({
                   const cuenta = getCuentaDeMesa(mesa.id);
                   const isSelected = mesaSeleccionada?.id === mesa.id;
                   
-                  // 🚀 NIVEL EXTRA: Validar si es obstáculo
                   const esObstaculo = mesa.tipo_elemento === 'OBSTACULO';
 
-                  // 📐 CÁLCULO DE TAMAÑO PROPORCIONAL A LA CUADRÍCULA
+                  // CÁLCULO DE TAMAÑO PROPORCIONAL A LA CUADRÍCULA
                   const gridSize = zonaActiva?.grid_size || 10;
                   const tableSize = (100 / gridSize) * 0.75; // Ocupa el 75% del espacio de la celda
 
-                  // Estilo visual según estado de la cuenta (solo para mesas normales)
+                  // 🔒 LÓGICA DE BLOQUEO VISUAL (TABLE OWNERSHIP)
                   let statusStyle = { background: '#fff', border: '2px solid #cbd5e1', color: '#1e293b' };
-                  
+                  let nombreDueño = null;
+                  let esMesaBloqueada = false;
+
                   if (esObstaculo) {
                      statusStyle = { background: '#cbd5e1', border: '2px solid #94a3b8', color: '#475569', aspectRatio: '1 / 1' };
                   } else if (cuenta) {
-                    statusStyle = cuenta.estado === 'por_cobrar' 
-                      ? { background: '#fef3c7', border: '3px solid #f59e0b', color: '#92400e' }
-                      : { background: '#dcfce7', border: '3px solid #10b981', color: '#166534' };
+                     // Evaluamos la propiedad
+                     const esMiMesa = cuenta.usuario_id === Number(usuarioIdLogueado);
+                     const esAdmin = puedeVerHistorial; // Asumimos rol gerencial
+                     esMesaBloqueada = !esMiMesa && !esAdmin;
+                     
+                     nombreDueño = cuenta.usuarios_internos?.nombre?.split(' ')[0] || 'Ocupada';
+
+                     if (esMesaBloqueada) {
+                         // 🔴 ROJO / GRIS: Ocupada por OTRO
+                         statusStyle = { background: '#fee2e2', border: '3px solid #ef4444', color: '#7f1d1d', opacity: 0.8 };
+                     } else if (cuenta.estado === 'por_cobrar') {
+                         // 🟡 AMARILLO: Ticket Impreso
+                         statusStyle = { background: '#fef3c7', border: '3px solid #f59e0b', color: '#92400e' };
+                     } else {
+                         // 🟢 VERDE: En Consumo
+                         statusStyle = { background: '#dcfce7', border: '3px solid #10b981', color: '#166534' };
+                     }
                   }
+
+                  // Función interceptora del clic en la mesa
+                  const onMesaClick = () => {
+                     if (esObstaculo) return;
+                     if (esMesaBloqueada) {
+                        alert(`⛔ MESA BLOQUEADA\nAtendida por: ${cuenta.usuarios_internos?.nombre || 'Otro Mesero'}`);
+                        return;
+                     }
+                     handleClickMesa(mesa);
+                  };
 
                   return (
                     <div 
                       key={mesa.id}
-                      onClick={() => handleClickMesa(mesa)}
-                      // Aplicamos clase dinámica (cursor: pointer vs cursor: not-allowed)
+                      onClick={onMesaClick}
                       className={esObstaculo ? stylesAdmin.obstaculoPlano : stylesAdmin.mesaPlano}
                       style={{
                         left: `${mesa.pos_x || 0}%`,
                         top: `${mesa.pos_y || 0}%`,
                         ...statusStyle,
-                        // 🚀 APLICAMOS EL TAMAÑO DINÁMICO ESCALABLE
+                        touchAction: 'auto',
                         width: `${tableSize}%`,
                         boxShadow: isSelected && !esObstaculo ? '0 0 0 4px rgba(0, 86, 150, 0.3)' : (esObstaculo ? 'none' : '0 4px 6px rgba(0,0,0,0.08)'),
                         zIndex: isSelected ? 10 : 1,
                         transform: `translate(-50%, -50%) ${isSelected && !esObstaculo ? 'scale(1.15)' : 'scale(1)'}`,
                         transition: 'all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                        // 💡 CÁLCULO: Usamos 'cqi' para fuentes responsivas según la celda
                         fontSize: esObstaculo 
                            ? `max(10px, calc(${tableSize * 0.2}cqi + 1px))`
                            : `max(11px, calc(${tableSize * 0.25}cqi + 2px))`,
-                        cursor: esObstaculo ? 'default' : 'pointer'
+                        cursor: esObstaculo ? 'default' : (esMesaBloqueada ? 'not-allowed' : 'pointer')
                       }}
                     >
                       <span style={{ 
@@ -186,15 +217,15 @@ export const MapaMesasView = ({
                         overflow: 'hidden', 
                         textOverflow: 'ellipsis', 
                         display: '-webkit-box', 
-                        WebkitLineClamp: cuenta ? 1 : 2, // Si hay cuenta mostramos 1 línea, sino 2
+                        WebkitLineClamp: cuenta ? 1 : 2,
                         WebkitBoxOrient: 'vertical',
                         opacity: esObstaculo ? 0.8 : 1
                       }}>
                         {mesa.nombre}
                       </span>
                       {cuenta && !esObstaculo && (
-                        <span style={{ fontSize: '0.7em', fontWeight: 'bold', marginTop: '2px' }}>
-                          ${parseFloat(cuenta.total).toFixed(0)}
+                        <span style={{ fontSize: '0.65em', fontWeight: 'bold', marginTop: '2px', lineHeight: '1' }}>
+                          {esMesaBloqueada ? `🔒 ${nombreDueño}` : `$${parseFloat(cuenta.total).toFixed(0)}`}
                         </span>
                       )}
                     </div>
@@ -204,7 +235,12 @@ export const MapaMesasView = ({
             </div>
 
             {/* DERECHA: PANEL DE ACCIONES */}
-            <aside className={stylesAdmin.adminCard} style={{ width: '350px', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+            <aside className={stylesAdmin.adminCard} style={{ 
+              flex: '1 1 300px', // 🚀 Cambiado para que sea responsivo (ya no width 100% fijo)
+              minWidth: '300px', 
+              display: 'flex', 
+              flexDirection: 'column' 
+            }}>
               {!mesaSeleccionada ? (
                 <div className={stylesAdmin.emptyState} style={{ margin: 'auto', textAlign: 'center' }}>
                   <div style={{ fontSize: '2.5rem', marginBottom: '10px' }}>🛋️</div>
