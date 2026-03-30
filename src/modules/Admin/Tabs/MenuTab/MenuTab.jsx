@@ -1,8 +1,8 @@
 // Archivo: src/modules/Admin/Tabs/MenuTab.jsx
 import React, { useState, useEffect, useRef } from "react";
-import s from "../../../assets/styles/EstilosGenerales.module.css";
-import { IVA_FACTOR } from "../../../utils/taxConstants";
-import { useMenuTab } from "../../../hooks/useMenuTab";
+import s from "../../../../assets/styles/EstilosGenerales.module.css";
+import { IVA_FACTOR } from "../../../../utils/taxConstants";
+import { useMenuTab } from "./useMenuTab";
 import Swal from "sweetalert2";
 
 /**

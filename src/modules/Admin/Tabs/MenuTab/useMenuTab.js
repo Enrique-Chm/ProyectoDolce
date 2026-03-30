@@ -1,8 +1,8 @@
 // Archivo: src/hooks/useMenuTab.js
 import { useState, useEffect, useCallback } from 'react';
-import { productosService } from '../services/Menu.service'; 
-import { hasPermission } from '../utils/checkPermiso';
-import { IVA_FACTOR } from '../utils/taxConstants'; 
+import { productosService } from './Menu.service'; 
+import { hasPermission } from '../../../../utils/checkPermiso';
+import { IVA_FACTOR } from '../../../../utils/taxConstants'; 
 import toast from 'react-hot-toast'; 
 
 export const useMenuTab = (sucursalId) => {

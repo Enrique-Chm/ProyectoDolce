@@ -45,7 +45,7 @@ export const TurnoView = ({ sesionActiva, abrirTurno, cerrarTurno }) => {
           {/* Lado Izquierdo: Resumen del Turno */}
           <div className={`${stylesAdmin.adminCard} ${s.turnoActivoCard}`}>
             <div className={s.turnoHeaderRow}>
-              <h3 className={s.turnoTitle}>Resumen de Turno</h3>
+              <h3 className={stylesAdmin.cardTitle}>Resumen de Turno</h3>
               <span className={stylesAdmin.badgeSuccess}>ACTIVO</span>
             </div>
             
@@ -69,7 +69,7 @@ export const TurnoView = ({ sesionActiva, abrirTurno, cerrarTurno }) => {
 
           {/* Lado Derecho: Formulario de Arqueo */}
           <div className={`${stylesAdmin.adminCard} ${s.arqueoCard}`}>
-            <h3 className={s.arqueoTitle}>Arqueo Final</h3>
+            <h3 className={stylesAdmin.cardTitle}>Arqueo Final</h3>
             <p className={s.arqueoDesc}>Cuenta el efectivo y suma los vouchers de terminal para cerrar el turno.</p>
             
             <div className={stylesAdmin.formGroup}>

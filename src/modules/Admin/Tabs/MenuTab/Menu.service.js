@@ -1,6 +1,6 @@
 // Archivo: src/services/productos.service.js
-import { supabase } from '../lib/supabaseClient';
-import { hasPermission } from '../utils/checkPermiso'; // 🛡️ Importación de seguridad
+import { supabase } from '../../../../lib/supabaseClient';
+import { hasPermission } from '../../../../utils/checkPermiso'; // 🛡️ Importación de seguridad
 import toast from 'react-hot-toast'; // 🍞 Feedback visual
 
 export const productosService = {

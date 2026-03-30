@@ -260,7 +260,7 @@ export const CobrarView = ({
                             POR COBRAR
                           </span>
                         </div>
-                        <div className={s.mesaTotal} style={{ marginTop: '15px' }}>{formatCurrency(venta.total)}</div>
+                        <div className={s.mesaTotal} style={{ marginTop: '5px' }}>{formatCurrency(venta.total)}</div>
                       </div>
                     ))}
                   </div>
@@ -270,7 +270,7 @@ export const CobrarView = ({
               {/* SECCIÓN 2: MESAS ACTIVAS */}
               {mesasActivas.length > 0 && (
                 <div>
-                  <h3 className={stylesAdmin.cardTitle} style={{ marginBottom: '15px', color: 'var(--color-text-muted)', borderTop: mesasPorCobrar.length > 0 ? '1px dashed var(--color-border)' : 'none', paddingTop: mesasPorCobrar.length > 0 ? '20px' : '0' }}>
+                  <h3 className={stylesAdmin.cardTitle} style={{ marginBottom: '5px', color: 'var(--color-success)', borderTop: mesasPorCobrar.length > 0 ? '1px dashed var(--color-border)' : 'none', paddingTop: mesasPorCobrar.length > 0 ? '20px' : '0' }}>
                       Abiertas
                   </h3>
                   <div className={s.productGrid}>
@@ -287,7 +287,7 @@ export const CobrarView = ({
                             CONSUMIENDO
                           </span>
                         </div>
-                        <div className={s.mesaTotal} style={{ marginTop: '15px' }}>{formatCurrency(venta.total)}</div>
+                        <div className={s.mesaTotal} style={{ marginTop: '5px' }}>{formatCurrency(venta.total)}</div>
                       </div>
                     ))}
                   </div>
@@ -297,7 +297,7 @@ export const CobrarView = ({
               {/* SECCIÓN 3: HISTORIAL DEL TURNO */}
               {cuentasCobradas.length > 0 && (
                 <div>
-                  <h3 className={stylesAdmin.cardTitle} style={{ marginBottom: '15px', color: 'var(--color-success)', borderTop: (mesasPorCobrar.length > 0 || mesasActivas.length > 0) ? '1px dashed var(--color-border)' : 'none', paddingTop: '20px' }}>
+                  <h3 className={stylesAdmin.cardTitle} style={{ marginBottom: '5px', color: 'var(--color-muted)', borderTop: (mesasPorCobrar.length > 0 || mesasActivas.length > 0) ? '1px dashed var(--color-border)' : 'none', paddingTop: '20px' }}>
                       Cobradas en este Turno
                   </h3>
                   <div className={s.productGrid}>
@@ -309,14 +309,14 @@ export const CobrarView = ({
                       >
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start' }}>
                           <span className={s.mesaName}>Mesa {venta.mesa}</span>
-                          <span className={stylesAdmin.badgeSuccess} style={{ textAlign: 'center' }}>
+                          <span className={s.mesaBadgeLiquidada} style={{ textAlign: 'center' }}>
                             LIQUIDADA
                           </span>
                         </div>
-                        <div className={s.mesaTotal} style={{ marginTop: '15px', color: venta.descuento > 0 ? '#ef4444' : 'inherit' }}>
+                        <div className={s.mesaTotal} style={{ marginTop: '5px', color: venta.descuento > 0 ? '#ef4444' : 'inherit' }}>
                             {formatCurrency(venta.total)}
                         </div>
-                        <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '10px' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '5px' }}>
                           Hora: {new Date(venta.hora_cierre).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </div>
                       </div>

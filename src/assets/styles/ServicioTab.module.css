@@ -1,4 +1,4 @@
-/* src/modules/TabsTabs/ServicioTab.module.css */
+/* src/modules/Admin/Tabs/ServicioTab.module.css */
 
 /* =========================================
    SISTEMA POS PRO - MESERO TAB (HOMOLOGADO)
@@ -80,7 +80,7 @@
 .mesaBadge { background: #dcfce7; color: #166534; padding: 4px 8px; border-radius: var(--radius-ui); font-size: 10px; font-weight: 700; text-transform: uppercase; }
 .mesaBadgeCobrar { background: #fef3c7; color: #92400e; padding: 4px 8px; border-radius: var(--radius-ui); font-size: 10px; font-weight: 700; text-transform: uppercase; }
 .mesaTotal { margin-top: 10px; font-size: 1.3rem; font-weight: 700; color: var(--color-primary); }
-
+.mesaBadgeLiquidada { background: #e4e7e5; color: #050505; padding: 4px 8px; border-radius: var(--radius-ui); font-size: 10px; font-weight: 700; text-transform: uppercase; }
 /* --- COMANDERO (VISTA 2) --- */
 .posGrid {
   display: block;
@@ -256,7 +256,11 @@
     font-size: 8px;
     padding: 4px;
   }
-
+ .mesaBadge, .mesaBadgeLiquidada {
+    white-space: normal; /* Permite que el texto baje a otra línea si no cabe */
+    font-size: 8px;
+    padding: 4px;
+  }
   .productCard { padding: 10px; }
   .productCardName { font-size: 0.85rem; }
   .productCardPrice { font-size: 0.9rem; }
