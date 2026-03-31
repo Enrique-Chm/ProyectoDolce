@@ -22,12 +22,16 @@ export const InsumosTab = ({ sucursalId }) => {
     prepararEdicion,
   } = useInsumosTab(sucursalId);
 
-  // Estado para el filtro de búsqueda
+  // Estados para Búsqueda y Ordenamiento
   const [filtroBuscar, setFiltroBuscar] = useState("");
+  const [sortConfig, setSortConfig] = useState({ key: "nombre", direction: "asc" });
 
   // 💡 Lógica de Diseño Dinámico
   const mostrarFormulario = puedeEditar || editId;
 
+  // ==========================================
+  // 🛡️ ALERTAS SWEETALERT2
+  // ==========================================
   const handleCancelClick = () => {
     const tieneDatos = formData.nombre || formData.costo_por_caja;
     if (tieneDatos) {
@@ -60,7 +64,9 @@ export const InsumosTab = ({ sucursalId }) => {
     });
   };
 
-  // Filtrado de insumos basado en el texto de búsqueda
+  // ==========================================
+  // LÓGICA DE FILTRADO Y ORDENAMIENTO
+  // ==========================================
   const insumosFiltrados = insumos.filter((i) => {
     if (!filtroBuscar) return true;
     const texto = filtroBuscar.toLowerCase();
@@ -70,6 +76,42 @@ export const InsumosTab = ({ sucursalId }) => {
     const matchProveedor = i.proveedores?.nombre_empresa?.toLowerCase().includes(texto);
     return matchNombre || matchModelo || matchCategoria || matchProveedor;
   });
+
+  const handleSort = (key) => {
+    let direction = "asc";
+    if (sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const insumosOrdenados = [...insumosFiltrados].sort((a, b) => {
+    if (sortConfig.key === "nombre") {
+      const nombreA = a.nombre || "";
+      const nombreB = b.nombre || "";
+      return sortConfig.direction === "asc" 
+        ? nombreA.localeCompare(nombreB) 
+        : nombreB.localeCompare(nombreA);
+    }
+    if (sortConfig.key === "costo") {
+      const costoA = parseFloat(a.costo_unitario) || 0;
+      const costoB = parseFloat(b.costo_unitario) || 0;
+      return sortConfig.direction === "asc" ? costoA - costoB : costoB - costoA;
+    }
+    if (sortConfig.key === "categoria") {
+      const catA = a.cat_categoria_insumos?.nombre || "";
+      const catB = b.cat_categoria_insumos?.nombre || "";
+      return sortConfig.direction === "asc" 
+        ? catA.localeCompare(catB) 
+        : catB.localeCompare(catA);
+    }
+    return 0;
+  });
+
+  const getSortIcon = (key) => {
+    if (sortConfig.key !== key) return " ↕";
+    return sortConfig.direction === "asc" ? " ▲" : " ▼";
+  };
 
   return (
     <div className={s.tabWrapper}>
@@ -295,13 +337,13 @@ export const InsumosTab = ({ sucursalId }) => {
           </form>
         </aside>
 
-        {/* 💡 Eliminamos el minWidth forzado en la tabla, el contenedor .tableContainer manejará el scroll lateral */}
         <div className={`${s.adminCard} ${s.tableContainer}`}>
           {/* Componente visual para la Búsqueda */}
-          <div style={{ padding: "15px", borderBottom: "1px solid var(--color-border)" }}>
+          <div style={{ padding: "15px", borderBottom: "1px solid var(--color-border)", background: "var(--color-bg-light, #f8f9fa)" }}>
             <input
               type="text"
               className={s.inputField}
+              style={{ margin: 0 }}
               placeholder="Buscar por nombre, modelo, proveedor o categoría..."
               value={filtroBuscar}
               onChange={(e) => setFiltroBuscar(e.target.value)}
@@ -311,16 +353,34 @@ export const InsumosTab = ({ sucursalId }) => {
           <table className={s.table}>
             <thead className={s.thead}>
               <tr>
-                <th className={s.th}>INSUMO / VARIANTE</th>
-                <th className={s.th}>COSTO UNIT.</th>
-                <th className={s.th}>CATEGORÍA</th>
+                <th 
+                  className={s.th} 
+                  style={{ cursor: "pointer", userSelect: "none" }} 
+                  onClick={() => handleSort("nombre")}
+                >
+                  INSUMO / VARIANTE {getSortIcon("nombre")}
+                </th>
+                <th 
+                  className={s.th} 
+                  style={{ cursor: "pointer", userSelect: "none" }} 
+                  onClick={() => handleSort("costo")}
+                >
+                  COSTO UNIT. {getSortIcon("costo")}
+                </th>
+                <th 
+                  className={s.th} 
+                  style={{ cursor: "pointer", userSelect: "none" }} 
+                  onClick={() => handleSort("categoria")}
+                >
+                  CATEGORÍA {getSortIcon("categoria")}
+                </th>
                 <th className={s.th} style={{ textAlign: "right" }}>
                   ACCIONES
                 </th>
               </tr>
             </thead>
             <tbody>
-              {insumosFiltrados.length === 0 ? (
+              {insumosOrdenados.length === 0 ? (
                 <tr>
                   <td
                     colSpan="4"
@@ -338,7 +398,7 @@ export const InsumosTab = ({ sucursalId }) => {
                   </td>
                 </tr>
               ) : (
-                insumosFiltrados.map((i) => (
+                insumosOrdenados.map((i) => (
                   <tr
                     key={i.id}
                     style={{
@@ -465,13 +525,14 @@ const SearchableSelect = ({
       {isOpen && !disabled && (
         <ul
           className={s.dropdownList}
-          style={{ zIndex: 100, maxHeight: "200px", overflowY: "auto" }}
+          style={{ zIndex: 100, maxHeight: "200px", overflowY: "auto", position: "absolute", width: "100%", backgroundColor: "white", border: "1px solid #ddd", boxShadow: "0 4px 6px rgba(0,0,0,0.1)", padding: 0, margin: "4px 0 0 0", listStyle: "none" }}
         >
           {filteredOptions.length > 0 ? (
             filteredOptions.map((opt, index) => (
               <li
                 key={index}
                 className={s.dropdownItem}
+                style={{ padding: "8px 12px", cursor: "pointer" }}
                 onMouseDown={(e) => {
                   e.preventDefault();
                   onChange(opt[valueKey]);
@@ -485,7 +546,7 @@ const SearchableSelect = ({
           ) : (
             <li
               className={s.dropdownItem}
-              style={{ color: "var(--color-text-muted)" }}
+              style={{ color: "var(--color-text-muted)", padding: "8px 12px" }}
             >
               Sin resultados...
             </li>

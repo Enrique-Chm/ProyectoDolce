@@ -32,12 +32,16 @@ export const RecetasTab = ({ sucursalId }) => {
     handleDeleteReceta,
   } = useRecetasTab(sucursalId);
 
-  // Estado para el filtro de búsqueda
+  // Estados para Filtros y Ordenamiento
   const [filtroBuscar, setFiltroBuscar] = useState("");
+  const [sortConfig, setSortConfig] = useState({ key: "nombre", direction: "asc" });
 
   const mostrarFormulario = puedeCrear || isEditing;
   const noTienePermisoAccion = isEditing ? !puedeEditar : !puedeCrear;
 
+  // ==========================================
+  // 🛡️ ALERTAS SWEETALERT2
+  // ==========================================
   const handleCancelClick = () => {
     if (nombreReceta.trim() !== "" || ingredientes.length > 0) {
       Swal.fire({
@@ -72,16 +76,50 @@ export const RecetasTab = ({ sucursalId }) => {
     });
   };
 
-  // Filtrado de recetas basado en el texto de búsqueda
+  // ==========================================
+  // LÓGICA DE FILTRADO AVANZADA
+  // ==========================================
   const recetasFiltradas = recetasAgrupadas.filter((r) => {
-    if (!filtroBuscar) return true;
+    // 1. Filtro por texto (Nombre o Ingrediente)
     const texto = filtroBuscar.toLowerCase();
-    const matchNombre = r.nombre?.toLowerCase().includes(texto);
-    const matchIngrediente = r.detalle_ingredientes?.some((ing) =>
+    const matchNombre = !filtroBuscar || r.nombre?.toLowerCase().includes(texto);
+    const matchIngrediente = !filtroBuscar || r.detalle_ingredientes?.some((ing) =>
       ing.insumo?.toLowerCase().includes(texto)
     );
     return matchNombre || matchIngrediente;
   });
+
+  // ==========================================
+  // LÓGICA DE ORDENAMIENTO
+  // ==========================================
+  const handleSort = (key) => {
+    let direction = "asc";
+    if (sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const recetasOrdenadas = [...recetasFiltradas].sort((a, b) => {
+    if (sortConfig.key === "nombre") {
+      const nombreA = a.nombre || "";
+      const nombreB = b.nombre || "";
+      return sortConfig.direction === "asc" 
+        ? nombreA.localeCompare(nombreB) 
+        : nombreB.localeCompare(nombreA);
+    }
+    if (sortConfig.key === "costo") {
+      const costoA = parseFloat(a.costo_unitario_final) || 0;
+      const costoB = parseFloat(b.costo_unitario_final) || 0;
+      return sortConfig.direction === "asc" ? costoA - costoB : costoB - costoA;
+    }
+    return 0;
+  });
+
+  const getSortIcon = (key) => {
+    if (sortConfig.key !== key) return " ↕";
+    return sortConfig.direction === "asc" ? " ▲" : " ▼";
+  };
 
   return (
     <div className={s.tabWrapper}>
@@ -393,12 +431,18 @@ export const RecetasTab = ({ sucursalId }) => {
 
         {/* TABLA DE RECETAS */}
         <div className={`${s.adminCard} ${s.tableContainer}`}>
-          {/* Componente visual para la Búsqueda */}
-          <div style={{ padding: "15px", borderBottom: "1px solid var(--color-border)" }}>
+          
+          {/* BARRA DE FILTROS EN UNA SOLA LÍNEA */}
+          <div style={{ 
+            padding: "10px 15px", 
+            borderBottom: "1px solid var(--color-border)", 
+            background: "var(--color-bg-light, #f8f9fa)"
+          }}>
             <input
               type="text"
               className={s.inputField}
-              placeholder="Buscar por nombre de preparación o ingrediente..."
+              style={{ margin: 0 }}
+              placeholder="Buscar por nombre o ingrediente..."
               value={filtroBuscar}
               onChange={(e) => setFiltroBuscar(e.target.value)}
             />
@@ -407,25 +451,39 @@ export const RecetasTab = ({ sucursalId }) => {
           <table className={s.table}>
             <thead className={s.thead}>
               <tr>
-                <th className={s.th}>PREPARACIÓN / RENDIMIENTO</th>
-                <th className={`${s.th} ${s.tdCenter}`}>COMPOSICIÓN</th>
-                <th className={`${s.th} ${s.tdCenter}`}>COSTO UNITARIO</th>
+                <th 
+                  className={s.th} 
+                  style={{ cursor: "pointer", userSelect: "none" }} 
+                  onClick={() => handleSort("nombre")}
+                >
+                  PREPARACIÓN / RENDIMIENTO {getSortIcon("nombre")}
+                </th>
+                <th className={`${s.th} ${s.tdCenter}`}>
+                  COMPOSICIÓN
+                </th>
+                <th 
+                  className={`${s.th} ${s.tdCenter}`}
+                  style={{ cursor: "pointer", userSelect: "none" }} 
+                  onClick={() => handleSort("costo")}
+                >
+                  COSTO UNITARIO {getSortIcon("costo")}
+                </th>
                 <th className={`${s.th} ${s.tdCenter}`}>ACCIONES</th>
               </tr>
             </thead>
             <tbody>
-              {recetasFiltradas.length === 0 ? (
+              {recetasOrdenadas.length === 0 ? (
                 <tr>
                   <td colSpan="4" className={s.emptyState} style={{ padding: "40px", textAlign: "center", color: "var(--color-text-muted)" }}>
                     {loading
                       ? "Cargando recetas..."
                       : recetasAgrupadas.length === 0
                       ? "No hay recetas registradas."
-                      : "No se encontraron resultados para su búsqueda."}
+                      : "No se encontraron resultados para su búsqueda con los filtros aplicados."}
                   </td>
                 </tr>
               ) : (
-                recetasFiltradas.map((r, idx) => {
+                recetasOrdenadas.map((r, idx) => {
                   const unidadFinal =
                     unidades.find((u) => u.id === r.unidad_medida_final)
                       ?.abreviatura || "Ud";
@@ -438,7 +496,6 @@ export const RecetasTab = ({ sucursalId }) => {
                         <div className={s.priceValue}>
                           <span
                             className={s.syncBadge}
-                            
                           >
                             Rinde: {r.rendimiento_cantidad} {unidadFinal}
                           </span>

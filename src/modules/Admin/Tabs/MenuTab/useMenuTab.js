@@ -1,16 +1,17 @@
-// Archivo: src/hooks/useMenuTab.js
+// Archivo: src/modules/Admin/Tabs/MenuTab/useMenuTab.js
 import { useState, useEffect, useCallback } from 'react';
 import { productosService } from './Menu.service'; 
 import { hasPermission } from '../../../../utils/checkPermiso';
 import { IVA_FACTOR } from '../../../../utils/taxConstants'; 
 import toast from 'react-hot-toast'; 
+import Swal from 'sweetalert2'; // 👈 Importamos Swal para manejar las alertas desde el hook
 
 export const useMenuTab = (sucursalId) => {
   const [productos, setProductos] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [recetasCosteadas, setRecetasCosteadas] = useState([]);
   const [subrecetasDisponibles, setSubrecetasDisponibles] = useState([]);
-  const [gruposMaestros, setGruposMaestros] = useState([]); // 👈 Catálogo Maestro de Grupos
+  const [gruposMaestros, setGruposMaestros] = useState([]); 
   const [loading, setLoading] = useState(false);
 
   // 🛡️ SEGURIDAD INTERNA (RBAC) ESTANDARIZADA
@@ -30,8 +31,13 @@ export const useMenuTab = (sucursalId) => {
     costo_referencia: 0,
     margen_en_vivo: 0, 
     disponible: true,
-    grupos_vinculados: [] // 👈 Almacena IDs de grupos seleccionados
+    grupos_vinculados: [] 
   });
+
+  // Filtros y Ordenamiento de Productos
+  const [filtroProductos, setFiltroProductos] = useState("");
+  const [filtroCategoria, setFiltroCategoria] = useState("all");
+  const [sortConfigProd, setSortConfigProd] = useState({ key: "nombre", direction: "asc" });
 
   // ==========================================
   // ESTADOS: FORMULARIO DE GRUPOS (SUBTAB 2)
@@ -41,9 +47,13 @@ export const useMenuTab = (sucursalId) => {
     nombre_grupo: '', 
     obligatorio: false, 
     maximo: 1, 
-    // Estructura que incluye 'cantidad' para costeo e inventario
     opciones: [{ subreceta_id: '', cantidad: 1, precio_venta: '', costo: 0, margen: 0 }] 
   });
+
+  // Filtros de Grupos / Extras
+  const [filtroGrupos, setFiltroGrupos] = useState("");
+  const [filtroTipo, setFiltroTipo] = useState("all");
+  const [filtroSubreceta, setFiltroSubreceta] = useState("");
 
   // ==========================================
   // SINCRONIZACIÓN DE DATOS
@@ -55,11 +65,6 @@ export const useMenuTab = (sucursalId) => {
       setLoading(true);
       const data = await productosService.getInitialData(sucursalId);
       
-      /**
-       * 💡 FILTRADO DE RECETAS (CORREGIDO)
-       * Ahora usamos 'esSubreceta' que viene normalizado como booleano real
-       * desde el service para asegurar que el buscador no esté vacío.
-       */
       const principales = data.costosMap.filter(c => c.esSubreceta === false);
       const subs = data.costosMap.filter(c => c.esSubreceta === true);
 
@@ -68,7 +73,6 @@ export const useMenuTab = (sucursalId) => {
       setCategorias(data.categorias || []);
       setGruposMaestros(data.gruposModificadores || []);
 
-      // 🔄 Mapeo: Inyectamos los grupos completos a cada producto para la visualización en tabla
       const productosArmados = (data.productos || []).map(prod => {
         const gruposVinculados = (data.gruposModificadores || []).filter(g => 
           g.producto_grupos?.some(link => link.producto_id === prod.id)
@@ -135,13 +139,11 @@ export const useMenuTab = (sucursalId) => {
     
     opcion[field] = value;
 
-    // Si cambia la sub-receta, actualizamos su costo base (unitario)
     if (field === 'subreceta_id') {
       const sub = subrecetasDisponibles.find(s => s.nombre === value);
       opcion.costo = sub ? sub.costo_final : 0;
     }
 
-    // 💡 COSTEO DINÁMICO
     const costoUnitario = parseFloat(opcion.costo) || 0;
     const cantidadOpcion = parseFloat(opcion.cantidad) || 1;
     const costoTotalOpcion = costoUnitario * cantidadOpcion;
@@ -237,7 +239,7 @@ export const useMenuTab = (sucursalId) => {
   };
 
   // ==========================================
-  // FUNCIONES DE SOPORTE
+  // FUNCIONES DE SOPORTE, ALERTAS Y RESETEOS
   // ==========================================
 
   const handleDeleteProd = async (id) => {
@@ -316,12 +318,148 @@ export const useMenuTab = (sucursalId) => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // 🛡️ SWEET ALERT: CANCELACIONES Y BORRADOS
+  const handleCancelProdClick = () => {
+    const tieneDatos = prodFormData.nombre || prodFormData.precio_venta > 0 || prodFormData.grupos_vinculados.length > 0;
+    if (tieneDatos) {
+      Swal.fire({
+        title: "¿Descartar cambios?",
+        text: "Los ajustes de precio o configuración no guardados se perderán.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#d33",
+        cancelButtonColor: "#3085d6",
+        confirmButtonText: "Sí, descartar",
+        cancelButtonText: "Seguir editando",
+      }).then((result) => { if (result.isConfirmed) resetProdForm(); });
+    } else { resetProdForm(); }
+  };
+
+  const confirmDeleteProducto = (id, nombre) => {
+    Swal.fire({
+      title: `¿Quitar "${nombre}" del menú?`,
+      text: "El producto ya no estará disponible para la venta, pero su receta se mantendrá intacta.",
+      icon: "error",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Sí, quitar del menú",
+      cancelButtonText: "Cancelar",
+    }).then((result) => { if (result.isConfirmed) handleDeleteProd(id); });
+  };
+
+  const handleCancelGrupoClick = () => {
+    const tieneDatos = grupoFormData.nombre_grupo || (grupoFormData.opciones.length > 0 && grupoFormData.opciones[0].subreceta_id);
+    if (tieneDatos) {
+      Swal.fire({
+        title: "¿Descartar cambios?",
+        text: "La configuración de opciones no guardada se perderá.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#d33",
+        cancelButtonColor: "#3085d6",
+        confirmButtonText: "Sí, descartar",
+        cancelButtonText: "Seguir editando",
+      }).then((result) => { if (result.isConfirmed) resetGrupoForm(); });
+    } else { resetGrupoForm(); }
+  };
+
+  const confirmDeleteGrupo = (id, nombre) => {
+    Swal.fire({
+      title: `¿Eliminar grupo "${nombre}"?`,
+      text: "Este grupo desaparecerá de todos los productos que lo tengan vinculado. Esta acción no se puede deshacer.",
+      icon: "error",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Sí, eliminar grupo",
+      cancelButtonText: "Cancelar",
+    }).then((result) => { if (result.isConfirmed) handleDeleteGrupo(id); });
+  };
+
+  // ==========================================
+  // TRANSFORMACIÓN DE DATOS (FILTROS Y ORDEN)
+  // ==========================================
+
+  const handleSortProd = (key) => {
+    let direction = "asc";
+    if (sortConfigProd.key === key && sortConfigProd.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfigProd({ key, direction });
+  };
+
+  const productosFiltrados = productos.filter((p) => {
+    const texto = filtroProductos.toLowerCase();
+    const nombreCategoria = categorias.find((c) => c.id === p.categoria)?.nombre || "Sin categoría";
+    const matchTexto = !filtroProductos || p.nombre?.toLowerCase().includes(texto) || nombreCategoria.toLowerCase().includes(texto);
+    const matchCategoria = filtroCategoria === "all" || String(p.categoria) === String(filtroCategoria);
+    return matchTexto && matchCategoria;
+  });
+
+  const productosOrdenados = [...productosFiltrados].sort((a, b) => {
+    if (sortConfigProd.key === "nombre") {
+      const nombreA = a.nombre || "";
+      const nombreB = b.nombre || "";
+      return sortConfigProd.direction === "asc" ? nombreA.localeCompare(nombreB) : nombreB.localeCompare(nombreA);
+    }
+    if (sortConfigProd.key === "categoria") {
+      const catA = categorias.find((c) => c.id === a.categoria)?.nombre || "Sin categoría";
+      const catB = categorias.find((c) => c.id === b.categoria)?.nombre || "Sin categoría";
+      return sortConfigProd.direction === "asc" ? catA.localeCompare(catB) : catB.localeCompare(catA);
+    }
+    if (sortConfigProd.key === "costo") {
+      const costoA = a.costo_actual || 0;
+      const costoB = b.costo_actual || 0;
+      return sortConfigProd.direction === "asc" ? costoA - costoB : costoB - costoA;
+    }
+    if (sortConfigProd.key === "venta") {
+      const ventaA = a.precio_venta || 0;
+      const ventaB = b.precio_venta || 0;
+      return sortConfigProd.direction === "asc" ? ventaA - ventaB : ventaB - ventaA;
+    }
+    return 0;
+  });
+
+  const gruposFiltrados = gruposMaestros.filter((g) => {
+    const matchNombre = !filtroGrupos || g.nombre?.toLowerCase().includes(filtroGrupos.toLowerCase());
+    const esObligatorio = g.min_seleccion > 0;
+    const matchTipo = filtroTipo === "all" || (filtroTipo === "obligatorio" && esObligatorio) || (filtroTipo === "opcional" && !esObligatorio);
+    const matchSubreceta = !filtroSubreceta || (g.opciones_modificadores || []).some(op => op.subreceta_id === filtroSubreceta);
+    return matchNombre && matchTipo && matchSubreceta;
+  });
+
   return {
+    // Listas Base
     productos, categorias, recetasCosteadas, subrecetasDisponibles, gruposMaestros, loading,
+    
+    // Permisos
     puedeVer, puedeCrear, puedeEditar, puedeBorrar,
+    
+    // Estados Producto
     editProdId, prodFormData, setProdFormData, 
-    handleSubmitProducto, handleEditProd, handleDeleteProd, resetProdForm, toggleGrupoEnProducto,
+    
+    // Estados Grupo
     editGrupoId, grupoFormData, setGrupoFormData, 
-    handleSubmitGrupo, handleEditGrupo, handleDeleteGrupo, resetGrupoForm, addOpcion, removeOpcion, updateOpcion
+    
+    // Filtros y Orden Productos
+    filtroProductos, setFiltroProductos,
+    filtroCategoria, setFiltroCategoria,
+    sortConfigProd, handleSortProd,
+    productosOrdenados, // <-- La vista consumirá este
+
+    // Filtros Grupos
+    filtroGrupos, setFiltroGrupos,
+    filtroTipo, setFiltroTipo,
+    filtroSubreceta, setFiltroSubreceta,
+    gruposFiltrados, // <-- La vista consumirá este
+
+    // Acciones de Mantenimiento
+    handleSubmitProducto, handleEditProd, handleDeleteProd, resetProdForm, toggleGrupoEnProducto,
+    handleSubmitGrupo, handleEditGrupo, handleDeleteGrupo, resetGrupoForm, addOpcion, removeOpcion, updateOpcion,
+    
+    // Interacciones (Alertas)
+    handleCancelProdClick, confirmDeleteProducto,
+    handleCancelGrupoClick, confirmDeleteGrupo
   };
 };
