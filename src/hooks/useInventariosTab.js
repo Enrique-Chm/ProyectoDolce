@@ -52,17 +52,20 @@ export const useInventarios = (sucursalId) => {
         inventarioService.calcularContraste(sucursalId, hoy, hoy)
       ]);
 
-      if (responseEnVivo.error) throw new Error(responseEnVivo.error);
+      if (responseEnVivo?.error) throw new Error(responseEnVivo.error);
 
       // Mapeo para inyectar el cálculo teórico de stock al catálogo base
       const insumosEnriquecidos = (dataInsumos || []).map(insumo => {
-        const datosHoy = responseEnVivo.data?.find(d => d.id === insumo.id);
+        const datosHoy = responseEnVivo?.data?.find(d => d.id === insumo.id);
+        
+        // 💡 CORRECCIÓN CRÍTICA: Ahora consumimos cantidad_actual entregado por el Service
+        const stockRealFisico = insumo.cantidad_actual ?? 0;
         
         return {
           ...insumo,
-          stock_fisico: insumo.caja_master, 
+          stock_fisico: parseFloat(stockRealFisico), 
           // El stock estimado considera ventas/compras del día hasta el momento
-          stock_estimado: datosHoy ? parseFloat(datosHoy.stock_esperado) : parseFloat(insumo.caja_master) 
+          stock_estimado: datosHoy ? parseFloat(datosHoy.stock_esperado) : parseFloat(stockRealFisico) 
         };
       });
 
@@ -198,7 +201,7 @@ export const useInventarios = (sucursalId) => {
   }, [sucursalId, puedeVer]);
 
   /**
-   * Aplica un ajuste de auditoría tras un conteo físico manual.
+   * Aplica un ajuste de auditoría tras un conteo físico manual (Un solo insumo).
    */
   const guardarConteoFisico = async (filaAuditoria, conteoFisico, usuarioId, fechaInicio, fechaFin) => {
     if (!puedeEditar) {
@@ -251,6 +254,75 @@ export const useInventarios = (sucursalId) => {
     }
   };
 
+  /**
+   * 💡 NUEVO: Ejecuta el cierre masivo de múltiples insumos contados
+   */
+  const guardarAuditoriaMasiva = async (usuarioId, fechaInicio, fechaFin) => {
+    if (!puedeEditar) {
+        toast.error("Acceso denegado: Se requiere facultad de edición.");
+        return { success: false };
+    }
+
+    // 1. Extraemos solo los insumos que el usuario realmente contó (que no estén vacíos)
+    // y que no hayan sido auditados ya.
+    const insumosAProcesar = contrasteData.filter(row => {
+      const valor = conteos[row.id];
+      return valor !== undefined && valor !== '' && !auditados.includes(row.id);
+    });
+
+    if (insumosAProcesar.length === 0) {
+      toast.error("No hay conteos nuevos para procesar.");
+      return { success: false };
+    }
+
+    if (!window.confirm(`¿Estás seguro de procesar el cierre de ${insumosAProcesar.length} insumos al mismo tiempo?`)) {
+      return { success: false };
+    }
+
+    const tId = toast.loading(`Procesando cierre masivo (${insumosAProcesar.length} insumos)...`);
+    setLoading(true);
+
+    try {
+      // Preparamos el array de datos
+      const ajustes = insumosAProcesar.map(row => ({
+        id: row.id,
+        stock_esperado: parseFloat(row.stock_esperado),
+        conteo_fisico: Number(conteos[row.id])
+      }));
+
+      const { success, error: err } = await inventarioService.aplicarAuditoriaMasiva(ajustes, usuarioId, sucursalId);
+      
+      if (!success) throw new Error(err);
+
+      // Limpiamos los inputs y marcamos como auditados
+      const nuevosAuditados = [...auditados];
+      const nuevosConteos = { ...conteos };
+      
+      insumosAProcesar.forEach(row => {
+        nuevosConteos[row.id] = '';
+        if (!nuevosAuditados.includes(row.id)) nuevosAuditados.push(row.id);
+      });
+
+      setConteos(nuevosConteos);
+      setAuditados(nuevosAuditados);
+
+      // Recargamos toda la info de golpe
+      await Promise.all([
+        cargarDatos(),
+        cargarMovimientos(),
+        generarContraste(fechaInicio, fechaFin)
+      ]);
+
+      toast.success("¡Cierre de inventario exitoso!", { id: tId });
+      return { success: true };
+    } catch (err) {
+      toast.error("Error: " + err.message, { id: tId });
+      return { success: false };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const actualizarConteo = (id, valor) => setConteos(prev => ({ ...prev, [id]: valor }));
 
   // --- EFECTOS DE VIDA DEL HOOK ---
@@ -282,6 +354,7 @@ export const useInventarios = (sucursalId) => {
     procesarNuevoMovimiento,
     generarContraste,
     guardarConteoFisico,
+    guardarAuditoriaMasiva, // 👈 Se exporta la nueva acción
 
     // 🛡️ Facultades de seguridad
     puedeVer,

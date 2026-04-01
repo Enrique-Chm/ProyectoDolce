@@ -46,7 +46,8 @@ export const inventarioService = {
       return {
         id: item.id,
         nombre: item.nombre || '',
-        caja_master: saldoObj ? parseFloat(saldoObj.cantidad_actual) : 0,
+        // 💡 CORRECCIÓN CRÍTICA: Se expone explícitamente como cantidad_actual
+        cantidad_actual: saldoObj ? parseFloat(saldoObj.cantidad_actual) : 0,
         // Acceso directo a través de los alias resueltos por Supabase
         unidad: item.cat_unidades_medida?.abreviatura || 'pz',
         categoria: item.cat_categoria_insumos?.nombre || 'General'
@@ -72,17 +73,38 @@ export const inventarioService = {
 
       if (errorMov) throw errorMov;
 
-      // 2. Sincronizar el stock real en stock_sucursal (Ajuste perpetuo)
-      const { error: errorUpsert } = await supabase
+      // 2. Sincronizar el stock real en stock_sucursal (Ajuste perpetuo seguro sin Upsert)
+      const { data: stockExistente, error: errExistente } = await supabase
         .from('stock_sucursal')
-        .upsert({ 
-          sucursal_id: movimiento.sucursal_id,
-          insumo_id: movimiento.insumo_id,
-          cantidad_actual: movimiento.stock_despues,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'sucursal_id, insumo_id' });
+        .select('id')
+        .eq('sucursal_id', movimiento.sucursal_id)
+        .eq('insumo_id', movimiento.insumo_id)
+        .maybeSingle();
 
-      if (errorUpsert) throw errorUpsert;
+      if (errExistente) throw errExistente;
+
+      if (stockExistente) {
+        // Actualizamos la fila que ya existe
+        const { error: errUpdate } = await supabase
+          .from('stock_sucursal')
+          .update({ 
+            cantidad_actual: movimiento.stock_despues,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', stockExistente.id);
+        if (errUpdate) throw errUpdate;
+      } else {
+        // Insertamos por primera vez el insumo en esta sucursal
+        const { error: errInsert } = await supabase
+          .from('stock_sucursal')
+          .insert([{
+            sucursal_id: movimiento.sucursal_id,
+            insumo_id: movimiento.insumo_id,
+            cantidad_actual: movimiento.stock_despues,
+            updated_at: new Date().toISOString()
+          }]);
+        if (errInsert) throw errInsert;
+      }
       
       return { success: true, data: movData };
     } catch (error) {
@@ -103,7 +125,7 @@ export const inventarioService = {
       const fInicioISO = `${fechaInicio}T00:00:00.000Z`;
       const fFinISO = `${fechaFin}T23:59:59.999Z`;
 
-      // Obtenemos catálogo fresco
+      // Obtenemos catálogo fresco (ahora traerá cantidad_actual)
       const insumos = await inventarioService.getInsumos(sucursalId);
 
       const [recetas, ventasDetalle, movimientos] = await Promise.all([
@@ -136,7 +158,8 @@ export const inventarioService = {
             const movsOrdenados = [...movsInsumo].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
             stockInicial = parseFloat(movsOrdenados[0].stock_antes);
           } else {
-            stockInicial = parseFloat(insumo.caja_master);
+            // 💡 Usamos cantidad_actual porque caja_master ya no se expone erróneamente
+            stockInicial = parseFloat(insumo.cantidad_actual || 0);
           }
 
           const vendidoTeorico = (ventasDetalle.data || []).reduce((acc, v) => {
@@ -157,7 +180,7 @@ export const inventarioService = {
             vendido: vendidoTeorico.toFixed(2),
             mermas: mermas.toFixed(2),
             stock_esperado: (stockInicial + compras - vendidoTeorico - mermas).toFixed(2),
-            stock_actual_db: parseFloat(insumo.caja_master).toFixed(2)
+            stock_actual_db: parseFloat(insumo.cantidad_actual || 0).toFixed(2)
           };
         }),
         error: null
@@ -169,7 +192,7 @@ export const inventarioService = {
   },
 
   /**
-   * Aplica un ajuste de inventario real tras auditoría física.
+   * Aplica un ajuste de inventario real tras auditoría física individual.
    */
   async aplicarAuditoriaInsumo({ sucursal_id, insumo_id, stock_esperado, conteo_fisico, usuario_id }) {
     if (!hasPermission('editar_inventario')) {
@@ -199,18 +222,72 @@ export const inventarioService = {
         if (errMov) throw errMov;
       }
 
-      // Actualización mandatoria del stock en sucursal
-      const { error: errUpsert } = await supabase.from('stock_sucursal').upsert({
-        sucursal_id,
-        insumo_id,
-        cantidad_actual: fisico,
-        updated_at: timestamp
-      }, { onConflict: 'sucursal_id, insumo_id' });
+      // Actualización mandatoria del stock en sucursal (Usando lógica Select + Update/Insert)
+      const { data: stockExistente, error: errExistente } = await supabase
+        .from('stock_sucursal')
+        .select('id')
+        .eq('sucursal_id', sucursal_id)
+        .eq('insumo_id', insumo_id)
+        .maybeSingle();
 
-      if (errUpsert) throw errUpsert;
+      if (errExistente) throw errExistente;
+
+      if (stockExistente) {
+        const { error: errUp } = await supabase
+          .from('stock_sucursal')
+          .update({ cantidad_actual: fisico, updated_at: timestamp })
+          .eq('id', stockExistente.id);
+        if (errUp) throw errUp;
+      } else {
+        const { error: errIn } = await supabase
+          .from('stock_sucursal')
+          .insert([{
+            sucursal_id,
+            insumo_id,
+            cantidad_actual: fisico,
+            updated_at: timestamp
+          }]);
+        if (errIn) throw errIn;
+      }
+
       return { success: true };
     } catch (error) {
       console.error("Error al guardar ajuste físico:", error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Ejecuta múltiples ajustes de auditoría en paralelo (Cierre Masivo)
+   */
+  async aplicarAuditoriaMasiva(ajustes, usuario_id, sucursal_id) {
+    if (!hasPermission('editar_inventario')) {
+      return { success: false, error: 'Acceso denegado.' };
+    }
+
+    try {
+      // Ejecutamos todos los ajustes en paralelo usando la función individual que ya es segura
+      const promesas = ajustes.map(ajuste => 
+        this.aplicarAuditoriaInsumo({
+          sucursal_id,
+          insumo_id: ajuste.id,
+          stock_esperado: ajuste.stock_esperado,
+          conteo_fisico: ajuste.conteo_fisico,
+          usuario_id
+        })
+      );
+
+      const resultados = await Promise.all(promesas);
+      
+      // Verificamos si alguno falló
+      const errores = resultados.filter(r => !r.success);
+      if (errores.length > 0) {
+        throw new Error(`Se guardaron algunos, pero fallaron ${errores.length} insumos.`);
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error("Error en auditoría masiva:", error);
       return { success: false, error: error.message };
     }
   },

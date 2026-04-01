@@ -79,7 +79,7 @@ export const MotivosView = ({
           </thead>
           <tbody>
             {motivosInventario.map(m => (
-              <tr key={m.id} style={{ backgroundColor: mEditId === m.id ? 'var(--color-bg-app)' : 'transparent' }}>
+              <tr key={m.id} style={{ backgroundColor: mEditId === m.id ? 'var(--color-bg-app)' : undefined }}>
                 <td className={s.td}>
                   <span className={m.tipo === 'ENTRADA' ? s.badgeSuccess : s.badgeDanger}>
                     {m.tipo}

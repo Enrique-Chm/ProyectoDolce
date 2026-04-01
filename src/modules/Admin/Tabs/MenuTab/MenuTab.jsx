@@ -9,7 +9,7 @@ import { ExtrasCatalog } from "./ExtrasCatalog";
 const getMarginColor = (margen) => {
   const m = parseFloat(margen);
   if (m < 0) return "#dc3545";
-  if (m < 40) return "#fd7e14";
+  if (m < 40) return "#fd7d14";
   if (m < 60) return "#28a745";
   if (m < 80) return "#0d6efd";
   return "#6f42c1";
@@ -166,10 +166,10 @@ export const MenuTab = ({ sucursalId }) => {
                   {prodFormData.grupos_vinculados.map((gId) => {
                     const grupo = gruposMaestros.find((gm) => gm.id === gId);
                     return grupo ? (
-                      <div key={gId} className={s.badgeInteractive}>
+                      <div key={gId} className={s.badgeInteractive}style={{ color: "var(--color-primary)" }}>
                         <span>{grupo.nombre}</span>
                         {!noTienePermisoProd && (
-                          <b className={s.badgeCloseBtn} onClick={() => toggleGrupoEnProducto(gId)}>
+                          <b className={s.badgeCloseBtn} style={{ color: "var(--color-danger)" }} onClick={() => toggleGrupoEnProducto(gId)}>
                             {" "}
                             ×{" "}
                           </b>

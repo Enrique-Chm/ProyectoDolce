@@ -211,7 +211,7 @@ export const UnidadesView = ({
             </thead>
             <tbody>
               {tiposDescuento.map(td => (
-                <tr key={td.id} style={{ backgroundColor: tdEditId === td.id ? 'var(--color-bg-app)' : 'transparent' }}>
+                <tr key={td.id} style={{ backgroundColor: tdEditId === td.id ? 'var(--color-bg-app)' : undefined }}>
                   <td className={s.td}><strong>{td.nombre}</strong></td>
                   <td className={s.td} style={{ textTransform: 'capitalize' }}>{td.tipo_calculo.replace('_', ' ')}</td>
                   <td className={s.td}>

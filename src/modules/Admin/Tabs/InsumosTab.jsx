@@ -402,8 +402,9 @@ export const InsumosTab = ({ sucursalId }) => {
                   <tr
                     key={i.id}
                     style={{
+                      // 💡 Usamos undefined en lugar de "transparent" para no bloquear el :hover del CSS
                       backgroundColor:
-                        editId === i.id ? "var(--color-bg-app)" : "transparent",
+                        editId === i.id ? "var(--color-bg-app)" : undefined,
                     }}
                   >
                     <td className={s.td}>

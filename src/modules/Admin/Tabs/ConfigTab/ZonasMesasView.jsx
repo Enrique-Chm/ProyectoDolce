@@ -224,7 +224,7 @@ export const ZonasMesasView = ({
         </form>
       </aside>
 
-      <div className={`${s.adminCard} ${s.tableContainer}`} style={{ display: 'flex', flexDirection: 'column', backgroundColor: 'transparent', boxShadow: 'none', border: 'none', padding: 0 }}>
+      <div className={`${s.adminCard} ${s.tableContainer}`} style={{ display: 'flex', flexDirection: 'column', backgroundColor: undefined, boxShadow: 'none', border: 'none', padding: 0 }}>
         
         <div className={s.adminCard} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', padding: '15px 20px' }}>
           <h3 className={s.cardTitle} style={{ margin: 0 }}>Distribución del Restaurante</h3>
@@ -400,7 +400,7 @@ export const ZonasMesasView = ({
                         {zona.cat_mesas.map(m => {
                           const esObstaculo = m.tipo_elemento === 'OBSTACULO';
                           return (
-                            <tr key={m.id} style={{ backgroundColor: mesaEditId === m.id ? 'var(--color-bg-app)' : 'transparent' }}>
+                            <tr key={m.id} style={{ backgroundColor: mesaEditId === m.id ? 'var(--color-bg-app)' : undefined }}>
                               <td className={s.td} style={{ fontSize: '15px', textAlign: 'center' }}>
                                 {esObstaculo ? '🧱' : '🪑'}
                               </td>

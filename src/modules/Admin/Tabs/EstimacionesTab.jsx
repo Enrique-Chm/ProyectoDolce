@@ -6,11 +6,12 @@ import { formatCurrency } from "../../../utils/formatCurrency";
 import { hasPermission } from '../../../utils/checkPermiso'; // Importamos seguridad
 
 const EstimacionesTab = ({ sucursalId, usuarioId }) => {
+  // 💡 Pasamos el sucursalId al hook para mantener el contexto correcto
   const { 
     sugerenciasFiltradas, proveedores, filtroProveedor, setFiltroProveedor, 
     presupuestoTotal, loading, recargarDatos, guardarPolitica,
     compradosIds, confirmarCompra
-  } = useEstimacionesTab();
+  } = useEstimacionesTab(sucursalId);
 
   /**
    * 🛡️ SEGURIDAD INTERNA (RBAC)
@@ -122,11 +123,11 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
             <thead className={s.thead}>
               <tr>
                 <th className={s.th}>INSUMO</th>
-                <th className={s.th}style={{ textAlign: 'center' }}>CONSUMO/DÍA</th>
-                <th className={s.th}style={{ textAlign: 'center' }}>COBERTURA</th>
-                <th className={s.th}style={{ textAlign: 'center' }}>STOCK HOY</th>
-                <th className={s.th}style={{ textAlign: 'center' }}>SUGERENCIA</th>
-                <th className={s.th}style={{ textAlign: 'center' }}>COSTO</th>
+                <th className={s.th} style={{ textAlign: 'center' }}>CONSUMO/DÍA</th>
+                <th className={s.th} style={{ textAlign: 'center' }}>COBERTURA</th>
+                <th className={s.th} style={{ textAlign: 'center' }}>STOCK HOY</th>
+                <th className={s.th} style={{ textAlign: 'center' }}>SUGERENCIA</th>
+                <th className={s.th} style={{ textAlign: 'center' }}>COSTO</th>
                 <th className={s.th} style={{ textAlign: 'center' }}>AJUSTE</th>
               </tr>
             </thead>
@@ -145,10 +146,10 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
                     <td className={s.td} style={{ fontWeight: '700', color: 'var(--color-text-main)' }}>
                       {item.insumo_nombre}
                     </td>
-                    <td className={s.td}style={{ textAlign: 'center' }}>
+                    <td className={s.td} style={{ textAlign: 'center' }}>
                       {parseFloat(item.consumo_diario_real || 0).toFixed(2)}
                     </td>
-                    <td className={s.td}style={{ textAlign: 'center' }}>
+                    <td className={s.td} style={{ textAlign: 'center' }}>
                       {editandoId === item.insumo_id && puedeEditar ? (
                         <input 
                           type="number" 
@@ -165,10 +166,10 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
                         </span>
                       )}
                     </td>
-                    <td className={s.td}style={{ textAlign: 'center' }}>
+                    <td className={s.td} style={{ textAlign: 'center' }}>
                       {parseFloat(item.stock_fisico_hoy).toFixed(1)}
                     </td>
-                    <td className={s.td}style={{ textAlign: 'center' }}>
+                    <td className={s.td} style={{ textAlign: 'center' }}>
                       <span style={{ 
                         color: item.cajas_a_pedir > 0 ? 'var(--color-success)' : 'var(--color-text-muted)', 
                         fontWeight: '600' 
@@ -234,7 +235,8 @@ const EstimacionesTab = ({ sucursalId, usuarioId }) => {
               {puedeEditar ? (
                 <button 
                   className={`${s.btn} ${s.btnSuccess} ${s.btnFull}`} 
-                  onClick={() => confirmarCompra(ins, usuarioId, sucursalId)}
+                  // 💡 Ya no le enviamos sucursalId porque el hook ya tiene el contexto
+                  onClick={() => confirmarCompra(ins, usuarioId)}
                 >
                   ✓ RECIBIR {ins.cajas_a_pedir} CAJAS
                 </button>

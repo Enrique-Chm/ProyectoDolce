@@ -509,12 +509,12 @@ export const RecetasTab = ({ sucursalId }) => {
                       <td className={`${s.td} ${s.tdCenter}`}>
                         <div className={s.flexColumnGap5}>
                           {r.detalle_ingredientes?.map((ing, iidx) => (
-                            <div key={iidx} className={s.miniBadge}>
+                            <div key={iidx} className={`${s.label} ${s.labelTiny}`}>
                               • {ing.insumo}:{" "}
                               <strong>
                                 {ing.cantidad} {ing.unidad}
                               </strong>
-                              <span className={s.priceValue}>
+                              <span className={s.priceValue} style={{ marginLeft: "-3px", fontSize: "10px" }}>
                                 {" "}
                                 (${(ing.costo_fila || 0).toFixed(2)})
                               </span>

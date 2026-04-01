@@ -272,7 +272,7 @@ export const EmpleadosTab = () => {
                   key={r.id}
                   style={{
                     padding: "12px 15px", borderRadius: "var(--radius-ui)", cursor: "pointer", fontWeight: "700", fontSize: "0.9rem", transition: "all 0.2s",
-                    backgroundColor: emp.rolSeleccionado === r.id ? "var(--color-primary)" : "transparent",
+                    backgroundColor: emp.rolSeleccionado === r.id ? "var(--color-primary)" : undefined,
                     color: emp.rolSeleccionado === r.id ? "white" : "var(--color-text-muted)",
                   }}
                   onClick={() => emp.seleccionarRol(r.id)}

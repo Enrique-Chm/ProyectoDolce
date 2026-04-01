@@ -23,6 +23,7 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
     procesarNuevoMovimiento,
     generarContraste,
     guardarConteoFisico,
+    guardarAuditoriaMasiva, // 👈 Se extrae la nueva función
     puedeVer,
     puedeCrear,
     puedeEditar,
@@ -44,7 +45,7 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
 
   // Memorización para optimizar el filtrado de motivos según el tipo de operación
   const insumoSeleccionado = useMemo(
-    () => insumos?.find((i) => i.id === Number(nuevoMov.insumo_id)),
+    () => insumos?.find((i) => String(i.id) === String(nuevoMov.insumo_id)),
     [insumos, nuevoMov.insumo_id],
   );
 
@@ -67,10 +68,7 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
     );
 
     if (res.success) {
-      alert("Movimiento de almacén guardado correctamente.");
       setNuevoMov({ insumo_id: "", tipo: "ENTRADA", cantidad: "", motivo: "" });
-    } else {
-      alert(res.error || "Error al procesar el movimiento.");
     }
   };
 
@@ -84,7 +82,7 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
 
     if (
       window.confirm(
-        `¿Confirmas que el stock real de ${row.insumo} es ${valorFisico} ${row.unidad}?`,
+        `¿Confirmas que el stock real de ${row.insumo} es ${valorFisico} ${row.unidad || 'U'}?`,
       )
     ) {
       const res = await guardarConteoFisico(
@@ -138,9 +136,7 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
       </nav>
 
       <div className={mostrarFormulario ? s.splitLayout : s.fullLayout}>
-        {/* PANEL LATERAL DE MOVIMIENTO MANUAL (KARDEX) 
-  Estructura: aside > h3 > form > (formGroup | formGrid)
-*/}
+        {/* PANEL LATERAL DE MOVIMIENTO MANUAL (KARDEX) */}
         <aside
           className={s.adminCard}
           style={{
@@ -153,10 +149,8 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
             {puedeCrear ? "Registrar Movimiento" : "Detalles de Insumo"}
           </h3>
 
-          {/* Uso de s.formColumn: Asegura que los elementos fluyan verticalmente con espaciado constante
-           */}
           <form onSubmit={handleSubmitMovimiento} className={s.formColumn}>
-            {/* 1. SELECCIÓN DE INSUMO (Ocupa el 100% del ancho para facilitar la lectura del saldo) */}
+            {/* 1. SELECCIÓN DE INSUMO */}
             <div className={s.formGroup}>
               <label className={s.label}>INSUMO</label>
               <SearchableSelect
@@ -166,21 +160,18 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                 labelKey="nombre"
                 placeholder="Buscar insumo por nombre..."
                 formatLabel={(opt) =>
-                  `${opt.nombre} (Saldo: ${opt.stock_fisico} ${opt.unidad})`
+                  `${opt.nombre} (Saldo: ${opt.stock_fisico || 0} ${opt.unidad || 'U'})`
                 }
                 disabled={loading || !puedeCrear}
                 onChange={(val) => setNuevoMov({ ...nuevoMov, insumo_id: val })}
               />
             </div>
 
-            {/* 2. FILA DOBLE (Grid): Operación y Cantidad 
-      Se agrupan aquí porque son datos cortos que caben perfectamente lado a lado.
-    */}
+            {/* 2. FILA DOBLE (Grid): Operación y Cantidad */}
             <div
               className={s.formGrid}
               style={{ gridTemplateColumns: "1fr 1fr", gap: "15px" }}
             >
-              {/* Campo: Operación */}
               <div className={s.formGroup}>
                 <label className={s.label}>OPERACIÓN</label>
                 <select
@@ -188,9 +179,7 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                   value={nuevoMov.tipo}
                   disabled={!puedeCrear}
                   style={{
-                    backgroundColor: !puedeCrear
-                      ? "var(--color-bg-muted)"
-                      : "white",
+                    backgroundColor: !puedeCrear ? "var(--color-bg-muted)" : "white",
                     cursor: !puedeCrear ? "not-allowed" : "pointer",
                   }}
                   onChange={(e) =>
@@ -207,7 +196,6 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                 </select>
               </div>
 
-              {/* Campo: Cantidad con detección de unidad dinámica */}
               <div className={s.formGroup}>
                 <label
                   className={s.label}
@@ -227,7 +215,7 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                         fontWeight: "700",
                       }}
                     >
-                      ({insumoSeleccionado.unidad})
+                      ({insumoSeleccionado.unidad || 'U'})
                     </span>
                   )}
                 </label>
@@ -243,15 +231,13 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                   required
                   readOnly={!puedeCrear}
                   style={{
-                    backgroundColor: !puedeCrear
-                      ? "var(--color-bg-muted)"
-                      : "white",
+                    backgroundColor: !puedeCrear ? "var(--color-bg-muted)" : "white",
                   }}
                 />
               </div>
             </div>
 
-            {/* 3. MOTIVO (Vuelve a ocupar el 100% del ancho para descripciones largas) */}
+            {/* 3. MOTIVO */}
             <div className={s.formGroup}>
               <label className={s.label}>MOTIVO DEL MOVIMIENTO</label>
               <select
@@ -259,10 +245,7 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                 value={nuevoMov.motivo}
                 disabled={!puedeCrear || !nuevoMov.tipo}
                 style={{
-                  backgroundColor:
-                    !puedeCrear || !nuevoMov.tipo
-                      ? "var(--color-bg-muted)"
-                      : "white",
+                  backgroundColor: !puedeCrear || !nuevoMov.tipo ? "var(--color-bg-muted)" : "white",
                 }}
                 onChange={(e) =>
                   setNuevoMov({ ...nuevoMov, motivo: e.target.value })
@@ -278,7 +261,7 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
               </select>
             </div>
 
-            {/* 4. ACCIÓN FINAL: Botón de Guardado */}
+            {/* 4. ACCIÓN FINAL */}
             <div className={s.formGroup} style={{ marginTop: "12px" }}>
               {puedeCrear && (
                 <button
@@ -310,10 +293,6 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
             </div>
           </form>
         </aside>
-        {/* =========================================
-            TABLAS: DIRECTAMENTE COMO EL SEGUNDO HIJO DEL GRID
-            Esto evita que el Grid estalle en móvil.
-            ========================================= */}
 
         {/* 1. TABLA: EXISTENCIAS ACTUALES */}
         {activeSubTab === "stock" && (
@@ -352,7 +331,7 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                       <td className={s.td}>
                         <div className={s.productTitle}>{insumo.nombre}</div>
                         <small className={s.textMuted}>
-                          {insumo.categoria?.toUpperCase()}
+                          {insumo.categoria?.toUpperCase() || 'SIN CATEGORÍA'}
                         </small>
                       </td>
                       <td className={s.td}>
@@ -365,7 +344,7 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                             className={s.textMuted}
                             style={{ fontSize: "11px" }}
                           >
-                            {insumo.unidad}
+                            {insumo.unidad || 'U'}
                           </small>
                         </div>
                       </td>
@@ -379,7 +358,7 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                             className={s.textMuted}
                             style={{ fontSize: "11px" }}
                           >
-                            {insumo.unidad}
+                            {insumo.unidad || 'U'}
                           </small>
                         </div>
                       </td>
@@ -394,7 +373,6 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
         {/* 2. TABLA: AUDITORÍA DE CIERRE (CONTRASTE) */}
         {activeSubTab === "contraste" && (
           <div className={`${s.adminCard} ${s.tableContainer}`}>
-            {/* Usamos las clases específicas de auditoría que tienes en tu CSS */}
             <div className={s.auditHeader}>
               <div>
                 <h3 className={s.cardTitle} style={{ margin: 0 }}>
@@ -418,41 +396,55 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                 )}
               </div>
 
-              <div className={s.auditFilters}>
-                <select
-                  className={s.inputSmall}
-                  value={filtroAuditoria}
-                  onChange={(e) => setFiltroAuditoria(e.target.value)}
-                >
-                  <option value="todos"> Todos</option>
-                  <option value="pendientes"> Pendientes</option>
-                  <option value="auditados"> Auditados</option>
-                </select>
-                <input
-                  type="date"
-                  className={s.inputSmall}
-                  value={filtroFechas.inicio}
-                  onChange={(e) =>
-                    setFiltroFechas({ ...filtroFechas, inicio: e.target.value })
-                  }
-                />
-                <input
-                  type="date"
-                  className={s.inputSmall}
-                  value={filtroFechas.fin}
-                  onChange={(e) =>
-                    setFiltroFechas({ ...filtroFechas, fin: e.target.value })
-                  }
-                />
-                <button
-                  className={`${s.btn} ${s.btnDark}`}
-                  onClick={() =>
-                    generarContraste(filtroFechas.inicio, filtroFechas.fin)
-                  }
-                  disabled={loading}
-                >
-                  {loading ? "..." : "BALANCE"}
-                </button>
+              {/* 💡 NUEVO BLOQUE CONTENEDOR DE FILTROS Y BOTÓN MASIVO */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
+                {Object.values(conteos).filter(v => v !== '').length > 0 && (
+                  <button
+                    className={`${s.btn} ${s.btnSuccess}`}
+                    style={{ padding: '8px 20px', fontWeight: 'bold', boxShadow: 'var(--shadow-md)' }}
+                    onClick={() => guardarAuditoriaMasiva(usuarioId, filtroFechas.inicio, filtroFechas.fin)}
+                    disabled={loading}
+                  >
+                    ✅ PROCESAR {Object.values(conteos).filter(v => v !== '').length} CONTEOS
+                  </button>
+                )}
+
+                <div className={s.auditFilters}>
+                  <select
+                    className={s.inputSmall}
+                    value={filtroAuditoria}
+                    onChange={(e) => setFiltroAuditoria(e.target.value)}
+                  >
+                    <option value="todos"> Todos</option>
+                    <option value="pendientes"> Pendientes</option>
+                    <option value="auditados"> Auditados</option>
+                  </select>
+                  <input
+                    type="date"
+                    className={s.inputSmall}
+                    value={filtroFechas.inicio}
+                    onChange={(e) =>
+                      setFiltroFechas({ ...filtroFechas, inicio: e.target.value })
+                    }
+                  />
+                  <input
+                    type="date"
+                    className={s.inputSmall}
+                    value={filtroFechas.fin}
+                    onChange={(e) =>
+                      setFiltroFechas({ ...filtroFechas, fin: e.target.value })
+                    }
+                  />
+                  <button
+                    className={`${s.btn} ${s.btnDark}`}
+                    onClick={() =>
+                      generarContraste(filtroFechas.inicio, filtroFechas.fin)
+                    }
+                    disabled={loading}
+                  >
+                    {loading ? "..." : "BALANCE"}
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -511,10 +503,9 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                           <div className={s.productTitle}>{row.insumo}</div>{" "}
                           <div>
                             {" "}
-                            {row.stock_esperado} {row.unidad}
+                            {row.stock_esperado} {row.unidad || 'U'}
                           </div>
                         </td>
-                        <td className={s.td} style={{ fontWeight: "700" }}></td>
                         <td
                           className={`${s.td} ${s.textDanger}`}
                           style={{ fontWeight: "700" }}
@@ -525,7 +516,7 @@ const InventariosTab = ({ sucursalId, usuarioId }) => {
                           className={s.td}
                           style={{
                             backgroundColor: yaAuditado
-                              ? "transparent"
+                              ? undefined
                               : "var(--color-bg-muted)",
                           }}
                         >

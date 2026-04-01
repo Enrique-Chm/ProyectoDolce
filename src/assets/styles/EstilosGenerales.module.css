@@ -356,7 +356,12 @@
   border-collapse: separate;
   border-spacing: 0 5px;
 }
+/* Archivo: src/assets/styles/EstilosGenerales.module.css */
 
+.table tbody tr:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+  transition: background-color 0.2s ease;
+}
 .tableRowCategory td {
   background-color: var(--color-bg-app);
   padding: 10px 15px;

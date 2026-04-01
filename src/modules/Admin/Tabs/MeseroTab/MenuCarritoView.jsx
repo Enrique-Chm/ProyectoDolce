@@ -200,7 +200,7 @@ export const MenuCarritoView = ({
               onClick={() => { handleEnviarOrden(); setIsCartExpanded(false); }}
               disabled={loading || carrito.length === 0 || ventaActiva?.estado === "por_cobrar" || !puedeTomarOrdenes}
             >
-              {loading ? "ENVIANDO..." : "🚀 ENVIAR A COCINA"}
+              {loading ? "ENVIANDO..." : "ENVIAR A COCINA"}
             </button>
 
             {ventaActiva && (

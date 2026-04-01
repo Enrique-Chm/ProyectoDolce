@@ -178,7 +178,7 @@ export const ExtrasCatalog = ({
                     </div>
                     <div className={s.formGroup}>
                       <label className={`${s.label} ${s.labelTiny}`}>MARGEN</label>
-                      <div className={s.unitDisplayBox} style={{ color: getMarginColor(opcion.margen), fontWeight: "700" }}>{opcion.margen}%</div>
+                      <div className={s.unitDisplayBox} style={{ color: getMarginColor(opcion.margen), fontWeight: "600" }}>{opcion.margen}%</div>
                     </div>
                   </div>
                 </div>

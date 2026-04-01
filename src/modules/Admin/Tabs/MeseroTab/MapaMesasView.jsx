@@ -258,11 +258,11 @@ export const MapaMesasView = ({
                   
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '15px' }}>
                     <div className={stylesAdmin.flexBetween} style={{ borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
-                      <span className={stylesAdmin.textMuted}>Pax:</span>
+                      <span className={stylesAdmin.textMuted}>Pax: </span>
                       <strong>{cuentaDeMesaSeleccionada.comensales} personas</strong>
                     </div>
                     <div className={stylesAdmin.flexBetween} style={{ borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
-                      <span className={stylesAdmin.textMuted}>Total Actual:</span>
+                      <span className={stylesAdmin.textMuted}>Total Actual: </span>
                       <strong style={{ fontSize: '1.3rem', color: 'var(--color-primary)' }}>${parseFloat(cuentaDeMesaSeleccionada.total).toFixed(2)}</strong>
                     </div>
                     {cuentaDeMesaSeleccionada.cliente_nombre && (

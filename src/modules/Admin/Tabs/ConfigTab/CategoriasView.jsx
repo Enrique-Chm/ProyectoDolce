@@ -1,3 +1,4 @@
+// Archivo: src/modules/Admin/Tabs/ConfigTab/CategoriasView.jsx
 import React from 'react';
 
 export const CategoriasView = ({
@@ -86,7 +87,7 @@ export const CategoriasView = ({
             </thead>
             <tbody>
               {catMenu.map(c => (
-                <tr key={c.id} style={{ backgroundColor: cMenuEditId === c.id ? 'var(--color-bg-app)' : 'transparent' }}>
+                <tr key={c.id} style={{ backgroundColor: cMenuEditId === c.id ? 'var(--color-bg-app)' : undefined }}>
                   <td className={s.td}>
                     <div className={s.colorCircle} style={{ backgroundColor: c.color_etiqueta }}></div>
                   </td>
@@ -163,7 +164,7 @@ export const CategoriasView = ({
             </thead>
             <tbody>
               {catInsumos.map(c => (
-                <tr key={c.id} style={{ backgroundColor: cInsumoEditId === c.id ? 'var(--color-bg-app)' : 'transparent' }}>
+                <tr key={c.id} style={{ backgroundColor: cInsumoEditId === c.id ? 'var(--color-bg-app)' : undefined }}>
                   <td className={s.td}>#{c.id}</td>
                   <td className={s.td}><strong>{c.nombre}</strong></td>
                   <td className={s.td} style={{ textAlign: 'right' }}>

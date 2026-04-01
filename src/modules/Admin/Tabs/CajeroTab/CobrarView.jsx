@@ -30,7 +30,7 @@ export const CobrarView = ({
       width: '450px',
       html: `
         <div style="display: flex; flex-direction: column; gap: 15px; font-family: inherit;">
-          <div style="background: #5a8cdd; color: white; padding: 20px; border-radius: 12px; text-align: center; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);">
+          <div style="background: var(--color-primary); color: white; padding: 20px; border-radius: 12px; text-align: center; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);">
             <span style="font-size: 0.85rem; opacity: 0.8; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Total a Liquidar</span>
             <div id="swal-total-display" style="font-size: 3rem; font-weight: 800; margin: 5px 0; color: #ffffff;">${formatCurrency(totalVentaOriginal)}</div>
             <div style="font-size: 0.85rem; opacity: 0.6;">Original: ${formatCurrency(totalVentaOriginal)}</div>

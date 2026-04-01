@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { estimacionesService } from '../services/Estimaciones.service';
 import { hasPermission } from '../utils/checkPermiso'; // 🛡️ Blindaje de seguridad
 
-export const useEstimacionesTab = () => {
+export const useEstimacionesTab = (sucursalId) => { // 👈 Agregamos sucursalId como parámetro
   const [sugerencias, setSugerencias] = useState([]);
   const [proveedores, setProveedores] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -16,14 +16,14 @@ export const useEstimacionesTab = () => {
   const puedeEditarInventario = hasPermission('editar_inventario');
 
   const cargarDatos = useCallback(async () => {
-    // 🛡️ BLINDAJE: Si no tiene permisos mínimos de lectura, evitamos la carga
-    if (!puedeVerInventario && !puedeVerProveedores) return;
+    // 🛡️ BLINDAJE: Si no tiene permisos mínimos de lectura o no hay sucursal, evitamos la carga
+    if ((!puedeVerInventario && !puedeVerProveedores) || !sucursalId) return;
 
     setLoading(true);
 
     // 🛡️ Solo solicitamos datos de los módulos a los que el usuario tiene acceso
     const [resS, resP] = await Promise.all([
-      puedeVerInventario ? estimacionesService.getSugerenciasCompra() : { success: true, data: [] },
+      puedeVerInventario ? estimacionesService.getSugerenciasCompra(sucursalId) : { success: true, data: [] }, // 👈 Pasamos el sucursalId
       puedeVerProveedores ? estimacionesService.getProveedoresActivos() : { success: true, data: [] }
     ]);
 
@@ -31,7 +31,7 @@ export const useEstimacionesTab = () => {
     if (resP.success) setProveedores(resP.data || []);
     
     setLoading(false);
-  }, [puedeVerInventario, puedeVerProveedores]);
+  }, [puedeVerInventario, puedeVerProveedores, sucursalId]); // 👈 Añadimos sucursalId a las dependencias
 
   const sugerenciasFiltradas = useMemo(() => {
     // 🛡️ Blindaje de salida: Si no puede ver inventario, retornamos vacío
@@ -62,12 +62,13 @@ export const useEstimacionesTab = () => {
     return res;
   };
 
-  const confirmarCompra = async (insumo, usuarioId, sucursalId) => {
+  const confirmarCompra = async (insumo, usuarioId) => {
     // 🛡️ BLINDAJE: Bloqueo de acción de registro
     if (!puedeEditarInventario) {
       return { success: false, error: "Acceso denegado: No puedes registrar compras." };
     }
 
+    // 💡 Pasamos el sucursalId del contexto activo en lugar de recibirlo como parámetro
     const res = await estimacionesService.registrarCompraRealizada(
       insumo.insumo_id, insumo.cajas_a_pedir, insumo.presupuesto_estimado, usuarioId, sucursalId
     );
@@ -78,7 +79,9 @@ export const useEstimacionesTab = () => {
     return res;
   };
 
-  useEffect(() => { cargarDatos(); }, [cargarDatos]);
+  useEffect(() => { 
+    cargarDatos(); 
+  }, [cargarDatos]); // Como cargarDatos ahora depende de sucursalId, esto se recargará al cambiar de sucursal
 
   return {
     // 🛡️ Datos blindados
