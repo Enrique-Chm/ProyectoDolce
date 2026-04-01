@@ -1,7 +1,7 @@
-// Archivo: src/hooks/useInventarios.js
+// Archivo: src/modules/Admin/Tabs/InventariosTab/useInventariosTab.js
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { inventarioService } from '../services/inventario.service';
-import { hasPermission } from '../utils/checkPermiso'; // 🛡️ Blindaje de seguridad
+import { inventarioService } from './Inventario.service';
+import { hasPermission } from '../../../../utils/checkPermiso'; // 🛡️ Blindaje de seguridad
 import toast from 'react-hot-toast'; // 🍞 Feedback visual
 
 export const useInventarios = (sucursalId) => {

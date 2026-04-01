@@ -10,7 +10,7 @@ export const MovimientosView = ({
   puedeEditarCaja,
   tiposDisponibles,
   getMotivosPorTipo,
-  registrarMovimientoEfectivo, // 👈 FALTA ESTA LÍNEA EN TU ARCHIVO ACTUAL
+  registrarMovimientoEfectivo, 
   movimientos
 }) => {
   const [tipoSeleccionado, setTipoSeleccionado] = useState("");
@@ -117,11 +117,11 @@ export const MovimientosView = ({
           {/* Tabla de Movimientos */}
           <div className={`${stylesAdmin.adminCard} ${stylesAdmin.tableContainer}`}>
             <h3 className={s.cardTitle} style={{ margin: 15 }}>Historial de Movimientos</h3>
-            <table className={stylesAdmin.table}>
+            <table className={stylesAdmin.table} style={{ minWidth: '500px' }}>
               <thead className={stylesAdmin.thead}>
                 <tr>
                   <th className={stylesAdmin.th}>HORA</th>
-                  <th className={stylesAdmin.th}>CONCEPTO</th>
+                  <th className={stylesAdmin.th}>CONCEPTO / USUARIO</th>
                   <th className={stylesAdmin.th} style={{ textAlign: 'right' }}>MONTO</th>
                 </tr>
               </thead>
@@ -140,7 +140,13 @@ export const MovimientosView = ({
                         <td className={stylesAdmin.td}>
                           {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </td>
-                        <td className={stylesAdmin.td}><strong>{m.motivo}</strong></td>
+                        <td className={stylesAdmin.td}>
+                          <strong>{m.motivo}</strong>
+                          {/* 💡 AQUI MOSTRAMOS AL USUARIO RESPONSABLE DEL MOVIMIENTO */}
+                          <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '4px' }}>
+                            👤 Por: {m.usuarios_internos?.nombre || 'Sistema'}
+                          </div>
+                        </td>
                         <td className={`${stylesAdmin.td} ${s.tdMonto} ${esIngreso ? s.textGreen : s.textRed}`}>
                           {esIngreso ? "+" : "-"}{formatCurrency(m.monto)}
                         </td>

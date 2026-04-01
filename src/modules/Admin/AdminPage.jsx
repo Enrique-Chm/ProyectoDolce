@@ -19,8 +19,8 @@ const ImpresorasTab = React.lazy(() => import("./Tabs/ImpresorasTab").then(modul
 const GastosTab = React.lazy(() => import("./Tabs/GastosTab").then(module => ({ default: module.GastosTab })));
 
 const CajeroTab = React.lazy(() => import('./Tabs/CajeroTab/CajeroTab'));
-const InventariosTab = React.lazy(() => import("./Tabs/InventariosTab")); 
-const EstimacionesTab = React.lazy(() => import("./Tabs/EstimacionesTab")); 
+const InventariosTab = React.lazy(() => import("./Tabs/InventariosTab/InventariosTab")); 
+const EstimacionesTab = React.lazy(() => import("./Tabs/Proyeccion/EstimacionesTab")); 
 
 const AdminPage = () => {
   useSessionGuard();

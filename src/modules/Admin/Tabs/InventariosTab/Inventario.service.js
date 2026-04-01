@@ -1,6 +1,6 @@
-// Archivo: src/services/inventario.service.js
-import { supabase } from '../lib/supabaseClient';
-import { hasPermission } from '../utils/checkPermiso'; 
+// Archivo: src/modules/Admin/Tabs/InventariosTab/Inventario.service.js
+import { supabase } from '../../../../lib/supabaseClient';
+import { hasPermission } from '../../../../utils/checkPermiso'; 
 
 export const inventarioService = {
 
@@ -303,11 +303,18 @@ export const inventarioService = {
 
   async getMovimientos(sucursalId) {
     if (!hasPermission('ver_inventario')) return [];
+    
+    // 💡 AHORA TRAEMOS EL NOMBRE DEL USUARIO USANDO LA LLAVE FORÁNEA
     const { data } = await supabase
       .from('inventario_movimientos')
-      .select('*, insumo:insumo_id(nombre)')
+      .select(`
+        *, 
+        insumo:insumo_id(nombre),
+        usuarios_internos!inventario_movimientos_usuario_id_fkey(nombre)
+      `)
       .eq('sucursal_id', sucursalId)
       .order('created_at', { ascending: false });
+      
     return data || [];
   }
 };

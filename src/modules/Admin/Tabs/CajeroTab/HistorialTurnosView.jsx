@@ -1,3 +1,4 @@
+// Archivo: src/modules/Admin/Tabs/CajeroTab/HistorialTurnosView.jsx
 import React from "react";
 import stylesAdmin from "../../../../assets/styles/EstilosGenerales.module.css";
 import s from "../../../../assets/styles/ServicioTab.module.css";
@@ -27,6 +28,8 @@ export const HistorialTurnosView = ({ historial, sucursalId }) => {
             <h3>CORTE DE CAJA</h3>
             <p>Sucursal ID: ${sucursalId}<br/>Turno: ${new Date(sesion.fecha_apertura).toLocaleDateString()}</p>
           </div>
+          <div class="row"><span>Cajero:</span> <span>${sesion.usuarios_internos?.nombre || 'N/A'}</span></div>
+          <br/>
           <div class="row"><span>Apertura:</span> <span>${formatCurrency(sesion.monto_apertura)}</span></div>
           <div class="row"><span>Ventas/Movs:</span> <span>+${formatCurrency(ingresosNetos)}</span></div>
           <div class="row total"><span>ESPERADO:</span> <span>${formatCurrency(sesion.monto_cierre_esperado)}</span></div>
@@ -58,11 +61,14 @@ export const HistorialTurnosView = ({ historial, sucursalId }) => {
                 🖨️
               </button>
               <div>
-                <small className={stylesAdmin.textMuted}>Folio: {h.id.slice(0,8)}</small>
                 <div className={s.historyDate}>{new Date(h.fecha_apertura).toLocaleDateString()}</div>
                 <div className={s.historyCardTime}>
                   {new Date(h.fecha_apertura).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - 
                   {new Date(h.fecha_cierre).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                </div>
+                {/* 💡 AQUI MOSTRAMOS QUIÉN ABRIÓ ESE TURNO PASADO */}
+                <div style={{ fontSize: '11px', color: 'var(--color-primary)', marginTop: '5px', fontWeight: 'bold' }}>
+                  👤 Cajero: {h.usuarios_internos?.nombre || 'Desconocido'}
                 </div>
               </div>
               <div className={s.historyRightBox}>

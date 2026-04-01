@@ -1,11 +1,13 @@
-// Archivo: src/hooks/useEstimacionesTab.js
+// Archivo: src/modules/Admin/Tabs/Proyeccion/useEstimacionesTab.js
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { estimacionesService } from '../services/Estimaciones.service';
-import { hasPermission } from '../utils/checkPermiso'; // 🛡️ Blindaje de seguridad
+import { estimacionesService } from './Estimaciones.service';
+import { hasPermission } from '../../../../utils/checkPermiso'; // 🛡️ Blindaje de seguridad
 
-export const useEstimacionesTab = (sucursalId) => { // 👈 Agregamos sucursalId como parámetro
+export const useEstimacionesTab = (sucursalId) => { 
   const [sugerencias, setSugerencias] = useState([]);
   const [proveedores, setProveedores] = useState([]);
+  const [historialConsumo, setHistorialConsumo] = useState([]); 
+  const [proyeccionProductos, setProyeccionProductos] = useState([]); // 👈 NUEVO: Estado para platillos/sandwiches
   const [loading, setLoading] = useState(false);
   const [filtroProveedor, setFiltroProveedor] = useState('todos');
   const [compradosIds, setCompradosIds] = useState([]);
@@ -21,20 +23,23 @@ export const useEstimacionesTab = (sucursalId) => { // 👈 Agregamos sucursalId
 
     setLoading(true);
 
-    // 🛡️ Solo solicitamos datos de los módulos a los que el usuario tiene acceso
-    const [resS, resP] = await Promise.all([
-      puedeVerInventario ? estimacionesService.getSugerenciasCompra(sucursalId) : { success: true, data: [] }, // 👈 Pasamos el sucursalId
-      puedeVerProveedores ? estimacionesService.getProveedoresActivos() : { success: true, data: [] }
+    // 🛡️ Solicitamos todos los datos necesarios en paralelo para optimizar velocidad
+    const [resS, resP, resH, resPP] = await Promise.all([
+      puedeVerInventario ? estimacionesService.getSugerenciasCompra(sucursalId) : { success: true, data: [] },
+      puedeVerProveedores ? estimacionesService.getProveedoresActivos() : { success: true, data: [] },
+      puedeVerInventario ? estimacionesService.getHistorialConsumo(sucursalId) : { success: true, data: [] },
+      puedeVerInventario ? estimacionesService.getProyeccionProductos(sucursalId) : { success: true, data: [] } // 👈 Nueva carga de platillos
     ]);
 
     if (resS.success) setSugerencias(resS.data || []);
     if (resP.success) setProveedores(resP.data || []);
+    if (resH.success) setHistorialConsumo(resH.data || []);
+    if (resPP.success) setProyeccionProductos(resPP.data || []); // 👈 Guardamos la proyección de platillos
     
     setLoading(false);
-  }, [puedeVerInventario, puedeVerProveedores, sucursalId]); // 👈 Añadimos sucursalId a las dependencias
+  }, [puedeVerInventario, puedeVerProveedores, sucursalId]); 
 
   const sugerenciasFiltradas = useMemo(() => {
-    // 🛡️ Blindaje de salida: Si no puede ver inventario, retornamos vacío
     if (!puedeVerInventario) return [];
     
     return sugerencias.filter(item => 
@@ -43,7 +48,6 @@ export const useEstimacionesTab = (sucursalId) => { // 👈 Agregamos sucursalId
   }, [sugerencias, filtroProveedor, puedeVerInventario]);
 
   const presupuestoTotal = useMemo(() => {
-    // 🛡️ Si no puede ver inventario, el presupuesto es 0 por seguridad
     if (!puedeVerInventario) return 0;
 
     return sugerenciasFiltradas
@@ -51,24 +55,21 @@ export const useEstimacionesTab = (sucursalId) => { // 👈 Agregamos sucursalId
       .reduce((total, item) => total + (parseFloat(item.presupuesto_estimado) || 0), 0);
   }, [sugerenciasFiltradas, compradosIds, puedeVerInventario]);
 
-  const guardarPolitica = async (id, cob, seg) => {
-    // 🛡️ BLINDAJE: Bloqueo de acción de edición
+  const guardarPolitica = async (id, politicaData) => {
     if (!puedeEditarInventario) {
       return { success: false, error: "No tienes facultades para modificar políticas de compra." };
     }
     
-    const res = await estimacionesService.actualizarPoliticaCompra(id, cob, seg);
+    const res = await estimacionesService.actualizarPoliticaCompra(id, politicaData);
     if (res.success) await cargarDatos();
     return res;
   };
 
   const confirmarCompra = async (insumo, usuarioId) => {
-    // 🛡️ BLINDAJE: Bloqueo de acción de registro
     if (!puedeEditarInventario) {
       return { success: false, error: "Acceso denegado: No puedes registrar compras." };
     }
 
-    // 💡 Pasamos el sucursalId del contexto activo en lugar de recibirlo como parámetro
     const res = await estimacionesService.registrarCompraRealizada(
       insumo.insumo_id, insumo.cajas_a_pedir, insumo.presupuesto_estimado, usuarioId, sucursalId
     );
@@ -81,12 +82,14 @@ export const useEstimacionesTab = (sucursalId) => { // 👈 Agregamos sucursalId
 
   useEffect(() => { 
     cargarDatos(); 
-  }, [cargarDatos]); // Como cargarDatos ahora depende de sucursalId, esto se recargará al cambiar de sucursal
+  }, [cargarDatos]); 
 
   return {
-    // 🛡️ Datos blindados
+    // 🛡️ Datos
     sugerenciasFiltradas, 
     proveedores: puedeVerProveedores ? proveedores : [],
+    historialConsumo,
+    proyeccionProductos, // 👈 Exportamos la proyección de platillos para la UI
     presupuestoTotal,
     
     // Estados y setters
@@ -100,7 +103,7 @@ export const useEstimacionesTab = (sucursalId) => { // 👈 Agregamos sucursalId
     guardarPolitica,
     confirmarCompra,
 
-    // 🛡️ Banderas de seguridad para la UI
+    // 🛡️ Banderas de seguridad
     puedeVerInventario,
     puedeVerProveedores,
     puedeEditarInventario

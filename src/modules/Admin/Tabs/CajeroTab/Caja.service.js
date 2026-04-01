@@ -114,9 +114,13 @@ export const CajaService = {
   getMovimientosSesion: async (turnoId) => {
     if (!hasPermission('ver_ventas')) return { data: [], error: null };
 
+    // 💡 AHORA TRAE EL NOMBRE DEL USUARIO DESDE LA BASE DE DATOS
     const { data, error } = await supabase
       .from('caja_movimientos')
-      .select('*')
+      .select(`
+        *,
+        usuarios_internos!caja_movimientos_usuario_id_fkey(nombre)
+      `)
       .eq('turno_id', turnoId)
       .order('created_at', { ascending: false });
     return { data, error };
@@ -146,9 +150,13 @@ export const CajaService = {
   getHistorialSesiones: async (sucursalId, limit = 20) => {
     if (!hasPermission('ver_ventas')) return { data: [], error: null };
 
+    // 💡 AHORA TRAE EL NOMBRE DEL CAJERO QUE ABRIÓ/CERRÓ LA CAJA
     let query = supabase
       .from('cajas_sesiones')
-      .select('*')
+      .select(`
+        *,
+        usuarios_internos!turnos_usuario_id_fkey(nombre)
+      `)
       .not('fecha_cierre', 'is', null)
       .order('fecha_apertura', { ascending: false })
       .limit(limit);
