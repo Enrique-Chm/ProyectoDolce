@@ -1,16 +1,19 @@
 // Archivo: src/modules/Admin/Tabs/Proyeccion/useEstimacionesTab.js
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { estimacionesService } from './Estimaciones.service';
-import { hasPermission } from '../../../../utils/checkPermiso'; // 🛡️ Blindaje de seguridad
+import { hasPermission } from '../../../../utils/checkPermiso'; 
 
 export const useEstimacionesTab = (sucursalId) => { 
   const [sugerencias, setSugerencias] = useState([]);
   const [proveedores, setProveedores] = useState([]);
   const [historialConsumo, setHistorialConsumo] = useState([]); 
-  const [proyeccionProductos, setProyeccionProductos] = useState([]); // 👈 NUEVO: Estado para platillos/sandwiches
+  const [proyeccionProductos, setProyeccionProductos] = useState([]); 
   const [loading, setLoading] = useState(false);
   const [filtroProveedor, setFiltroProveedor] = useState('todos');
   const [compradosIds, setCompradosIds] = useState([]);
+  
+  // 🚀 ESTO ES LO QUE FALTABA: Estado para controlar los días históricos
+  const [diasHistoricos, setDiasHistoricos] = useState(15); 
 
   // 🛡️ DEFINICIÓN DE FACULTADES (RBAC)
   const puedeVerInventario = hasPermission('ver_inventario');
@@ -23,21 +26,21 @@ export const useEstimacionesTab = (sucursalId) => {
 
     setLoading(true);
 
-    // 🛡️ Solicitamos todos los datos necesarios en paralelo para optimizar velocidad
+    // 🛡️ Solicitamos todos los datos necesarios en paralelo y le pasamos los diasHistoricos
     const [resS, resP, resH, resPP] = await Promise.all([
       puedeVerInventario ? estimacionesService.getSugerenciasCompra(sucursalId) : { success: true, data: [] },
       puedeVerProveedores ? estimacionesService.getProveedoresActivos() : { success: true, data: [] },
-      puedeVerInventario ? estimacionesService.getHistorialConsumo(sucursalId) : { success: true, data: [] },
-      puedeVerInventario ? estimacionesService.getProyeccionProductos(sucursalId) : { success: true, data: [] } // 👈 Nueva carga de platillos
+      puedeVerInventario ? estimacionesService.getHistorialConsumo(sucursalId, diasHistoricos) : { success: true, data: [] },
+      puedeVerInventario ? estimacionesService.getProyeccionProductos(sucursalId, diasHistoricos) : { success: true, data: [] } 
     ]);
 
     if (resS.success) setSugerencias(resS.data || []);
     if (resP.success) setProveedores(resP.data || []);
     if (resH.success) setHistorialConsumo(resH.data || []);
-    if (resPP.success) setProyeccionProductos(resPP.data || []); // 👈 Guardamos la proyección de platillos
+    if (resPP.success) setProyeccionProductos(resPP.data || []); 
     
     setLoading(false);
-  }, [puedeVerInventario, puedeVerProveedores, sucursalId]); 
+  }, [puedeVerInventario, puedeVerProveedores, sucursalId, diasHistoricos]);
 
   const sugerenciasFiltradas = useMemo(() => {
     if (!puedeVerInventario) return [];
@@ -89,7 +92,7 @@ export const useEstimacionesTab = (sucursalId) => {
     sugerenciasFiltradas, 
     proveedores: puedeVerProveedores ? proveedores : [],
     historialConsumo,
-    proyeccionProductos, // 👈 Exportamos la proyección de platillos para la UI
+    proyeccionProductos, 
     presupuestoTotal,
     
     // Estados y setters
@@ -97,6 +100,10 @@ export const useEstimacionesTab = (sucursalId) => {
     setFiltroProveedor,
     loading, 
     compradosIds,
+    
+    // 🚀 AQUÍ SE EXPORTA PARA QUE LA VISTA LO PUEDA USAR
+    diasHistoricos, 
+    setDiasHistoricos, 
     
     // Acciones
     recargarDatos: cargarDatos, 

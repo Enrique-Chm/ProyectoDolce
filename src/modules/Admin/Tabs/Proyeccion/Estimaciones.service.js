@@ -5,7 +5,9 @@ import { hasPermission } from '../../../../utils/checkPermiso'; // 🛡️ Impor
 export const estimacionesService = {
   /**
    * Obtiene sugerencias de compra basadas en la vista de proyección.
-   * (Esta vista ahora debe ser alimentada por la lógica de Ventas + Recetas en SQL)
+   * 🚀 ACTUALIZADO: Se cruza la información con `lista_insumo` y `cat_unidades_medida`
+   * para asegurar que el modelo, la unidad de medida en texto y las cantidades exactas 
+   * lleguen correctamente a la interfaz.
    */
   async getSugerenciasCompra(sucursalId) {
     try {
@@ -13,20 +15,68 @@ export const estimacionesService = {
         return { success: false, error: 'No tienes permisos para ver proyecciones de compra.' };
       }
 
-      const { data, error } = await supabase
+      // 1. Obtener los datos base de la vista SQL
+      const { data: viewData, error: viewError } = await supabase
         .from('vista_proyeccion_compras') 
         .select('*')
         .eq('sucursal_id', sucursalId); 
 
-      if (error) throw error;
-      return { success: true, data };
+      if (viewError) throw viewError;
+
+      // 2. Extraer los IDs de los insumos para hacer una consulta secundaria optimizada
+      const insumoIds = viewData.map(v => v.insumo_id);
+
+      // 3. Traer el modelo, el contenido neto y el nombre de la unidad de medida
+      let insumosData = [];
+      if (insumoIds.length > 0) {
+        const { data: insumosExtra, error: insumosError } = await supabase
+          .from('lista_insumo')
+          .select(`
+            id,
+            modelo,
+            contenido_neto,
+            cat_unidades_medida (
+              abreviatura
+            )
+          `)
+          .in('id', insumoIds);
+          
+        if (!insumosError && insumosExtra) {
+          insumosData = insumosExtra;
+        }
+      }
+
+      // 4. Combinar (Merge) la vista con los datos extraídos
+      const mergedData = viewData.map(v => {
+        // Buscamos la info extra del insumo actual
+        const infoExtra = insumosData.find(i => i.id === v.insumo_id) || {};
+        const unidadAbreviatura = infoExtra.cat_unidades_medida?.abreviatura || 'Uds';
+        
+        // Calculamos la cantidad sugerida exacta (si la vista solo trae cajas)
+        let cantSugerida = v.cantidad_sugerida;
+        if (cantSugerida === undefined || cantSugerida === null) {
+          const cajas = parseFloat(v.cajas_a_pedir || 0);
+          const contenido = parseFloat(infoExtra.contenido_neto || 1);
+          cantSugerida = (cajas * contenido).toFixed(2);
+        }
+
+        return {
+          ...v,
+          // Agregamos o sobrescribimos los campos necesarios para la UI
+          modelo: v.modelo || infoExtra.modelo || '',
+          unidad_medida: v.unidad_medida || unidadAbreviatura,
+          cantidad_sugerida: parseFloat(cantSugerida)
+        };
+      });
+
+      return { success: true, data: mergedData };
     } catch (error) {
       return { success: false, error: error.message };
     }
   },
 
   /**
-   * 🚀 NUEVA FUNCIÓN: Obtiene el promedio de ventas de PLATILLOS de los últimos 15 días.
+   * Obtiene el promedio de ventas de PLATILLOS de los últimos 15 días.
    * Esto permite ver "cuántos sándwiches" se venden y proyectar el día de mañana.
    */
   async getProyeccionProductos(sucursalId) {

@@ -52,8 +52,15 @@ export const EstrategiaView = ({ estimates, s }) => {
   // --- FILTRADO DE DATOS ---
   const dataFiltrada = (viewMode === 'insumo' ? sugerenciasFiltradas : proyeccionProductos).filter(i => {
     const termino = filtroBuscar.toLowerCase();
-    const nombre = (i.insumo_nombre || i.nombre || "").toLowerCase();
-    return !filtroBuscar || nombre.includes(termino);
+    
+    // Se incluye el modelo en la búsqueda por si el usuario busca por modelo
+    const nombreInsumo = (i.insumo_nombre || "").toLowerCase();
+    const modeloInsumo = (i.modelo || "").toLowerCase();
+    const nombreProducto = (i.nombre || "").toLowerCase();
+    
+    const textoBusqueda = viewMode === 'insumo' ? `${nombreInsumo} ${modeloInsumo}` : nombreProducto;
+    
+    return !filtroBuscar || textoBusqueda.includes(termino);
   });
 
   // --- RENDERIZADO DE TABLAS ---
@@ -85,15 +92,17 @@ export const EstrategiaView = ({ estimates, s }) => {
 
       return (
         <tr key={item.insumo_id}>
-          {/* Columna Insumo */}
+          {/* Columna Insumo: Concatenado Nombre + Modelo */}
           <td className={s.td}>
-            <div style={{ fontWeight: '700' }}>{item.insumo_nombre}</div>
-            <div style={{ fontSize: '11px', color: '#666' }}>{item.nombre_empresa}</div>
+            <div className={ s.productTitle}>
+              {item.insumo_nombre} {item.modelo ? `- ${item.modelo}` : ''}
+            </div>
+            <div className={ s.productTitle}>{item.nombre_empresa}</div>
           </td>
 
-          {/* Columna Consumo */}
+          {/* Columna Consumo: Se especifica la unidad de medida */}
           <td className={s.td}>
-            {item.consumo_diario_real} <small>{item.unidad_medida}</small>
+            {item.consumo_diario_real} <small className={s.productTitle}> {item.unidad_medida} </small>
           </td>
 
           {/* Columna Política (Con Inputs en Modo Edición) */}
@@ -137,25 +146,27 @@ export const EstrategiaView = ({ estimates, s }) => {
             )}
           </td>
 
-          {/* Columna Stock Actual */}
+          {/* Columna Stock Actual: Se especifica la unidad de medida */}
           <td className={s.td}>
             <span style={{ color: item.stock_fisico_hoy <= 0 ? 'var(--color-danger, red)' : 'inherit', fontWeight: item.stock_fisico_hoy <= 0 ? '700' : 'normal' }}>
               {parseFloat(item.stock_fisico_hoy).toFixed(1)}
             </span>
-            <small> {item.unidad_medida}</small>
+            <small className={s.productTitle}> {item.unidad_medida}</small>
           </td>
 
-          {/* Columna Sugerido */}
+          {/* Columna Sugerido: Prioriza la unidad de medida en base y deja empaques como secundario */}
           <td className={s.td}>
-            <div style={{ fontWeight: '700', color: item.cajas_a_pedir > 0 ? 'var(--color-success)' : '#999' }}>
-              {item.cajas_a_pedir} <small>cajas</small>
+            <div className={s.productTitle} style={{ color: item.cantidad_sugerida > 0 ? 'var(--color-success)' : '#000000' }}>
+              {item.cantidad_sugerida} <small>{item.unidad_medida}</small>
             </div>
-            <div style={{ fontSize: '11px', color: '#666' }}>
-              ({item.cantidad_sugerida} {item.unidad_medida})
-            </div>
+            {item.cajas_a_pedir > 0 && (
+              <div className={s.textMuted} style={{ fontSize: '11px' }}>
+                (Compra {item.cajas_a_pedir})
+              </div>
+            )}
           </td>
 
-          {/* COLUMNA ACCIÓN (Corregida y Mejorada con Cancelar) */}
+          {/* COLUMNA ACCIÓN */}
           <td className={s.td} style={{ textAlign: 'center' }}>
             {puedeEditar && (
               isEditing ? (
@@ -243,7 +254,7 @@ export const EstrategiaView = ({ estimates, s }) => {
           <input 
             type="text" 
             className={s.inputField} 
-            placeholder={`Buscar ${viewMode === 'insumo' ? 'insumo' : 'platillo'} por nombre...`}
+            placeholder={`Buscar ${viewMode === 'insumo' ? 'insumo o modelo' : 'platillo'}...`}
             value={filtroBuscar} 
             onChange={(e) => setFiltroBuscar(e.target.value)} 
             style={{ flex: 2 }} 
