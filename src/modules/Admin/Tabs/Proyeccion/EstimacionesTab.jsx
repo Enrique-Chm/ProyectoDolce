@@ -10,16 +10,16 @@ export const EstimacionesTab = ({ sucursalId, usuarioId }) => {
   const [activeSubTab, setActiveSubTab] = useState('config');
   const estimates = useEstimacionesTab(sucursalId);
 
-  // --- RENDERIZADO: ESTADO DE CARGA INICIAL ---
+  // --- RENDERIZADO: ESTADO DE CARGA INICIAL (Motor de Demanda JIT) ---
   if (estimates.loading && (!estimates.sugerenciasFiltradas || estimates.sugerenciasFiltradas.length === 0)) {
     return (
       <div className={s.tabWrapper}>
         <header className={s.pageHeader}>
-          <h2 className={s.pageTitle}>Proyección de Compras Inteligente</h2>
-          <span className={s.syncBadge}>CARGANDO...</span>
+          <h2 className={s.pageTitle}>Abastecimiento por Demanda Proyectada</h2>
+          <span className={s.syncBadge}>CALCULANDO...</span>
         </header>
         <div className={s.emptyState}>
-          Analizando demanda y calculando inteligencia de compras...
+          Realizando explosión de recetas y analizando demanda proyectada para mañana...
         </div>
       </div>
     );
@@ -29,15 +29,21 @@ export const EstimacionesTab = ({ sucursalId, usuarioId }) => {
   const renderSubTabContent = () => {
     switch (activeSubTab) {
       case 'config':
+        // Vista de Estrategia JIT: Insumo vs Requerimiento de Receta
         return <EstrategiaView estimates={estimates} s={s} />;
       case 'compras':
+        // Lista de Mandado: Generada a partir de Faltantes de Demanda
         return <MandadoView estimates={estimates} s={s} usuarioId={usuarioId} />;
       case 'historial':
+        // Centro de Planeación de Ventas: Gestión de Pronósticos y Reset a Smart Estimate
         return (
           <HistorialConsumoView 
-            historialConsumo={estimates.historialConsumo} 
             proyeccionProductos={estimates.proyeccionProductos} 
+            pronosticoSemanal={estimates.pronosticoSemanal}
+            estimacionesManuales={estimates.estimacionesManuales} 
+            guardarEstimacionManual={estimates.guardarEstimacionManual} 
             loading={estimates.loading} 
+            diaProyectado={estimates.diaProyectado} 
           />
         );
       default:
@@ -51,17 +57,17 @@ export const EstimacionesTab = ({ sucursalId, usuarioId }) => {
       
       {/* Cabecera Principal */}
       <header className={s.pageHeader}>
-        <h2 className={s.pageTitle}>Proyección de Compras Inteligente</h2>
-        {estimates.loading && <span className={s.syncBadge}>ACTUALIZANDO...</span>}
+        <h2 className={s.pageTitle}>Proyección de Compras Inteligente (JIT)</h2>
+        {estimates.loading && <span className={s.syncBadge}>ACTUALIZANDO DEMANDA...</span>}
       </header>
 
-      {/* Navegación de Sub-pestañas */}
+      {/* Navegación de Sub-pestañas: Control de Abastecimiento Just-in-Time */}
       <nav className={s.tabNav}>
         <button 
           className={`${s.tabButton} ${activeSubTab === 'config' ? s.activeTabButton : ''}`} 
           onClick={() => setActiveSubTab('config')}
         >
-          ESTRATEGIA DE STOCK
+          ESTRATEGIA DE ABASTO
         </button>
         <button 
           className={`${s.tabButton} ${activeSubTab === 'compras' ? s.activeTabButton : ''}`} 
@@ -73,11 +79,11 @@ export const EstimacionesTab = ({ sucursalId, usuarioId }) => {
           className={`${s.tabButton} ${activeSubTab === 'historial' ? s.activeTabButton : ''}`} 
           onClick={() => setActiveSubTab('historial')}
         >
-          FUENTE DE DATOS
+          PLANEACIÓN DE VENTAS
         </button>
       </nav>
 
-      {/* Contenedor del Módulo Activo */}
+      {/* Contenedor del Módulo Activo: Inyecta la lógica de Demanda Proyectada vs Stock Físico */}
       <div className={s.fullLayout}>
         {renderSubTabContent()}
       </div>

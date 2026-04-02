@@ -2,12 +2,13 @@
 import React, { useState, useMemo } from 'react';
 
 export const MandadoView = ({ estimates, s, usuarioId }) => {
-  const { sugerenciasFiltradas, compradosIds, confirmarCompra, puedeEditar } = estimates;
+  const { sugerenciasFiltradas, compradosIds, confirmarCompra, puedeEditarInventario } = estimates;
   const [filtro, setFiltro] = useState("");
 
   // --- FILTRADO DE LA LISTA DE MANDADO ---
   const lista = useMemo(() => sugerenciasFiltradas.filter(item => {
     // 1. Debe necesitar compras y no estar ya comprado
+    // Con el nuevo motor JIT, cajas_a_pedir es > 0 solo si el stock no cubre la demanda de mañana
     if (item.cajas_a_pedir <= 0 || compradosIds.includes(item.insumo_id)) return false;
     
     // 2. Filtro por texto (Nombre o Modelo)
@@ -28,10 +29,10 @@ export const MandadoView = ({ estimates, s, usuarioId }) => {
       <section className={s.pageHeader} style={{ marginBottom: '20px' }}>
         <div>
           <h2 className={s.pageTitle} style={{ fontSize: '1.2rem' }}>Lista de Mandado</h2>
-          <span className={s.textSubDetail}>Insumos que alcanzaron su punto de reorden.</span>
+          <span className={s.textSubDetail}>Insumos necesarios para cubrir la venta proyectada de mañana.</span>
         </div>
-        <div className={s.badge} style={{ fontSize: '12px', padding: '6px 12px' }}>
-          🛒 {lista.length} Pendientes
+        <div className={s.badge} style={{ fontSize: '12px', padding: '6px 12px', backgroundColor: 'var(--color-primary)', color: 'white' }}>
+          🛒 {lista.length} Pendientes para Mañana
         </div>
       </section>
 
@@ -52,8 +53,8 @@ export const MandadoView = ({ estimates, s, usuarioId }) => {
           <div style={{ gridColumn: '1/-1' }} className={s.adminCard}>
             <div className={s.emptyState}>
               <div style={{ fontSize: '2rem', marginBottom: '10px' }}>🎉</div>
-              <h3 style={{ margin: '0 0 5px 0', color: 'var(--color-text-main)' }}>¡Todo al día!</h3>
-              <p style={{ margin: 0 }}>No hay compras pendientes para la búsqueda actual.</p>
+              <h3 style={{ margin: '0 0 5px 0', color: 'var(--color-text-main)' }}>¡Abastecimiento Completo!</h3>
+              <p style={{ margin: 0 }}>Tu stock actual cubre perfectamente la demanda proyectada para mañana.</p>
             </div>
           </div>
         ) : (
@@ -68,7 +69,7 @@ export const MandadoView = ({ estimates, s, usuarioId }) => {
                 gap: '15px',
                 padding: '20px',
                 margin: 0,
-                borderTop: '4px solid var(--color-primary)' // Acento visual
+                borderTop: '4px solid var(--color-primary)' 
               }}
             >
               {/* Cabecera de la Tarjeta (Insumo, Modelo y Proveedor) */}
@@ -76,31 +77,36 @@ export const MandadoView = ({ estimates, s, usuarioId }) => {
                 <div className={s.productTitle} style={{ fontSize: '1.1rem', marginBottom: '4px' }}>
                   {ins.insumo_nombre} {ins.modelo ? <span style={{ color: 'var(--color-primary)' }}>- {ins.modelo}</span> : ''}
                 </div>
-                <div className={s.textMuted} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  🏢 {ins.proveedor_nombre || 'Sin proveedor asignado'}
+                <div className={s.textMuted} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px' }}>
+                   {ins.proveedor_nombre || 'Sin proveedor asignado'}
                 </div>
               </div>
 
-              {/* Cuerpo de la Tarjeta (Datos de la compra) */}
+              {/* Cuerpo de la Tarjeta (Datos de la demanda vs stock) */}
               <div style={{ backgroundColor: 'var(--color-bg-app)', padding: '12px', borderRadius: '8px' }}>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span className={s.productTitle} style={{ margin: 0 }}>Se necesitan comprar:</span>
-                  <span className={s.productTitle}>
-                     {ins.cajas_a_pedir} Unidades
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                  <span className={s.textMuted} style={{ fontSize: '12px' }}>Faltante neto:</span>
+                  <span style={{ fontWeight: '700', fontSize: '13px' }}>
+                    {ins.cantidad_sugerida} {ins.unidad_medida}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #eee', paddingTop: '5px' }}>
+                  <span className={s.productTitle} style={{ margin: 0, fontSize: '14px' }}>Comprar:</span>
+                  <span className={s.productTitle} style={{ color: 'var(--color-primary)', fontSize: '14px' }}>
+                     {ins.cajas_a_pedir} {ins.cajas_a_pedir === 1 ? 'Unidad/Caja' : 'Unidades/Cajas'}
                   </span>
                 </div>
               </div>
 
               {/* Acción (Botón de Compra) */}
               <div style={{ marginTop: '5px' }}>
-                {puedeEditar ? (
+                {puedeEditarInventario ? (
                   <button 
                     className={`${s.btn} ${s.btnSuccess} ${s.btnFull}`} 
                     onClick={() => confirmarCompra(ins, usuarioId)}
-                    style={{ display: 'flex', justifyContent: 'center', gap: '8px', padding: '14px' }}
+                    style={{ display: 'flex', justifyContent: 'center', gap: '8px', padding: '14px', fontWeight: '700' }}
                   >
-                    <span>✅</span> RECIBIR {ins.cajas_a_pedir} CAJAS
+                    <span></span> Confirmar Recepción
                   </button>
                 ) : (
                   <div 
