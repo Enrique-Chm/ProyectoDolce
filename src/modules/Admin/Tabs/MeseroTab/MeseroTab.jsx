@@ -30,6 +30,10 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
     carrito,
     loading,
 
+    // 🚀 NUEVOS ESTADOS PARA EL MULTIPLICADOR RÁPIDO
+    cantidadRapida,
+    setCantidadRapida,
+
     // Estados y funciones del Modal de Extras
     mostrarModalExtras,
     productoParaExtras,
@@ -89,6 +93,8 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
           puedeVerHistorial={puedeVerHistorial}
           usuarioIdLogueado={usuarioId} /* 👈 NUEVO: Le pasamos el ID del usuario logueado para el Bloqueo de Mesas */
           abrirMenuMesaNueva={abrirMenuMesaNueva} /* 👈 NUEVO: Le pasamos la función para validar la base de datos antes de entrar al menú */
+          pedirCuenta={pedirCuenta} /* 🚀 NUEVO: Pasamos la función para pedir cuenta desde el mapa */
+          puedePedirCuenta={puedePedirCuenta} /* 🚀 NUEVO: Pasamos el permiso */
         />
       )}
 
@@ -110,6 +116,9 @@ export const MeseroTab = ({ sucursalId, usuarioId }) => {
           loading={loading}
           pedirCuenta={pedirCuenta}
           puedePedirCuenta={puedePedirCuenta}
+          // 🚀 PASAMOS EL MULTIPLICADOR A LA VISTA DEL MENÚ
+          cantidadRapida={cantidadRapida}
+          setCantidadRapida={setCantidadRapida}
         />
       )}
 

@@ -1,3 +1,4 @@
+// Archivo: src/modules/Admin/Tabs/MeseroTab/MenuCarritoView.jsx
 import React, { useState } from "react";
 import s from "../../../../assets/styles/ServicioTab.module.css";
 import stylesAdmin from "../../../../assets/styles/EstilosGenerales.module.css";
@@ -17,10 +18,13 @@ export const MenuCarritoView = ({
   handleEnviarOrden,
   loading,
   pedirCuenta,
-  puedePedirCuenta
+  puedePedirCuenta,
+  // 🚀 NUEVAS PROPS PARA EL MULTIPLICADOR
+  cantidadRapida,
+  setCantidadRapida
 }) => {
   const [isCartExpanded, setIsCartExpanded] = useState(false);
-  const [searchTerm, setSearchTerm] = useState(""); // 🚀 NUEVO ESTADO PARA LA BÚSQUEDA
+  const [searchTerm, setSearchTerm] = useState("");
 
   return (
     <div className={s.posGrid}>
@@ -35,7 +39,7 @@ export const MenuCarritoView = ({
               ← VOLVER
             </button>
             
-            {/* 🔍 NUEVO BUSCADOR */}
+            {/* 🔍 BUSCADOR */}
             <input 
               type="text"
               placeholder=" Buscar producto..."
@@ -57,17 +61,58 @@ export const MenuCarritoView = ({
           </div>
         </div>
 
+        {/* 🧮 SELECTOR DE CANTIDAD RÁPIDA (NUEVA SECCIÓN) */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          padding: "10px",
+          background: "var(--color-bg-alt, #f8f9fa)",
+          borderRadius: "var(--radius-button)",
+          marginTop: "10px",
+          border: "1px solid var(--color-border)",
+          boxShadow: "inset 0 2px 4px rgba(0,0,0,0.05)"
+        }}>
+          <div style={{ display: "flex", flexDirection: "column", marginRight: "10px" }}>
+            <span style={{ fontSize: "10px", fontWeight: "bold", color: "var(--color-text-muted)" }}>CANTIDAD</span>
+            <span style={{ fontSize: "18px", fontWeight: "900", color: "var(--color-primary)", textAlign: "center" }}>{cantidadRapida}x</span>
+          </div>
+          
+          <div style={{ display: "flex", gap: "5px", flex: 1 }}>
+            {[1, 2, 3, 4, 5, 10].map((num) => (
+              <button
+                key={num}
+                onClick={() => setCantidadRapida(num)}
+                style={{
+                  flex: 1,
+                  padding: "10px 0",
+                  border: "2px solid",
+                  borderColor: cantidadRapida === num ? "var(--color-primary)" : "var(--color-border)",
+                  background: cantidadRapida === num ? "var(--color-primary)" : "white",
+                  color: cantidadRapida === num ? "white" : "var(--color-text-main)",
+                  borderRadius: "8px",
+                  fontWeight: "800",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  fontSize: "14px"
+                }}
+              >
+                {num}
+              </button>
+            ))}
+
+          </div>
+        </div>
+
         {/* LISTA DE PRODUCTOS OPTIMIZADA Y FILTRADA */}
         <div style={{ display: "flex", flexDirection: "column", gap: "15px", marginTop: "10px" }}>
           {categorias.map((cat) => {
-            // 🚀 FILTRAMOS LOS PRODUCTOS POR CATEGORÍA Y POR EL TÉRMINO DE BÚSQUEDA
             const productosCat = productos.filter(p => {
               const coincideCategoria = p.categoria === cat.id;
               const coincideBusqueda = p.nombre.toLowerCase().includes(searchTerm.toLowerCase());
               return coincideCategoria && coincideBusqueda;
             });
 
-            // Si no hay productos que coincidan en esta categoría, no la mostramos
             if (productosCat.length === 0) return null;
 
             return (
@@ -132,7 +177,6 @@ export const MenuCarritoView = ({
                     </span>
                     <span style={{ fontWeight: 700 }}>${parseFloat(det.subtotal).toFixed(2)}</span>
                     </div>
-                    {/* Renderizar extras históricos si existen en el JSON */}
                     {det.extras_seleccionados && det.extras_seleccionados.length > 0 && (
                         <div style={{ paddingLeft: "25px", fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
                             {det.extras_seleccionados.map((ext, eidx) => (
@@ -153,7 +197,6 @@ export const MenuCarritoView = ({
                     <strong className={s.cartItemName}>
                     <span className={s.cartItemQty}>{item.cantidad}x</span> {item.nombre}
                     </strong>
-                    {/* Renderizar lista de extras seleccionados */}
                     {item.extras_seleccionados && item.extras_seleccionados.length > 0 && (
                         <div style={{ fontSize: "0.75rem", color: "var(--color-secondary)", marginTop: "2px", fontWeight: "600" }}>
                             {item.extras_seleccionados.map((ext, idx) => (

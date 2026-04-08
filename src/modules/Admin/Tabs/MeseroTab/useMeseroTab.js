@@ -28,6 +28,9 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   const [carrito, setCarrito] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // 🚀 NUEVO: Multiplicador de cantidad rápida (Calculadora)
+  const [cantidadRapida, setCantidadRapida] = useState(1);
+
   // ESTADOS PARA EL MODAL DE EXTRAS
   const [mostrarModalExtras, setMostrarModalExtras] = useState(false);
   const [productoParaExtras, setProductoParaExtras] = useState(null);
@@ -52,6 +55,7 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
     setView('cuentas');
     setMostrarModalExtras(false);
     setProductoParaExtras(null);
+    setCantidadRapida(1); 
   }, []);
 
   /**
@@ -86,7 +90,6 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
     try {
       const { data, error } = await MeseroService.getZonasYMesas(Number(sucursalId));
       if (error) throw error;
-      // 'data' ahora contiene grid_size por zona gracias al servicio actualizado
       setZonasMesas(data || []);
     } catch (err) {
       console.error("Error al cargar zonas:", err);
@@ -200,8 +203,8 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
 
       if (ocupada) {
         alert(`⛔ ¡MESA GANADA!\nEsta mesa acaba de ser abierta por ${cuenta?.usuarios_internos?.nombre || 'otro mesero'} hace unos instantes.\nEl mapa se actualizará ahora.`);
-        cargarCuentas(); // Actualizamos las mesas para que aparezca bloqueada de color rojo
-        return; // Detenemos el paso hacia el menú para evitar el conflicto
+        cargarCuentas(); 
+        return; 
       }
     }
 
@@ -213,15 +216,11 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
 
   /**
    * 🔒 LÓGICA DE BLOQUEO DE MESA (TABLE OWNERSHIP)
-   * Verifica si el mesero actual tiene permisos para abrir la cuenta existente.
    */
   const validarPropiedadDeMesa = (cuentaExistente) => {
-    if (!cuentaExistente) return true; // Si es una mesa nueva, cualquiera la abre
+    if (!cuentaExistente) return true; 
 
-    // Verifica si el ID del usuario actual coincide con el que abrió la cuenta
     const esMiMesa = cuentaExistente.usuario_id === Number(usuarioId);
-    
-    // Si tienes permisos de borrar (o puedes adaptarlo al permiso de "Gerente"), puedes abrir la de todos
     const esAdmin = hasPermission('borrar_comandas'); 
 
     if (!esMiMesa && !esAdmin) {
@@ -238,7 +237,6 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   const seleccionarCuenta = async (venta = null) => {
     if (!puedeVerVentas) return;
     
-    // 🔒 Validación de propiedad antes de continuar
     if (!validarPropiedadDeMesa(venta)) return;
 
     const ok = await verificarCajaAntesDeAccion();
@@ -272,7 +270,7 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
     setCarrito(prev => {
       const existe = prev.find(item => item.id === p.id && (!item.extras_seleccionados || item.extras_seleccionados.length === 0));
       if (existe) {
-        return prev.map(item => item.cartItemId === existe.cartItemId ? { ...item, cantidad: item.cantidad + 1 } : item);
+        return prev.map(item => item.cartItemId === existe.cartItemId ? { ...item, cantidad: item.cantidad + cantidadRapida } : item);
       }
       return [...prev, { 
         cartItemId: Date.now().toString() + Math.random().toString(), 
@@ -281,11 +279,13 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
         precio_venta: p.precio_venta, 
         precio_calculado: p.precio_venta, 
         costo_actual: p.costo_actual || 0, 
-        cantidad: 1, 
+        cantidad: cantidadRapida,
         notas: '',
         extras_seleccionados: []
       }];
     });
+
+    setCantidadRapida(1);
   };
 
   /**
@@ -302,18 +302,20 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
       precio_venta: producto.precio_venta,
       precio_calculado: precioTotalCalculado,
       costo_actual: producto.costo_actual || 0,
-      cantidad: 1, 
+      cantidad: cantidadRapida, 
       notas: '',
       extras_seleccionados: extrasSeleccionados
     }]);
 
     setMostrarModalExtras(false);
     setProductoParaExtras(null);
+    setCantidadRapida(1); 
   };
 
   const cerrarModalExtras = () => {
     setMostrarModalExtras(false);
     setProductoParaExtras(null);
+    setCantidadRapida(1);
   };
 
   const eliminarDelCarrito = (cartItemId) => {
@@ -327,7 +329,7 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
   };
 
   /**
-   * 🚀 ENVÍO DE COMANDA (ACTUALIZADO PARA ATAJAR RACE CONDITIONS)
+   * 🚀 ENVÍO DE COMANDA (ACTUALIZADO PARA FORZAR RECARGA)
    */
   const handleEnviarOrden = async () => {
     if (!puedeCrearVentas) return alert("No tienes permisos para esta acción.");
@@ -352,9 +354,10 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
       if (res.success) {
         alert("✅ Orden enviada a cocina.");
         resetTodo();
+        cargarCuentas(); // 🚀 MAGIA AQUÍ: Forzamos recargar cuentas para pintar el mapa
       } else {
         alert("❌ Error al procesar: " + res.error);
-        cargarCuentas(); // 🚀 Recarga el plano en caso de que alguien más te haya ganado la mesa justo al mandar
+        cargarCuentas(); 
       }
     } catch (error) {
       alert("Error crítico de comunicación con el servidor.");
@@ -363,6 +366,9 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
     }
   };
 
+  /**
+   * 🚀 PEDIR CUENTA (ACTUALIZADO PARA FORZAR RECARGA)
+   */
   const pedirCuenta = async (ventaId) => {
     if (!puedeEditarVentas) return alert("Sin permisos.");
     setLoading(true);
@@ -371,6 +377,7 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
       if (res.success) {
         alert("🔔 Cuenta solicitada a caja.");
         resetTodo();
+        cargarCuentas(); // 🚀 MAGIA AQUÍ: Obliga a recargar las mesas en tiempo real y cambiar el color a amarillo
       } else {
         alert("Error al solicitar cuenta.");
       }
@@ -395,12 +402,13 @@ export const useMeseroTab = (sucursalId, usuarioId) => {
     productos, categorias,
     carrito, setCarrito,
     loading,
+    cantidadRapida, setCantidadRapida, 
     mostrarModalExtras,
     productoParaExtras,
     confirmarProductoConExtras,
     cerrarModalExtras,
     seleccionarCuenta, iniciarNuevaMesa,
-    abrirMenuMesaNueva, // 👈 Función exportada para el Mapa de Mesas
+    abrirMenuMesaNueva, 
     agregarAlCarrito, eliminarDelCarrito, actualizarNota,
     handleEnviarOrden, pedirCuenta, resetTodo,
     puedeVerVentas, puedeCrearVentas, puedeEditarVentas

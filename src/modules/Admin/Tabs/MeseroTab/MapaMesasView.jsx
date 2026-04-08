@@ -17,7 +17,9 @@ export const MapaMesasView = ({
   puedeTomarOrdenes,
   puedeVerHistorial,
   usuarioIdLogueado, // 🚀 Para el Table Ownership
-  abrirMenuMesaNueva // 🚀 NUEVO: Función interceptora desde el hook para validar Race Conditions
+  abrirMenuMesaNueva, // 🚀 Función interceptora desde el hook para validar Race Conditions
+  pedirCuenta,       // 🚀 NUEVO: Función para pedir la cuenta desde el mapa
+  puedePedirCuenta   // 🚀 NUEVO: Permiso para solicitar la cuenta
 }) => {
   const [activeZonaId, setActiveZonaId] = useState(null);
   const [mesaSeleccionada, setMesaSeleccionada] = useState(null);
@@ -117,7 +119,7 @@ export const MapaMesasView = ({
             
             {/* 🪟 VIEWPORT CON SCROLL */}
             <div style={{ 
-              flex: '2 1 500px', // 🚀 Aumentamos flex para que tome más espacio en desktop
+              flex: '2 1 500px', 
               minWidth: '300px',
               overflow: 'auto',
               border: '1px solid var(--color-border)',
@@ -236,7 +238,7 @@ export const MapaMesasView = ({
 
             {/* DERECHA: PANEL DE ACCIONES */}
             <aside className={stylesAdmin.adminCard} style={{ 
-              flex: '1 1 300px', // 🚀 Cambiado para que sea responsivo (ya no width 100% fijo)
+              flex: '1 1 300px',
               minWidth: '300px', 
               display: 'flex', 
               flexDirection: 'column' 
@@ -273,11 +275,34 @@ export const MapaMesasView = ({
                     )}
                   </div>
 
-                  <button className={`${stylesAdmin.btn} ${stylesAdmin.btnPrimary} ${stylesAdmin.btnFull}`}
-                    style={{ marginTop: '20px', padding: '15px', fontWeight: 'bold' }}
-                    onClick={() => seleccionarCuenta(cuentaDeMesaSeleccionada)}>
-                    VER COMANDA
-                  </button>
+                  {/* 🚀 NUEVO GRUPO DE BOTONES: VER COMANDA + PEDIR CUENTA */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "20px" }}>
+                    <button className={`${stylesAdmin.btn} ${stylesAdmin.btnPrimary} ${stylesAdmin.btnFull}`}
+                      style={{ padding: '15px', fontWeight: 'bold' }}
+                      onClick={() => seleccionarCuenta(cuentaDeMesaSeleccionada)}>
+                      VER COMANDA
+                    </button>
+
+                    <button
+                      className={stylesAdmin.btnFull}
+                      style={{ 
+                        background: cuentaDeMesaSeleccionada.estado === "por_cobrar" ? "var(--color-warning)" : "var(--color-text-main)",
+                        color: "white", padding: "15px", fontWeight: "800", border: "none", borderRadius: "var(--radius-button)", cursor: puedePedirCuenta ? "pointer" : "not-allowed",
+                        opacity: puedePedirCuenta ? 1 : 0.6
+                      }}
+                      onClick={() => {
+                        if (!puedePedirCuenta) return;
+                        if (window.confirm(cuentaDeMesaSeleccionada.estado === "por_cobrar" ? "¿Deseas reimprimir el ticket?" : "¿Solicitar la cuenta a caja?")) {
+                          pedirCuenta(cuentaDeMesaSeleccionada.id);
+                          // Opcional: Deseleccionar mesa para que actualice la vista
+                          setMesaSeleccionada(null);
+                        }
+                      }}
+                      disabled={!puedePedirCuenta}
+                    >
+                      {cuentaDeMesaSeleccionada.estado === "por_cobrar" ? "🖨️ TICKET SOLICITADO (REIMPRIMIR)" : "🧾 PEDIR CUENTA"}
+                    </button>
+                  </div>
                 </div>
               ) : (
                 /* PANEL ABRIR MESA */
