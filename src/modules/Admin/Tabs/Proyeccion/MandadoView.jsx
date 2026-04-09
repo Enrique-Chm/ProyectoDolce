@@ -23,14 +23,14 @@ export const MandadoView = ({ estimates, s, usuarioId }) => {
     ];
   }, [proveedores]);
 
-  // --- 🛠️ FILTRADO DE LA LISTA DE MANDADO (Sincronizado con SQL) ---
+  // --- 🛠️ FILTRADO DE LA LISTA DE MANDADO ---
   const lista = useMemo(() => {
     const base = Array.isArray(sugerenciasFiltradas) ? sugerenciasFiltradas : [];
     
     return base.filter(item => {
-      // 1. Validamos si hay algo que comprar (cantidad_sugerida > 0)
-      // Nota: cantidad_sugerida viene de 'cantidad_a_comprar' en el SQL
-      const necesitaCompra = parseFloat(item.cantidad_sugerida) > 0;
+      // 1. Validamos si hay CAJAS que comprar. 
+      // Ignoramos la cantidad fraccional y nos enfocamos en el empaque que vende el proveedor.
+      const necesitaCompra = parseInt(item.cajas_a_pedir) > 0;
       const yaComprado = compradosIds.includes(item.insumo_id);
 
       if (!necesitaCompra || yaComprado) return false;
@@ -47,16 +47,21 @@ export const MandadoView = ({ estimates, s, usuarioId }) => {
     });
   }, [sugerenciasFiltradas, compradosIds, filtro]);
 
+  // Formateador de moneda rápido
+  const formatMoney = (amount) => {
+    return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(amount);
+  };
+
   // --- RENDER PRINCIPAL ---
   return (
     <>
       <section className={s.pageHeader} style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h2 className={s.pageTitle} style={{ fontSize: '1.2rem', margin: 0 }}>Lista de Mandado</h2>
-          <span className={s.textSubDetail}>Insumos necesarios para cubrir la venta proyectada.</span>
+          <h2 className={s.pageTitle} style={{ fontSize: '1.2rem', margin: 0 }}>Lista de Mandado (Por Cajas/Empaques)</h2>
+          <span className={s.textSubDetail}>Cantidades redondeadas para comprar directamente al proveedor.</span>
         </div>
-        <div className={s.badge} style={{ fontSize: '12px', padding: '6px 12px', backgroundColor: 'var(--color-primary)', color: 'white', borderRadius: '20px' }}>
-           {lista.length} Pendientes
+        <div className={s.badge} style={{ fontSize: '12px', padding: '6px 12px', backgroundColor: 'var(--color-primary)', color: 'white', borderRadius: '20px', fontWeight: '800' }}>
+           {lista.length} Pedidos Pendientes
         </div>
       </section>
 
@@ -68,7 +73,7 @@ export const MandadoView = ({ estimates, s, usuarioId }) => {
           placeholder="Buscar insumo en la lista..." 
           value={filtro} 
           onChange={e => setFiltro(e.target.value)} 
-          style={{ flex: 2, minWidth: '200px' }}
+          style={{ flex: 2, minWidth: '200px', margin: 0 }}
         />
         
         <div style={{ flex: 1, minWidth: '200px', zIndex: 10 }}>
@@ -89,8 +94,8 @@ export const MandadoView = ({ estimates, s, usuarioId }) => {
           <div style={{ gridColumn: '1/-1' }} className={s.adminCard}>
             <div className={s.emptyState} style={{ textAlign: 'center', padding: '40px' }}>
               <div style={{ fontSize: '2.5rem', marginBottom: '10px' }}>🎉</div>
-              <h3 style={{ margin: '0 0 5px 0', color: 'var(--color-text-main)', fontWeight: '800' }}>¡Todo Abastecido!</h3>
-              <p style={{ margin: 0, color: '#666' }}>No hay insumos faltantes para la proyección actual.</p>
+              <h3 style={{ margin: '0 0 5px 0', color: '#334155', fontWeight: '800' }}>¡Todo Abastecido!</h3>
+              <p style={{ margin: 0, color: '#64748b' }}>No hay cajas pendientes por comprar según la proyección actual.</p>
             </div>
           </div>
         ) : (
@@ -118,12 +123,24 @@ export const MandadoView = ({ estimates, s, usuarioId }) => {
                 </div>
               </div>
 
-              {/* Cantidad Requerida */}
-              <div style={{ backgroundColor: '#f1f5f9', padding: '12px', borderRadius: '8px', border: '1px inset rgba(0,0,0,0.05)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '12px', fontWeight: '700', color: '#64748b' }}>CANTIDAD A PEDIR:</span>
-                  <span style={{ color: 'var(--color-primary)', fontSize: '1.2rem', fontWeight: '900' }}>
-                     {ins.cantidad_sugerida} <small style={{ fontSize: '10px' }}>{ins.unidad_medida}</small>
+              {/* Contenedor de Información de Compra */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                
+                {/* 1. CAJAS A PEDIR (Lo más importante) */}
+                <div style={{ backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px inset rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '14px', fontWeight: '800', color: '#475569' }}>Comprar:</span>
+                  <span style={{ color: 'var(--color-primary)', fontSize: '1.4rem', fontWeight: '900' }}>
+                     {ins.cajas_a_pedir} <small style={{ fontSize: '12px', fontWeight: '700' }}>Caja(s)</small>
+                  </span>
+                </div>
+
+                {/* 2. Información Adicional (Opcional pero útil para el comprador) */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 4px' }}>
+                  <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>
+                    Requiere: {ins.cantidad_sugerida} {ins.unidad_medida}
+                  </span>
+                  <span style={{ fontSize: '11px', color: '#16a34a', fontWeight: '800' }}>
+                    Est: {formatMoney(ins.presupuesto_estimado)}
                   </span>
                 </div>
               </div>
@@ -141,12 +158,12 @@ export const MandadoView = ({ estimates, s, usuarioId }) => {
                         gap: '10px', 
                         padding: '14px', 
                         fontWeight: '800',
-                        fontSize: '14px',
+                        fontSize: '13px',
                         textTransform: 'uppercase',
                         letterSpacing: '0.5px'
                     }}
                   >
-                    ✅ Marcar como Comprado
+                     Registrar Compra
                   </button>
                 ) : (
                   <div 

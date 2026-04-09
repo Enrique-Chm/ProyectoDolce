@@ -15,7 +15,7 @@ export const HistorialConsumoView = ({
   // Ordenamos los días empezando por Lunes (Orden estándar de cocina)
   const diasSemana = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
   
-  // Mapeo: JS Date (0=Dom, 1=Lun...) -> Nuestra Tabla (0=Lun, 1=Mar... 6=Dom)
+  // Mapeo: JS Date / PostgreSQL (0=Dom, 1=Lun...) -> Nuestra Tabla (0=Lun, 1=Mar... 6=Dom)
   const mapDow = (dow) => (dow === 0 ? 6 : dow - 1);
 
   // 🚀 1. Opciones para el buscador de platillos
@@ -168,10 +168,9 @@ export const HistorialConsumoView = ({
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
                             {/* VALOR IA (🤖) */}
                             <span style={{ 
-                                fontSize: '9px', 
+                                fontSize: '13px', 
                                 fontWeight: '700', 
                                 color: hasManual ? '#cbd5e1' : 'var(--color-primary)',
-                                textDecoration: hasManual ? 'line-through' : 'none'
                               }}>
                               {info.smart}
                             </span>
@@ -189,7 +188,7 @@ export const HistorialConsumoView = ({
                                 borderRadius: '4px',
                                 fontSize: '13px',
                                 fontWeight: '800',
-                                color: hasManual ? 'var(--color-primary)' : '#475569',
+                                color: hasManual ? 'var(--color-primary)' : '#c5c1c1',
                                 padding: '4px 0'
                               }}
                               onBlur={(e) => handleManualChange(info.producto_id, i, e.target.value)}

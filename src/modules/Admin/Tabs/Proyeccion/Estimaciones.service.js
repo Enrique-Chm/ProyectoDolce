@@ -4,8 +4,8 @@ import { hasPermission } from '../../../../utils/checkPermiso';
 
 export const estimacionesService = {
   /**
-   * 🚀 ACTUALIZADO: Obtiene sugerencias de compra basadas en el motor de demanda JIT.
-   * Sincronizado con el RPC optimizado para evitar Timeouts y errores de mapeo.
+   * 🚀 ACTUALIZADO: Obtiene sugerencias de compra basadas en el motor de demanda por DOW (Día de la semana).
+   * Calcula qué días exactos se van a abastecer y envía el arreglo a Supabase.
    */
   async getSugerenciasCompra(sucursalId, diasCompra = 1, porcentajeColchon = 0) {
     try {
@@ -13,36 +13,52 @@ export const estimacionesService = {
         return { success: false, error: 'No tienes permisos para ver proyecciones de compra.' };
       }
 
-      // 1. Llamada al RPC de demanda inteligente
+      // 1. LÓGICA DE FECHAS: Calcular los DOWs (Day of Week) a partir de mañana
+      // JavaScript getDay(): 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
+      const dowsArray = [];
+      const hoy = new Date();
+      
+      for (let i = 1; i <= diasCompra; i++) {
+        const fechaFutura = new Date(hoy);
+        fechaFutura.setDate(hoy.getDate() + i);
+        dowsArray.push(fechaFutura.getDay());
+      }
+
+      // 2. Llamada al NUEVO RPC de demanda inteligente que acepta un arreglo de DOWs
       const { data, error } = await supabase
-        .rpc('get_sugerencias_compras_demanda', { 
+        .rpc('get_sugerencias_compras_por_dow', { 
           p_sucursal_id: sucursalId,
-          p_dias: diasCompra,
+          p_dows: dowsArray, // Pasamos el arreglo de días exactos [ej. 1, 2, 3 para Lun, Mar, Mié]
           p_colchon: porcentajeColchon
         });
 
       if (error) throw error;
 
-      // 2. 🛠️ MAPEADO CORRECTO: Sincronización con los nombres de columna del SQL optimizado
+      // 3. 🛠️ MAPEADO: Sincronización con los nombres de columna del SQL
       const formattedData = (data || []).map(v => ({
         insumo_id: v.insumo_id,
         insumo_nombre: v.insumo_nombre,
         modelo: v.modelo || '',
         proveedor_nombre: v.proveedor_nombre || 'Sin proveedor',
-        // Cambiamos 'demanda_proyectada' por 'cantidad_requerida' que viene del SQL
         consumo_diario_real: parseFloat(v.cantidad_requerida || 0).toFixed(1), 
         stock_fisico_hoy: parseFloat(v.stock_actual || 0).toFixed(1),
-        // Cambiamos 'faltante_neto' por 'cantidad_a_comprar'
         cantidad_sugerida: parseFloat(v.cantidad_a_comprar || 0).toFixed(1),
         cajas_a_pedir: parseInt(v.cajas_a_pedir || 0),
         unidad_medida: v.unidad_medida || 'Uds',
         contenido_neto: v.contenido_neto,
-        presupuesto_estimado: parseFloat(v.presupuesto_estimado || 0)
+        presupuesto_estimado: parseFloat(v.presupuesto_estimado || 0),
+        
+        // Atributos necesarios para la edición de políticas
+        metodo_compra: v.metodo_compra,
+        dias_cobertura_objetivo: v.dias_cobertura_objetivo,
+        dias_stock_seguridad: v.dias_stock_seguridad,
+        stock_minimo: v.stock_minimo,
+        stock_maximo: v.stock_maximo
       }));
 
       return { success: true, data: formattedData };
     } catch (error) {
-      console.error("Error en getSugerenciasCompra (Demanda):", error);
+      console.error("Error en getSugerenciasCompra (Demanda DOW):", error);
       return { success: false, error: error.message };
     }
   },

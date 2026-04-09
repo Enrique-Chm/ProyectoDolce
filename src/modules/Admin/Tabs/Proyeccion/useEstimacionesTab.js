@@ -46,7 +46,7 @@ export const useEstimacionesTab = (sucursalId) => {
     try {
       /**
        * 🛡️ Solicitamos todos los datos necesarios en paralelo.
-       * Se envían los parámetros de proyección para que el SQL haga el cálculo pesado.
+       * Cada vez que diasCompra cambia, getSugerenciasCompra enviará el arreglo exacto de DOWs al SQL.
        */
       const [resS, resP, resH, resPP, resPS, resEM] = await Promise.all([
         puedeVerInventario ? estimacionesService.getSugerenciasCompra(sucursalId, diasCompra, porcentajeColchon) : { success: true, data: [] },
