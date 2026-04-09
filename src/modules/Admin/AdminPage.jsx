@@ -17,10 +17,12 @@ const EmpleadosTab = React.lazy(() => import("./Tabs/EmpleadosTab").then(module 
 const MeseroTab = React.lazy(() => import("./Tabs/MeseroTab/MeseroTab").then(module => ({ default: module.MeseroTab }))); 
 const ImpresorasTab = React.lazy(() => import("./Tabs/ImpresorasTab").then(module => ({ default: module.ImpresorasTab })));
 const GastosTab = React.lazy(() => import("./Tabs/GastosTab").then(module => ({ default: module.GastosTab })));
-
 const CajeroTab = React.lazy(() => import('./Tabs/CajeroTab/CajeroTab'));
 const InventariosTab = React.lazy(() => import("./Tabs/InventariosTab/InventariosTab")); 
 const EstimacionesTab = React.lazy(() => import("./Tabs/Proyeccion/EstimacionesTab")); 
+
+// 🚀 NUEVO: Tab de Producción
+const ProduccionTab = React.lazy(() => import("./Tabs/Produccion/ProduccionTab").then(module => ({ default: module.ProduccionTab })));
 
 const AdminPage = () => {
   useSessionGuard();
@@ -34,6 +36,7 @@ const AdminPage = () => {
   const tabsConfig = useMemo(() => [
     { id: 'analitica', label: 'Dashboard', permiso: 'ver_analitica' }, 
     { id: 'estimaciones', label: 'Proyección Compras', permiso: 'ver_inventario' },
+    { id: 'produccion', label: 'Producción', permiso: 'ver_inventario' }, // 🚀 Nuevo Tab
     { id: 'gastos', label: 'Gastos Operativos', permiso: 'ver_gastos' }, 
     { id: 'mesero', label: 'Mesero', permiso: 'ver_comandas' },
     { id: 'cajero', label: 'Caja', permiso: 'ver_ventas' },
@@ -95,7 +98,6 @@ const AdminPage = () => {
         {/* Bloque Izquierdo: Botón Menú, Logo y Selector de Sucursal */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
           
-          {/* 💡 BOTÓN PARA OCULTAR/MOSTRAR MENÚ LATERAL */}
           <button 
             onClick={() => setShowSidebar(!showSidebar)}
             className={s.btn}
@@ -121,7 +123,7 @@ const AdminPage = () => {
                 SUCURSAL:
               </span>
               <select 
-              className={"s.priceValue"}style={{  
+                className={"s.priceValue"} style={{  
                   border: 'none', 
                   background: 'transparent', 
                   color: 'var(--color-primary)', 
@@ -171,7 +173,6 @@ const AdminPage = () => {
       {/* 🧭 CUERPO PRINCIPAL */}
       <div className={s.adminContainer}>
         
-        {/* 💡 SIDEBAR CONDICIONADO A showSidebar */}
         {showSidebar && (
           <aside className={s.sidebar}>
             <nav className={s.sidebarNav}>
@@ -202,6 +203,15 @@ const AdminPage = () => {
                 {activeTab === 'insumos' && <InsumosTab sucursalId={filterSucursal} />}
                 {activeTab === 'kardex' && <InventariosTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
                 {activeTab === 'estimaciones' && <EstimacionesTab sucursalId={filterSucursal} />}
+                
+                {/* 🚀 TAB DE PRODUCCIÓN ACTUALIZADO CON usuarioId */}
+                {activeTab === 'produccion' && (
+                  <ProduccionTab 
+                    sucursalId={filterSucursal} 
+                    usuarioId={userSession.user.id} 
+                  />
+                )}
+
                 {activeTab === 'gastos' && <GastosTab />}
                 {activeTab === 'recetas' && <RecetasTab sucursalId={filterSucursal} />}
                 {activeTab === 'productos' && <MenuTab sucursalId={filterSucursal} />}

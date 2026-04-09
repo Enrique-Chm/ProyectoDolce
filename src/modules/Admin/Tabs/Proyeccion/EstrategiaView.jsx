@@ -1,21 +1,24 @@
 // Archivo: src/modules/Admin/Tabs/Proyeccion/EstrategiaView.jsx
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { formatCurrency } from "../../../../utils/formatCurrency";
+// 🚀 1. Importamos el componente
+import { SearchableSelect } from '../MenuTab/SearchableSelect';
 
 export const EstrategiaView = ({ estimates, s }) => {
   const {
     sugerenciasFiltradas,
     proveedores,
-    proyeccionProductos,
     presupuestoTotal,
     guardarPolitica,
     puedeEditarInventario,
     setFiltroProveedor,
-    diaProyectado,
+    diasCompra,
+    setDiasCompra,
+    porcentajeColchon,
+    setPorcentajeColchon
   } = estimates;
 
   // --- ESTADOS LOCALES ---
-  const [viewMode, setViewMode] = useState("insumo");
   const [filtroBuscar, setFiltroBuscar] = useState("");
   const [editandoId, setEditandoId] = useState(null);
 
@@ -26,6 +29,28 @@ export const EstrategiaView = ({ estimates, s }) => {
     minimo: 0,
     maximo: 0,
   });
+
+  // 🚀 2. Preparamos las opciones inyectando "Todos los proveedores" al inicio
+  const opcionesProveedores = useMemo(() => {
+    return [
+      { id: 'todos', nombre_empresa: 'Todos los proveedores' },
+      ...proveedores
+    ];
+  }, [proveedores]);
+
+  // 🚀 LÓGICA: Generar la etiqueta de los días (Ej: LUN / MAR / MIÉ)
+  const etiquetaDias = useMemo(() => {
+    const diasCortos = ["DOM", "LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB"];
+    const hoyIndex = new Date().getDay();
+    const resultado = [];
+    
+    // Iteramos según la cantidad de días de compra, empezando por mañana (i = 1)
+    for (let i = 1; i <= diasCompra; i++) {
+      resultado.push(diasCortos[(hoyIndex + i) % 7]);
+    }
+    
+    return resultado.join(" / ");
+  }, [diasCompra]);
 
   // --- LÓGICA DE ACCIONES ---
   const iniciarEdicion = (item) => {
@@ -51,45 +76,26 @@ export const EstrategiaView = ({ estimates, s }) => {
   };
 
   // --- FILTRADO DE DATOS ---
-  const dataFiltrada = (
-    viewMode === "insumo" ? sugerenciasFiltradas : proyeccionProductos
-  ).filter((i) => {
+  const dataFiltrada = (sugerenciasFiltradas || []).filter((i) => {
     const termino = filtroBuscar.toLowerCase();
     const nombreInsumo = (i.insumo_nombre || "").toLowerCase();
     const modeloInsumo = (i.modelo || "").toLowerCase();
-    const nombreProducto = (i.nombre || "").toLowerCase();
 
-    const textoBusqueda =
-      viewMode === "insumo"
-        ? `${nombreInsumo} ${modeloInsumo}`
-        : nombreProducto;
+    const textoBusqueda = `${nombreInsumo} ${modeloInsumo}`;
     return !filtroBuscar || textoBusqueda.includes(termino);
   });
 
   // --- RENDERIZADO DE TABLAS ---
   const renderCabecera = () => {
-    if (viewMode === "insumo") {
-      return (
-        <tr>
-          <th className={s.th}>INSUMO</th>
-          <th className={s.th}>STOCK ACTUAL</th>
-          <th className={s.th}>REQUERIDO</th>
-          <th className={s.th}>A COMPRAR</th>
-          <th className={s.th}>PROYECCION</th>
-          <th className={s.th} style={{ width: "100px", textAlign: "center" }}>
-            ACCIÓN
-          </th>
-        </tr>
-      );
-    }
     return (
       <tr>
-        <th className={s.th}>PLATILLO</th>
-        <th className={s.th} style={{ textAlign: "center" }}>
-          PROMEDIO ({diaProyectado.toUpperCase()})
-        </th>
-        <th className={s.th} style={{ textAlign: "right" }}>
-          PRÓXIMA VENTA
+        <th className={s.th}>INSUMO</th>
+        <th className={s.th}>STOCK ACTUAL</th>
+        <th className={s.th}>REQUERIDO ({diasCompra} DÍAS)</th>
+        <th className={s.th}>A COMPRAR</th>
+        <th className={s.th}>PROYECCION</th>
+        <th className={s.th} style={{ width: "100px", textAlign: "center" }}>
+          ACCIÓN
         </th>
       </tr>
     );
@@ -98,6 +104,10 @@ export const EstrategiaView = ({ estimates, s }) => {
   const renderFilasInsumos = () => {
     return dataFiltrada.map((item) => {
       const isEditing = editandoId === item.insumo_id;
+      
+      // El valor de la DB ya viene multiplicado por los días y con el colchón
+      const requeridoFinal = parseFloat(item.consumo_diario_real) || 0;
+      const stockActual = parseFloat(item.stock_fisico_hoy) || 0;
 
       return (
         <tr key={item.insumo_id}>
@@ -110,23 +120,19 @@ export const EstrategiaView = ({ estimates, s }) => {
           <td className={s.textMuted} >
             <span
               style={{
-                color:
-                  parseFloat(item.stock_fisico_hoy) <
-                  parseFloat(item.consumo_diario_real)
-                    ? "var(--color-danger)"
-                    : "inherit",
+                color: stockActual < requeridoFinal ? "var(--color-danger)" : "inherit",
               }}
             >
-              {parseFloat(item.stock_fisico_hoy).toFixed(2)}
+              {stockActual.toFixed(1)}
             </span>
             <small className={s.textMuted}> {item.unidad_medida}</small>
           </td>
           <td className={s.td}>
             <span style={{ fontWeight: "600", color: "var(--color-primary)" }}>
-              {item.consumo_diario_real} {item.unidad_medida}
+              {requeridoFinal.toFixed(1)} {item.unidad_medida}
             </span>
-            <div className={s.textMuted} style={{ fontSize: "10px" }}>
-              Para {diaProyectado}
+            <div className={s.textMuted} style={{ fontSize: "10px", lineHeight: "1.2", marginTop: "2px" }}>
+              {etiquetaDias} {porcentajeColchon > 0 && `(+${porcentajeColchon}%)`}
             </div>
           </td>
 
@@ -253,7 +259,7 @@ export const EstrategiaView = ({ estimates, s }) => {
                 <div style={{ fontSize: "11px", fontWeight: "600" }}>
                   {item.metodo_compra === "estatico"
                     ? `Mín: ${item.stock_minimo} | Máx: ${item.stock_maximo}`
-                    : `Pedidos de ${diaProyectado}`}
+                    : `Cubriendo ${diasCompra} d.`}
                 </div>
               </div>
             )}
@@ -296,24 +302,6 @@ export const EstrategiaView = ({ estimates, s }) => {
     });
   };
 
-  const renderFilasProductos = () => {
-    return dataFiltrada.map((item, i) => (
-      <tr key={i}>
-        <td className={s.td} style={{ fontWeight: "700" }}>
-          {item.nombre}
-        </td>
-        <td className={s.td} style={{ textAlign: "center" }}>
-          {item.promedio_diario} unidades
-        </td>
-        <td className={s.td} style={{ textAlign: "right" }}>
-          <span className={s.badgeSuccess} style={{ fontSize: "13px" }}>
-            {item.prediccion_manana} proyectados
-          </span>
-        </td>
-      </tr>
-    ));
-  };
-
   // --- RENDER PRINCIPAL ---
   return (
     <>
@@ -324,14 +312,16 @@ export const EstrategiaView = ({ estimates, s }) => {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          flexWrap: "wrap",
+          gap: "15px"
         }}
       >
         <div>
           <h2 style={{ fontSize: "1.2rem", margin: 0 }}>
             Estrategia de Abastecimiento
           </h2>
-          <p className={s.textMuted} style={{ fontSize: "12px" }}>
-            Cálculo automático basado en la demanda de mañana y tus recetas.
+          <p className={s.textMuted} style={{ fontSize: "12px", margin: 0 }}>
+            Calculando la suma exacta de los requerimientos de los próximos {diasCompra} días.
           </p>
         </div>
         <div
@@ -350,7 +340,7 @@ export const EstrategiaView = ({ estimates, s }) => {
               display: "block",
             }}
           >
-            INVERSIÓN ESTIMADA PARA MAÑANA
+            INVERSIÓN ESTIMADA PARA {diasCompra} DÍA(S)
           </span>
           <span
             style={{
@@ -364,29 +354,89 @@ export const EstrategiaView = ({ estimates, s }) => {
         </div>
       </section>
 
-      <div style={{ marginBottom: "20px", display: "flex", gap: "10px" }}>
-        <button
-          className={`${s.btn} ${viewMode === "insumo" ? s.btnPrimary : s.btnDark}`}
-          onClick={() => {
-            setViewMode("insumo");
-            setFiltroBuscar("");
-            setEditandoId(null);
-          }}
-          style={{ flex: 1, padding: "14px", fontWeight: "700" }}
-        >
-          ESTRATEGIA POR INSUMO
-        </button>
-        <button
-          className={`${s.btn} ${viewMode === "producto" ? s.btnPrimary : s.btnDark}`}
-          onClick={() => {
-            setViewMode("producto");
-            setFiltroBuscar("");
-            setEditandoId(null);
-          }}
-          style={{ flex: 1, padding: "14px", fontWeight: "700" }}
-        >
-          DEMANDA POR PLATILLO
-        </button>
+      {/* 🚀 PANEL DE CONTROL DE DEMANDA */}
+      <div className={s.adminCard} style={{ 
+        display: "flex", 
+        flexWrap: "wrap",
+        gap: "20px", 
+        alignItems: "center", 
+        padding: "15px 20px", 
+        marginBottom: "20px", 
+        backgroundColor: "#f8fafc", 
+        border: "1px solid #e2e8f0" 
+      }}>
+        
+        {/* Control: Días a Comprar */}
+        <div style={{ display: "flex", flexDirection: "column", flex: "1 1 200px" }}>
+          <label style={{ fontSize: "12px", fontWeight: "800", color: "#475569", marginBottom: "8px" }}>
+            DÍAS A ABASTECER
+          </label>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <button 
+              className={s.btn} 
+              style={{ padding: "8px 12px", fontWeight: "bold" }}
+              onClick={() => setDiasCompra(Math.max(1, diasCompra - 1))}
+            >
+              -
+            </button>
+            <input 
+              type="number" 
+              className={s.inputField} 
+              style={{ textAlign: "center", width: "80px", margin: 0, fontWeight: "bold", fontSize: "1.1rem" }} 
+              value={diasCompra} 
+              min="1"
+              onChange={(e) => setDiasCompra(Math.max(1, parseInt(e.target.value) || 1))} 
+            />
+            <button 
+              className={s.btn} 
+              style={{ padding: "8px 12px", fontWeight: "bold" }}
+              onClick={() => setDiasCompra(diasCompra + 1)}
+            >
+              +
+            </button>
+          </div>
+          <span style={{ fontSize: "11px", color: "#94a3b8", marginTop: "5px" }}>
+            Cubriendo: <strong>{etiquetaDias}</strong>
+          </span>
+        </div>
+
+        {/* Control Porcentaje Colchón (Caja de Texto) */}
+        <div style={{ display: "flex", flexDirection: "column", flex: "1 1 250px" }}>
+          <label style={{ fontSize: "12px", fontWeight: "800", color: "#475569", marginBottom: "8px" }}>
+            COLCHÓN DE SEGURIDAD
+          </label>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <button 
+              className={s.btn} 
+              style={{ padding: "8px 12px", fontWeight: "bold" }}
+              onClick={() => setPorcentajeColchon(Math.max(0, porcentajeColchon - 5))}
+            >
+              -
+            </button>
+            <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+              <input 
+                type="number" 
+                className={s.inputField} 
+                style={{ textAlign: "center", width: "80px", margin: 0, fontWeight: "bold", fontSize: "1.1rem", paddingRight: "15px" }} 
+                value={porcentajeColchon} 
+                min="0"
+                onChange={(e) => setPorcentajeColchon(Math.max(0, parseInt(e.target.value) || 0))} 
+              />
+              <span style={{ position: "absolute", right: "12px", fontWeight: "bold", color: "#94a3b8", pointerEvents: "none" }}>
+                %
+              </span>
+            </div>
+            <button 
+              className={s.btn} 
+              style={{ padding: "8px 12px", fontWeight: "bold" }}
+              onClick={() => setPorcentajeColchon(porcentajeColchon + 5)}
+            >
+              +
+            </button>
+          </div>
+          <span style={{ fontSize: "11px", color: "#94a3b8", marginTop: "5px" }}>Añade un margen extra para imprevistos.</span>
+        </div>
+
       </div>
 
       <div className={`${s.adminCard} ${s.tableContainer}`}>
@@ -402,40 +452,33 @@ export const EstrategiaView = ({ estimates, s }) => {
           <input
             type="text"
             className={s.inputField}
-            placeholder={`Buscar ${viewMode === "insumo" ? "insumo o modelo" : "platillo"}...`}
+            placeholder="Buscar insumo o modelo..."
             value={filtroBuscar}
             onChange={(e) => setFiltroBuscar(e.target.value)}
             style={{ flex: 2 }}
           />
-          {viewMode === "insumo" && (
-            <select
-              className={s.inputField}
-              onChange={(e) => setFiltroProveedor(e.target.value)}
-              style={{ flex: 1 }}
-            >
-              <option value="todos">Filtrar por Proveedor</option>
-              {proveedores.map((p) => (
-                <option key={p.id} value={p.nombre_empresa}>
-                  {p.nombre_empresa}
-                </option>
-              ))}
-            </select>
-          )}
+          
+          <div style={{ flex: 1, minWidth: '200px', zIndex: 10 }}>
+            <SearchableSelect
+              options={opcionesProveedores}
+              value={estimates.filtroProveedor === 'todos' ? 'Todos los proveedores' : estimates.filtroProveedor}
+              onChange={(valor) => setFiltroProveedor(valor === 'Todos los proveedores' ? 'todos' : valor)}
+              valueKey="nombre_empresa"
+              labelKey="nombre_empresa"
+              placeholder="Filtrar por proveedor..."
+            />
+          </div>
         </div>
 
         <table className={s.table}>
           <thead className={s.thead}>{renderCabecera()}</thead>
           <tbody>
             {dataFiltrada.length > 0 ? (
-              viewMode === "insumo" ? (
-                renderFilasInsumos()
-              ) : (
-                renderFilasProductos()
-              )
+              renderFilasInsumos()
             ) : (
               <tr>
                 <td
-                  colSpan={viewMode === "insumo" ? "6" : "3"}
+                  colSpan="6"
                   className={s.td}
                   style={{
                     textAlign: "center",

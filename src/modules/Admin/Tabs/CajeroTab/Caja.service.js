@@ -1,6 +1,6 @@
 // Archivo: src/modules/Admin/Tabs/CajeroTab/Caja.service.js
 import { supabase } from '../../../../lib/supabaseClient';
-import { hasPermission } from '../../../../utils/checkPermiso'; // 🛡️ Importamos el validador
+import { hasPermission } from '../../../../utils/checkPermiso'; 
 
 export const CajaService = {
 
@@ -18,7 +18,6 @@ export const CajaService = {
     return { data, error };
   },
 
-  // 🚀 NUEVO: Traer el catálogo de descuentos activos
   getTiposDescuento: async () => {
     const { data, error } = await supabase
       .from('cat_tipos_descuento')
@@ -33,29 +32,26 @@ export const CajaService = {
      2. GESTIÓN DE SESIONES (cajas_sesiones)
      ========================================== */
 
-  // 💡 CORRECCIÓN VITAL: Ahora SOLO recibe sucursalId (1 sola manzana)
   getSesionActiva: async (sucursalId) => {
     const { data, error } = await supabase
       .from('cajas_sesiones')
       .select('*')
       .is('fecha_cierre', null)
-      .eq('sucursal_id', sucursalId) // 👈 Busca directamente por sucursal
+      .eq('sucursal_id', sucursalId) 
       .eq('estado', 'abierto')       
       .maybeSingle();
     return { data, error };
   },
 
   abrirCaja: async (datos) => {
-    // 🛡️ Seguridad: Solo usuarios con permiso de edición pueden abrir caja
     if (!hasPermission('editar_ventas')) {
       return { data: null, error: { message: "No tienes permisos para abrir la caja." } };
     }
 
-    // 🔴 PUNTO CLAVE: Aquí se inserta el usuario_id (para control) y el sucursal_id
     const { data, error } = await supabase
       .from('cajas_sesiones')
       .insert([{ 
-        usuario_id: datos.usuario_id, // 👈 Regla: Control de quién abre la caja
+        usuario_id: datos.usuario_id, 
         sucursal_id: datos.sucursal_id, 
         monto_apertura: parseFloat(datos.monto_apertura),
         estado: 'abierto',             
@@ -66,9 +62,6 @@ export const CajaService = {
     return { data, error };
   },
 
-  /**
-   * 🚀 ACTUALIZADO: Registra el cierre de la caja e incluye monto_cierre_tarjeta
-   */
   cerrarCaja: async (sesionId, datosCierre) => {
     if (!hasPermission('editar_ventas')) {
       return { data: null, error: { message: "No tienes permisos para cerrar la caja." } };
@@ -80,7 +73,7 @@ export const CajaService = {
         monto_cierre_real: parseFloat(datosCierre.monto_cierre_real),
         monto_cierre_esperado: parseFloat(datosCierre.monto_cierre_esperado),
         diferencia: parseFloat(datosCierre.diferencia),
-        monto_cierre_tarjeta: parseFloat(datosCierre.monto_cierre_tarjeta || 0), // 👈 GUARDAMOS TARJETA
+        monto_cierre_tarjeta: parseFloat(datosCierre.monto_cierre_tarjeta || 0), 
         estado: 'cerrado', 
         fecha_cierre: new Date().toISOString() 
       })
@@ -114,7 +107,6 @@ export const CajaService = {
   getMovimientosSesion: async (turnoId) => {
     if (!hasPermission('ver_ventas')) return { data: [], error: null };
 
-    // 💡 AHORA TRAE EL NOMBRE DEL USUARIO DESDE LA BASE DE DATOS
     const { data, error } = await supabase
       .from('caja_movimientos')
       .select(`
@@ -150,7 +142,6 @@ export const CajaService = {
   getHistorialSesiones: async (sucursalId, limit = 20) => {
     if (!hasPermission('ver_ventas')) return { data: [], error: null };
 
-    // 💡 AHORA TRAE EL NOMBRE DEL CAJERO QUE ABRIÓ/CERRÓ LA CAJA
     let query = supabase
       .from('cajas_sesiones')
       .select(`
@@ -173,16 +164,13 @@ export const CajaService = {
      5. COBROS Y GESTIÓN DE CUENTAS 
      ========================================== */
 
-  /**
-   * Obtiene las ventas pendientes filtradas por sucursal e ID de sesión (turno actual).
-   */
   getVentasPendientes: async (sucursalId, sesionId) => {
     if (!hasPermission('ver_ventas')) return { data: [], error: null };
 
     let query = supabase
       .from('ventas')
       .select('*')
-      .eq('id_sesion_caja', sesionId) // 👈 Solo de este turno
+      .eq('id_sesion_caja', sesionId) 
       .in('estado', ['pendiente', 'cocina', 'entregado', 'por_cobrar'])
       .order('created_at', { ascending: false });
 
@@ -195,33 +183,64 @@ export const CajaService = {
   },
 
   /**
-   * 🚀 ACTUALIZADO: Recibe descuentos, motivos, tipo de descuento y el nuevo total de la venta
+   * 🚀 ACTUALIZADO: Finaliza la venta y ejecuta el DESCUENTO HÍBRIDO DE INVENTARIO.
+   * Ahora requiere el sucursalId para procesar correctamente el stock.
    */
-  finalizarVenta: async (idVenta, datos) => {
+  finalizarVenta: async (idVenta, datos, sucursalId) => {
     if (!hasPermission('editar_ventas')) {
       return { data: null, error: { message: "No tienes permisos para cobrar cuentas." } };
     }
 
-    // Preparamos el objeto con los datos base de cierre
-    const updatePayload = {
-      estado: datos.estado || 'pagado',
-      metodo_pago: datos.metodo_pago,
-      hora_cierre: new Date().toISOString()
-    };
+    try {
+      // 1. Actualizamos los datos de la venta (pago, estado, cierre)
+      const updatePayload = {
+        estado: datos.estado || 'pagado',
+        metodo_pago: datos.metodo_pago,
+        hora_cierre: new Date().toISOString()
+      };
 
-    // Si vienen datos de descuento o cambio de total, los agregamos
-    if (datos.tipo_descuento_id !== undefined) updatePayload.tipo_descuento_id = datos.tipo_descuento_id;
-    if (datos.descuento !== undefined) updatePayload.descuento = parseFloat(datos.descuento);
-    if (datos.motivo_descuento !== undefined) updatePayload.motivo_descuento = datos.motivo_descuento;
-    if (datos.total !== undefined) updatePayload.total = parseFloat(datos.total);
+      if (datos.tipo_descuento_id !== undefined) updatePayload.tipo_descuento_id = datos.tipo_descuento_id;
+      if (datos.descuento !== undefined) updatePayload.descuento = parseFloat(datos.descuento);
+      if (datos.motivo_descuento !== undefined) updatePayload.motivo_descuento = datos.motivo_descuento;
+      if (datos.total !== undefined) updatePayload.total = parseFloat(datos.total);
 
-    const { data, error } = await supabase
-      .from('ventas')
-      .update(updatePayload)
-      .eq('id', idVenta)
-      .select();
-      
-    return { data, error };
+      const { data: ventaActualizada, error: errorVenta } = await supabase
+        .from('ventas')
+        .update(updatePayload)
+        .eq('id', idVenta)
+        .select()
+        .single();
+
+      if (errorVenta) throw errorVenta;
+
+      // 2. Recuperamos los productos del ticket para descontar inventario
+      const { data: detalles, error: errorDetalle } = await supabase
+        .from('ventas_detalle')
+        .select('producto_id, cantidad')
+        .eq('venta_id', idVenta);
+
+      if (errorDetalle) throw errorDetalle;
+
+      // 3. Ejecutamos el Descuento Híbrido mediante RPC
+      if (detalles && detalles.length > 0) {
+        const promesasDescuento = detalles.map(item => 
+          supabase.rpc('procesar_descuento_hibrido', {
+            p_producto_id: item.producto_id,
+            p_sucursal_id: sucursalId,
+            p_cantidad_vendida: item.cantidad
+          })
+        );
+
+        // Esperamos a que todos los procesos de inventario terminen
+        await Promise.all(promesasDescuento);
+      }
+
+      return { data: ventaActualizada, error: null };
+
+    } catch (err) {
+      console.error("Error crítico en finalizarVenta con inventario:", err);
+      return { data: null, error: err };
+    }
   },
 
   getDetalleVenta: async (idVenta) => {
@@ -229,22 +248,18 @@ export const CajaService = {
 
     const { data, error } = await supabase
       .from('ventas_detalle')
-      // 💡 Corregido: 'productosmenu' para coincidir con tu esquema
       .select('*, productosmenu(nombre)') 
       .eq('venta_id', idVenta);
     return { data, error };
   },
 
-  /**
-   * Obtiene las ventas cobradas filtradas por sucursal e ID de sesión (turno actual).
-   */
   getVentasCobradas: async (sucursalId, sesionId, limit = 15) => {
     if (!hasPermission('ver_ventas')) return { data: [], error: null };
 
     let query = supabase
       .from('ventas')
       .select('*')
-      .eq('id_sesion_caja', sesionId) // 👈 Solo de este turno
+      .eq('id_sesion_caja', sesionId) 
       .eq('estado', 'pagado')
       .order('hora_cierre', { ascending: false })
       .limit(limit);

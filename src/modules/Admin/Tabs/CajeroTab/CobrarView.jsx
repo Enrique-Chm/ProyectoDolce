@@ -1,3 +1,4 @@
+// Archivo: src/modules/Admin/Tabs/CajeroTab/CobrarView.jsx
 import React from "react";
 import { CajaService } from "./Caja.service";
 import stylesAdmin from "../../../../assets/styles/EstilosGenerales.module.css";
@@ -11,6 +12,7 @@ export const CobrarView = ({
   cuentasCobradas,
   puedeEditarCaja,
   refrescarTodo,
+  sucursalId, // 🚀 RECIBIDO PARA ACTIVAR EL DESCUENTO HÍBRIDO
   tiposDescuentoCatalogo = [] 
 }) => {
   const mesasPorCobrar = cuentasPendientes.filter(v => v.estado === 'por_cobrar');
@@ -86,7 +88,6 @@ export const CobrarView = ({
         const metodoSelect = popup.querySelector("#swal-metodo");
         const totalDisplay = popup.querySelector("#swal-total-display");
         
-        // Elementos del Toggle
         const btnToggle = popup.querySelector("#btn-toggle-descuento");
         const containerDescuento = popup.querySelector("#container-descuento");
         const iconDescuento = popup.querySelector("#icon-descuento");
@@ -114,7 +115,6 @@ export const CobrarView = ({
           }
         };
 
-        // Lógica de colapsable
         btnToggle.addEventListener("click", () => {
           const isHidden = containerDescuento.style.display === "none";
           containerDescuento.style.display = isHidden ? "block" : "none";
@@ -122,7 +122,6 @@ export const CobrarView = ({
           btnToggle.style.borderRadius = isHidden ? "8px 8px 0 0" : "8px";
         });
 
-        // Lógica de botones rápidos
         popup.querySelectorAll(".quick-btn").forEach(btn => {
           btn.addEventListener("click", () => {
             const extra = parseFloat(btn.getAttribute("data-val"));
@@ -205,6 +204,7 @@ export const CobrarView = ({
     });
 
     if (isConfirmed && resultado) {
+      // 🚀 SE AGREGA sucursalId PARA EL PROCESO DE INVENTARIO HÍBRIDO
       const { error } = await CajaService.finalizarVenta(venta.id, {
         estado: "pagado",
         metodo_pago: resultado.metodo,
@@ -212,7 +212,7 @@ export const CobrarView = ({
         descuento: resultado.descuento,
         motivo_descuento: resultado.motivoDescuento,
         total: resultado.totalFinal
-      });
+      }, sucursalId);
 
       if (!error) {
         Swal.fire({
@@ -224,7 +224,7 @@ export const CobrarView = ({
         });
         refrescarTodo(); 
       } else {
-        Swal.fire("Error", "No se pudo cerrar la venta en el servidor", "error");
+        Swal.fire("Error", "No se pudo cerrar la venta y actualizar el inventario", "error");
       }
     }
   };

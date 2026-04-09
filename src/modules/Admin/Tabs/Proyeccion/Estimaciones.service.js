@@ -5,34 +5,39 @@ import { hasPermission } from '../../../../utils/checkPermiso';
 export const estimacionesService = {
   /**
    * 🚀 ACTUALIZADO: Obtiene sugerencias de compra basadas en el motor de demanda JIT.
-   * Llama al RPC que explota recetas y compara contra stock real para mañana.
+   * Sincronizado con el RPC optimizado para evitar Timeouts y errores de mapeo.
    */
-  async getSugerenciasCompra(sucursalId) {
+  async getSugerenciasCompra(sucursalId, diasCompra = 1, porcentajeColchon = 0) {
     try {
       if (!hasPermission('ver_inventario')) {
         return { success: false, error: 'No tienes permisos para ver proyecciones de compra.' };
       }
 
-      // 1. Llamada al nuevo RPC de demanda inteligente
+      // 1. Llamada al RPC de demanda inteligente
       const { data, error } = await supabase
         .rpc('get_sugerencias_compras_demanda', { 
-          p_sucursal_id: sucursalId 
+          p_sucursal_id: sucursalId,
+          p_dias: diasCompra,
+          p_colchon: porcentajeColchon
         });
 
       if (error) throw error;
 
-      // 2. Mapeo para mantener compatibilidad con la UI existente
+      // 2. 🛠️ MAPEADO CORRECTO: Sincronización con los nombres de columna del SQL optimizado
       const formattedData = (data || []).map(v => ({
         insumo_id: v.insumo_id,
         insumo_nombre: v.insumo_nombre,
         modelo: v.modelo || '',
         proveedor_nombre: v.proveedor_nombre || 'Sin proveedor',
-        consumo_diario_real: parseFloat(v.necesario_mañana || 0).toFixed(2), // Representa lo necesario para cubrir la venta
-        stock_fisico_hoy: parseFloat(v.stock_actual || 0).toFixed(2),
-        cantidad_sugerida: parseFloat(v.faltante_neto || 0),
+        // Cambiamos 'demanda_proyectada' por 'cantidad_requerida' que viene del SQL
+        consumo_diario_real: parseFloat(v.cantidad_requerida || 0).toFixed(1), 
+        stock_fisico_hoy: parseFloat(v.stock_actual || 0).toFixed(1),
+        // Cambiamos 'faltante_neto' por 'cantidad_a_comprar'
+        cantidad_sugerida: parseFloat(v.cantidad_a_comprar || 0).toFixed(1),
         cajas_a_pedir: parseInt(v.cajas_a_pedir || 0),
         unidad_medida: v.unidad_medida || 'Uds',
-        contenido_neto: v.contenido_neto
+        contenido_neto: v.contenido_neto,
+        presupuesto_estimado: parseFloat(v.presupuesto_estimado || 0)
       }));
 
       return { success: true, data: formattedData };
@@ -44,7 +49,6 @@ export const estimacionesService = {
 
   /**
    * Obtiene la proyección de PLATILLOS usando Inteligencia por Día de la Semana (DOW).
-   * Calcula automáticamente el promedio del día correspondiente a mañana.
    */
   async getProyeccionProductos(sucursalId) {
     try {
@@ -78,7 +82,7 @@ export const estimacionesService = {
         const info = productosInfo.find(p => p.id === stat.producto_id);
         return {
           nombre: info?.nombre || 'Producto desconocido',
-          promedio_diario: parseFloat(stat.promedio_diario).toFixed(2),
+          promedio_diario: parseFloat(stat.promedio_diario).toFixed(0),
           prediccion_manana: Math.ceil(stat.promedio_diario)
         };
       });
@@ -91,7 +95,7 @@ export const estimacionesService = {
   },
 
   /**
-   * Obtiene la matriz semanal completa de promedios (Histórico de 60 días).
+   * Obtiene la matriz semanal completa de promedios.
    */
   async getPronosticoSemanal(sucursalId) {
     try {
@@ -110,7 +114,7 @@ export const estimacionesService = {
   },
 
   /**
-   * 🚀 NUEVO: Obtiene las estimaciones MANUALES definidas por el usuario.
+   * Obtiene las estimaciones MANUALES definidas por el usuario.
    */
   async getEstimacionesManuales(sucursalId) {
     try {
@@ -129,16 +133,14 @@ export const estimacionesService = {
   },
 
   /**
-   * 🚀 ACTUALIZADO: Guarda, actualiza o ELIMINA una estimación manual.
-   * Si 'cantidad' viene vacío, elimina el registro para volver al estimado inteligente.
+   * Guarda, actualiza o ELIMINA una estimación manual.
    */
   async guardarEstimacionManual(sucursalId, productoId, dow, cantidad) {
     try {
       if (!hasPermission('editar_inventario')) {
-        return { success: false, error: 'Acceso denegado: No puedes definir estimaciones manuales.' };
+        return { success: false, error: 'Acceso denegado.' };
       }
 
-      // Si la cantidad es una cadena vacía o nula, eliminamos la estimación manual
       if (cantidad === "" || cantidad === null || cantidad === undefined) {
         const { error } = await supabase
           .from('productos_estimaciones_manuales')
@@ -151,7 +153,6 @@ export const estimacionesService = {
         return { success: true, action: 'deleted' };
       }
       
-      // Si hay un valor, procedemos con el upsert normal
       const { error } = await supabase
         .from('productos_estimaciones_manuales')
         .upsert({
@@ -189,7 +190,7 @@ export const estimacionesService = {
   },
 
   /**
-   * Trae el historial de movimientos manuales (Kardex) de los últimos 15 días.
+   * Trae el historial de movimientos manuales (Kardex).
    */
   async getHistorialConsumo(sucursalId) {
     try {
@@ -218,7 +219,7 @@ export const estimacionesService = {
   },
 
   /**
-   * Actualiza los parámetros de la estrategia de stock de un insumo (Días vs Manual).
+   * Actualiza los parámetros de la estrategia de stock.
    */
   async actualizarPoliticaCompra(insumoId, data) {
     try {
@@ -243,7 +244,7 @@ export const estimacionesService = {
   },
 
   /**
-   * Registra una compra física, afecta stock y genera registro en Kardex.
+   * Registra una compra física y afecta stock.
    */
   async registrarCompraRealizada(insumoId, cantidadCajas, costoTotal, usuarioId, sucursalId) {
     try {
@@ -261,7 +262,6 @@ export const estimacionesService = {
       const stockAntes = stockData ? parseFloat(stockData.cantidad_actual) : 0;
       const stockDespues = stockAntes + parseFloat(cantidadCajas);
 
-      // Registrar movimiento de ENTRADA
       const { error: errorMov } = await supabase
         .from('inventario_movimientos')
         .insert([{
@@ -278,7 +278,6 @@ export const estimacionesService = {
 
       if (errorMov) throw errorMov;
 
-      // Actualizar existencia física
       if (stockData) {
         const { error: errorUpdate } = await supabase
           .from('stock_sucursal')

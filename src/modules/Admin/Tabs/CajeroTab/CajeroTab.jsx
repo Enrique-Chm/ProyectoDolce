@@ -4,7 +4,7 @@ import { useCajeroTab } from "./useCajeroTab";
 import stylesAdmin from "../../../../assets/styles/EstilosGenerales.module.css";
 import { hasPermission } from "../../../../utils/checkPermiso";
 
-// 🚀 VISTAS DIVIDIDAS (Asegúrate de que los archivos existan en la misma carpeta)
+// 🚀 VISTAS DIVIDIDAS
 import { CobrarView } from "./CobrarView";
 import { MovimientosView } from "./MovimientosView";
 import { TurnoView } from "./TurnoView";
@@ -24,14 +24,15 @@ export const CajeroTab = ({ usuarioId, sucursalId }) => {
     movimientos, 
     historial, 
     tiposDisponibles,
-    descuentosCatalogo, // 🚀 RECUPERAMOS EL NUEVO ESTADO DE DESCUENTOS
+    descuentosCatalogo, 
     cuentasPendientes, 
     cuentasCobradas,   
     getMotivosPorTipo, 
     abrirTurno, 
     cerrarTurno, 
     registrarMovimientoEfectivo, 
-    refrescarTodo
+    refrescarTodo,
+    cobrarCuenta // 🚀 Recuperamos la función del hook (opcional si CobrarView usa el service directo)
   } = useCajeroTab(usuarioId, sucursalId);
 
   // Pantalla de carga mientras se sincroniza el estado de la caja
@@ -62,17 +63,18 @@ export const CajeroTab = ({ usuarioId, sucursalId }) => {
         </nav>
 
         {/* --- 1. VISTA DE COBRO DE MESAS --- */}
-        {activeSubTab === "COBRAR" && (
-          <CobrarView
-            sesionActiva={sesionActiva}
-            cuentasPendientes={cuentasPendientes}
-            cuentasCobradas={cuentasCobradas}
-            puedeEditarCaja={puedeEditarCaja}
-            refrescarTodo={refrescarTodo}
-            tiposDescuentoCatalogo={descuentosCatalogo} // 👈 PASAMOS LOS DESCUENTOS A LA VISTA
-          />
-        )}
 
+{activeSubTab === "COBRAR" && (
+  <CobrarView
+    sesionActiva={sesionActiva}
+    cuentasPendientes={cuentasPendientes}
+    cuentasCobradas={cuentasCobradas}
+    puedeEditarCaja={puedeEditarCaja}
+    refrescarTodo={refrescarTodo}
+    tiposDescuentoCatalogo={descuentosCatalogo}
+    sucursalId={sucursalId} // 🚀 ESTA LÍNEA ES VITAL
+  />
+)}
         {/* --- 2. VISTA DE ENTRADAS Y SALIDAS DE EFECTIVO --- */}
         {activeSubTab === "MOVIMIENTOS" && (
           <MovimientosView 
