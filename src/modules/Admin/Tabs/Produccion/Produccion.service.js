@@ -1,19 +1,14 @@
 // Archivo: src/modules/Admin/Tabs/Produccion/Produccion.service.js
 import { supabase } from '../../../../lib/supabaseClient';
 
-/**
- * Servicio encargado de la lógica de producción y preparaciones base (Mise en Place).
- * Coordina el cálculo de demanda proyectada y la gestión del stock físico
- * exclusivo para subrecetas (preparados de cocina).
- */
 export const produccionService = {
   
   /**
-   * 🤖 Obtiene el Plan de Producción Diaria.
-   * Llama a la función RPC que explota las recetas según la demanda proyectada
-   * y cruza los datos con la tabla 'stock_subrecetas'.
-   * * @param {number} sucursalId - ID de la sucursal activa.
-   * @param {number} dias - Rango de proyección (default 1).
+   * 🤖 Obtiene el Plan de Producción Diaria (Mise en Place)
+   * Ejecuta nativamente en Postgres la explosión de recetas y consolidación de demanda.
+   * * @param {number} sucursalId - ID de la sucursal actual
+   * @param {number} dias - Rango de días a proyectar (default 1)
+   * @returns {Promise<{success: boolean, data?: Array, error?: string}>}
    */
   async getPlanProduccion(sucursalId, dias = 1) {
     try {
@@ -21,41 +16,36 @@ export const produccionService = {
         return { success: false, error: "ID de sucursal no proporcionado." };
       }
 
-      const { data, error } = await supabase.rpc('get_plan_produccion_diaria', {
+      // 🚀 Llamada a la función RPC optimizada en SQL
+      // Esta función ya devuelve los nombres limpios, unidades de receta y cruce de stock
+      const { data, error } = await supabase.rpc('get_plan_produccion', { 
         p_sucursal_id: sucursalId,
         p_dias: dias
       });
 
       if (error) {
-        console.error("Error en RPC get_plan_produccion_diaria:", error);
-        return { success: false, error: error.message };
+        console.error("Error RPC get_plan_produccion:", error);
+        throw error;
       }
 
-      /**
-       * Estructura de retorno (vía stock_subrecetas):
-       * [{ subreceta_nombre, cantidad_total, cantidad_actual, unidad_medida, basado_en_productos }]
-       */
-      return { 
-        success: true, 
-        data: data || [] 
-      };
+      return { success: true, data: data || [] };
 
     } catch (err) {
-      console.error("Error inesperado en getPlanProduccion:", err);
+      console.error("Error en getPlanProduccion:", err);
       return { 
         success: false, 
-        error: "Ocurrió un error al intentar obtener el plan de producción." 
+        error: "Ocurrió un error al calcular el plan de producción. Verifica la conexión con el servidor." 
       };
     }
   },
 
   /**
-   * 📝 Registra la producción de una subreceta.
-   * Afecta directamente la tabla 'stock_subrecetas' (Suma o resta stock).
-   * * @param {number} sucursalId - ID de la sucursal.
-   * @param {string} nombreSubreceta - Nombre de la subreceta a afectar.
-   * @param {number} cantidad - Cantidad producida (positiva para suma, negativa para merma).
-   * @param {number} usuarioId - ID del usuario que opera.
+   * 📝 Registra un movimiento de stock en subrecetas (Producción o Merma).
+   * Realiza un Upsert: si la subreceta no existe en stock_subrecetas, la crea.
+   * * @param {number} sucursalId - ID de la sucursal
+   * @param {string} nombreSubreceta - Nombre exacto de la preparación
+   * @param {number} cantidad - Delta a sumar (positivo) o restar (negativo)
+   * @param {number} usuarioId - ID del usuario que realiza la acción
    */
   async registrarProduccion(sucursalId, nombreSubreceta, cantidad, usuarioId) {
     try {
@@ -63,51 +53,44 @@ export const produccionService = {
         return { success: false, error: "Faltan parámetros obligatorios para el registro." };
       }
 
-      const { data, error } = await supabase.rpc('registrar_produccion_subreceta', {
-        p_sucursal_id: sucursalId,
-        p_subreceta_nombre: nombreSubreceta,
-        p_cantidad_producida: cantidad,
-        p_usuario_id: usuarioId
-      });
-
-      if (error) {
-        console.error("Error en RPC registrar_produccion_subreceta:", error);
-        return { success: false, error: error.message };
-      }
-
-      return { success: true, data };
-
-    } catch (err) {
-      console.error("Error inesperado en registrarProduccion:", err);
-      return { 
-        success: false, 
-        error: "Error al intentar registrar el movimiento de producción." 
-      };
-    }
-  },
-
-  /**
-   * 🔍 Detalle de Origen.
-   * Consulta las recetas para saber qué platillos finales requieren esta subreceta.
-   */
-  async getDetalleOrigenProduccion(sucursalId, subrecetaNombre) {
-    try {
-      const { data, error } = await supabase
-        .from('recetas')
-        .select(`
-          cantidad,
-          productosmenu (
-            nombre
-          )
-        `)
+      // 1. Buscamos si ya existe un registro de stock para esta subreceta en esta sucursal
+      const { data: stockExistente, error: searchError } = await supabase
+        .from('stock_subrecetas')
+        .select('id, cantidad_actual')
         .eq('sucursal_id', sucursalId)
-        .eq('subreceta_id', subrecetaNombre);
+        .eq('nombre_subreceta', nombreSubreceta)
+        .maybeSingle();
+
+      if (searchError) throw searchError;
+
+      const cantidadProducida = parseFloat(cantidad);
+      
+      // 2. Calculamos el nuevo balance
+      const nuevaCantidad = stockExistente 
+        ? parseFloat(stockExistente.cantidad_actual) + cantidadProducida
+        : cantidadProducida;
+
+      // 3. Impactamos en la base de datos (Upsert por constraint de unicidad sucursal_id + nombre)
+      const { data, error } = await supabase
+        .from('stock_subrecetas')
+        .upsert({
+          id: stockExistente?.id, // Si existe, lo actualiza por ID
+          sucursal_id: sucursalId,
+          nombre_subreceta: nombreSubreceta,
+          cantidad_actual: nuevaCantidad,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'sucursal_id, nombre_subreceta' });
 
       if (error) throw error;
+
       return { success: true, data };
+
     } catch (err) {
-      console.error("Error en getDetalleOrigenProduccion:", err);
-      return { success: false, error: err.message };
+      console.error("Error en registrarProduccion:", err);
+      return { 
+        success: false, 
+        error: "Error al registrar el movimiento en el inventario físico." 
+      };
     }
   }
 };

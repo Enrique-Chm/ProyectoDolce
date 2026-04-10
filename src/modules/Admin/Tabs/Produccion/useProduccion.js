@@ -5,15 +5,16 @@ import { hasPermission } from '../../../../utils/checkPermiso';
 
 /**
  * Hook para gestionar la lógica de la pestaña de Producción (Mise en Place).
- * Coordina la demanda de subrecetas, el contraste con el stock físico en 'stock_subrecetas'
- * y el registro de nueva producción terminada.
+ * Ahora consume datos procesados nativamente en el backend (PostgreSQL),
+ * lo que garantiza que las unidades de medida, la explosión de recetas y 
+ * las estimaciones manuales sean consistentes y rápidas.
  */
 export const useProduccion = (sucursalId) => {
   const [planProduccion, setPlanProduccion] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false); // Bloqueo para evitar registros dobles
 
-  // Controlamos el rango de días para la proyección de demanda
+  // Controlamos el rango de días para la proyección de demanda (1 a 7 días)
   const [diasProyeccion, setDiasProyeccion] = useState(1);
 
   // 🛡️ Seguridad: RBAC basado en los permisos del usuario
@@ -21,15 +22,21 @@ export const useProduccion = (sucursalId) => {
   const puedeEditarProduccion = hasPermission('editar_inventario');
 
   /**
-   * Carga los datos desde la función RPC.
-   * Trae: subreceta_nombre, cantidad_total (necesario), 
-   * cantidad_actual (stock en tabla stock_subrecetas), unidad_medida y origen.
+   * Carga los datos desde el Service.
+   * El Service llama a la función RPC 'get_plan_produccion' que ya entrega:
+   * - subreceta_nombre
+   * - cantidad_total (proyectada según recetas y demanda)
+   * - cantidad_actual (stock físico en cocina)
+   * - unidad_medida (la definida en la tabla recetas)
+   * - basado_en_productos (lista de platos que generan la necesidad)
    */
   const cargarPlan = useCallback(async () => {
-    // Blindaje inicial
+    // Blindaje de seguridad y parámetros
     if (!sucursalId || !puedeVerProduccion) return;
 
     setLoading(true);
+    
+    // Llamada al service que ahora delega el cálculo al motor SQL de Supabase
     const res = await produccionService.getPlanProduccion(sucursalId, diasProyeccion);
     
     if (res.success) {
@@ -38,14 +45,17 @@ export const useProduccion = (sucursalId) => {
       console.error("Error al cargar el plan de producción:", res.error);
       setPlanProduccion([]);
     }
+    
     setLoading(false);
   }, [sucursalId, diasProyeccion, puedeVerProduccion]);
 
   /**
-   * 🚀 Registra una nueva producción o ajuste de stock.
-   * Llama al servicio que afecta la tabla dedicada de subrecetas.
-   * Después de un éxito, recarga el plan para que los balances (Necesario vs Actual) 
-   * se actualicen visualmente.
+   * 🚀 Registra una nueva tanda de producción o un ajuste de inventario.
+   * Después de un éxito, recarga el plan para que los indicadores (Faltantes/Cubiertos)
+   * se actualicen visualmente con el nuevo stock.
+   * * @param {string} nombreSubreceta - Identificador textual de la preparación.
+   * @param {number} cantidad - Valor a sumar (producción) o restar (merma/ajuste).
+   * @param {number} usuarioId - Responsable del movimiento.
    */
   const handleRegistrarProduccion = async (nombreSubreceta, cantidad, usuarioId) => {
     if (!puedeEditarProduccion) {
@@ -53,6 +63,7 @@ export const useProduccion = (sucursalId) => {
     }
     
     setIsSubmitting(true);
+    
     const res = await produccionService.registrarProduccion(
       sucursalId, 
       nombreSubreceta, 
@@ -61,7 +72,7 @@ export const useProduccion = (sucursalId) => {
     );
 
     if (res.success) {
-      // 🔄 Sincronización inmediata: Recargamos los datos para reflejar el nuevo stock
+      // 🔄 Sincronización inmediata de la vista
       await cargarPlan();
     }
 
@@ -70,8 +81,8 @@ export const useProduccion = (sucursalId) => {
   };
 
   /**
-   * Efecto para disparar la carga de datos cada vez que cambie 
-   * la sucursal o los días de proyección seleccionados.
+   * Efecto principal:
+   * Dispara la carga cada vez que cambia la sucursal o el rango de días.
    */
   useEffect(() => {
     cargarPlan();
