@@ -5,10 +5,8 @@ export const produccionService = {
   
   /**
    * 🤖 Obtiene el Plan de Producción Diaria (Mise en Place)
-   * Ejecuta nativamente en Postgres la explosión de recetas y consolidación de demanda.
-   * * @param {number} sucursalId - ID de la sucursal actual
-   * @param {number} dias - Rango de días a proyectar (default 1)
-   * @returns {Promise<{success: boolean, data?: Array, error?: string}>}
+   * Llama a la función RPC 'get_plan_produccion' que cruza la demanda 
+   * proyectada con el stock físico de subrecetas.
    */
   async getPlanProduccion(sucursalId, dias = 1) {
     try {
@@ -16,8 +14,6 @@ export const produccionService = {
         return { success: false, error: "ID de sucursal no proporcionado." };
       }
 
-      // 🚀 Llamada a la función RPC optimizada en SQL
-      // Esta función ya devuelve los nombres limpios, unidades de receta y cruce de stock
       const { data, error } = await supabase.rpc('get_plan_produccion', { 
         p_sucursal_id: sucursalId,
         p_dias: dias
@@ -34,62 +30,64 @@ export const produccionService = {
       console.error("Error en getPlanProduccion:", err);
       return { 
         success: false, 
-        error: "Ocurrió un error al calcular el plan de producción. Verifica la conexión con el servidor." 
+        error: "Error al calcular el plan de producción. Verifica los permisos de la función SQL." 
       };
     }
   },
 
   /**
-   * 📝 Registra un movimiento de stock en subrecetas (Producción o Merma).
-   * Realiza un Upsert: si la subreceta no existe en stock_subrecetas, la crea.
-   * * @param {number} sucursalId - ID de la sucursal
-   * @param {string} nombreSubreceta - Nombre exacto de la preparación
-   * @param {number} cantidad - Delta a sumar (positivo) o restar (negativo)
-   * @param {number} usuarioId - ID del usuario que realiza la acción
+   * 📝 Registra producción física (suma) o merma (resta).
+   * Realiza un cálculo de delta para mantener la integridad del stock
+   * y utiliza un upsert basado en el ID o en la restricción de unicidad.
    */
   async registrarProduccion(sucursalId, nombreSubreceta, cantidad, usuarioId) {
     try {
-      if (!sucursalId || !nombreSubreceta || !usuarioId) {
-        return { success: false, error: "Faltan parámetros obligatorios para el registro." };
+      const nombreLimpio = nombreSubreceta?.trim();
+      const cantidadDelta = parseFloat(cantidad);
+
+      if (!sucursalId || !nombreLimpio || !usuarioId || isNaN(cantidadDelta)) {
+        return { success: false, error: "Parámetros de registro incompletos o inválidos." };
       }
 
-      // 1. Buscamos si ya existe un registro de stock para esta subreceta en esta sucursal
+      // 1. Obtener el estado actual del stock para esta subreceta
       const { data: stockExistente, error: searchError } = await supabase
         .from('stock_subrecetas')
         .select('id, cantidad_actual')
         .eq('sucursal_id', sucursalId)
-        .eq('nombre_subreceta', nombreSubreceta)
+        .ilike('nombre_subreceta', nombreLimpio)
         .maybeSingle();
 
       if (searchError) throw searchError;
 
-      const cantidadProducida = parseFloat(cantidad);
-      
-      // 2. Calculamos el nuevo balance
-      const nuevaCantidad = stockExistente 
-        ? parseFloat(stockExistente.cantidad_actual) + cantidadProducida
-        : cantidadProducida;
+      const stockAnterior = stockExistente ? parseFloat(stockExistente.cantidad_actual) : 0;
+      const nuevaCantidad = stockAnterior + cantidadDelta;
 
-      // 3. Impactamos en la base de datos (Upsert por constraint de unicidad sucursal_id + nombre)
-      const { data, error } = await supabase
+      // 2. Ejecutar la actualización (Upsert)
+      // Se utiliza el ID si existe para asegurar que se actualice el registro correcto
+      const { error: upsertError } = await supabase
         .from('stock_subrecetas')
         .upsert({
-          id: stockExistente?.id, // Si existe, lo actualiza por ID
+          ...(stockExistente?.id && { id: stockExistente.id }),
           sucursal_id: sucursalId,
-          nombre_subreceta: nombreSubreceta,
+          nombre_subreceta: nombreLimpio,
           cantidad_actual: nuevaCantidad,
           updated_at: new Date().toISOString()
-        }, { onConflict: 'sucursal_id, nombre_subreceta' });
+        }, { 
+          onConflict: 'sucursal_id, nombre_subreceta' 
+        });
 
-      if (error) throw error;
+      if (upsertError) throw upsertError;
 
-      return { success: true, data };
+      // Nota: Si se requiere trazabilidad histórica, se recomienda insertar 
+      // el movimiento en una tabla de auditoría (logs) en este punto.
+
+      return { success: true };
 
     } catch (err) {
-      console.error("Error en registrarProduccion:", err);
+      console.error("Error crítico en registrarProduccion:", err);
       return { 
         success: false, 
-        error: "Error al registrar el movimiento en el inventario físico." 
+        error: "No se pudo actualizar el inventario físico. Contacta al administrador." 
       };
     }
   }

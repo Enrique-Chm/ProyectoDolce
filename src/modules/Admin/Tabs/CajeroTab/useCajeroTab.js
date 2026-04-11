@@ -7,7 +7,7 @@ import Swal from "sweetalert2";
 /**
  * Hook para gestionar la lógica de la Caja (CajeroTab).
  * Centraliza la gestión de turnos, movimientos de efectivo, arqueos y 
- * el procesamiento de cobros con actualización de inventario.
+ * el procesamiento de cobros con actualización de inventario por RPC.
  */
 export const useCajeroTab = (usuarioId, sucursalId) => {
   const [loading, setLoading] = useState(true);
@@ -99,7 +99,7 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
     }
   }, [cargarDatosCaja, sucursalId]);
 
-  // Efecto: Polling automático para mantener mesas actualizadas
+  // Efecto: Polling automático para mantener mesas actualizadas (cada 30 seg)
   useEffect(() => {
     if (sesionActiva?.id && sucursalId && !isNaN(sucursalId)) {
       cargarCuentas();
@@ -112,8 +112,8 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
   }, [sesionActiva?.id, sucursalId, cargarCuentas]);
 
   /**
-   * 🚀 NUEVO: Procesa el cobro de una cuenta y dispara el inventario híbrido.
-   * Centraliza la lógica de éxito/error y refresco de listas.
+   * 🚀 PROCESO DE PAGO: Finaliza la venta y descuenta stock.
+   * Llama a CajaService.finalizarVenta, el cual ejecuta el RPC de inventario híbrido.
    */
   const cobrarCuenta = async (idVenta, datosCobro) => {
     if (!puedeEditar) {
@@ -121,14 +121,20 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
     }
 
     setLoading(true);
-    // Llamamos al servicio pasando sucursalId para la lógica de inventario SQL
+    // Pasamos el sucursalId para que el Service pueda alimentar el RPC correctamente
     const { data, error } = await CajaService.finalizarVenta(idVenta, datosCobro, sucursalId);
     
     if (error) {
       Swal.fire("Error", `No se pudo procesar el pago: ${error.message}`, "error");
     } else {
-      await cargarCuentas(); // Actualizamos las listas para quitar la cuenta de "Pendientes"
-      Swal.fire("Venta Finalizada", "El pago ha sido registrado y el inventario actualizado correctamente.", "success");
+      await cargarCuentas(); // Quitamos la cuenta de la lista de pendientes
+      Swal.fire({
+        title: "Venta Finalizada",
+        text: "El pago ha sido registrado y el inventario actualizado correctamente.",
+        icon: "success",
+        timer: 2000,
+        showConfirmButton: false
+      });
     }
     
     setLoading(false);
@@ -165,7 +171,7 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
     } else {
       setSesionActiva(data);
       await cargarDatosCaja();
-      Swal.fire("Éxito", "Turno iniciado.", "success");
+      Swal.fire("Éxito", "Turno iniciado correctamente.", "success");
     }
   };
 
@@ -190,7 +196,7 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
     if (error) Swal.fire("Error", error.message, "error");
     else {
       await cargarDatosCaja();
-      Swal.fire("Registrado", "Movimiento guardado.", "success");
+      Swal.fire("Registrado", "Movimiento de efectivo guardado.", "success");
     }
   };
 
@@ -205,7 +211,7 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
 
     if (isNaN(montoCierreNum) || montoCierreNum < 0) return Swal.fire("Error", "Monto de cierre inválido.", "error");
 
-    // Cálculo de balance esperado en base a la DB
+    // Cálculo de balance esperado en base a la DB (Ventas pagadas en efectivo + aperturas + entradas - salidas)
     const { totalVentas } = await CajaService.getTotalesEfectivoSesion(sesionActiva.fecha_apertura, sucursalId);
     
     const ingresos = movimientos
@@ -222,16 +228,19 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
     const confirm = await Swal.fire({
       title: "¿Finalizar Turno?",
       html: `
-        <div style="text-align: left; background: #f8fafc; padding: 10px; border-radius: 8px;">
+        <div style="text-align: left; background: #f8fafc; padding: 15px; border-radius: 8px; font-size: 0.9rem;">
             <p>Efectivo Esperado: <b>$${montoEsperado.toFixed(2)}</b></p>
             <p>Efectivo Contado: <b>$${montoCierreNum.toFixed(2)}</b></p>
-            <hr/>
-            <p>Diferencia: <b>$${diferencia.toFixed(2)}</b></p>
+            <hr style="margin: 10px 0;"/>
+            <p style="color: ${diferencia < 0 ? '#ef4444' : '#10b981'}">
+              Diferencia: <b>$${diferencia.toFixed(2)}</b>
+            </p>
         </div>
       `,
       icon: "warning",
       showCancelButton: true,
       confirmButtonText: "Confirmar Arqueo y Cerrar",
+      cancelButtonText: "Cancelar"
     });
 
     if (confirm.isConfirmed) {
@@ -242,17 +251,18 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
         monto_cierre_tarjeta: montoTarjetaNum,
       });
 
-      if (error) Swal.fire("Error", error.message, "error");
-      else {
+      if (error) {
+        Swal.fire("Error", error.message, "error");
+      } else {
         setSesionActiva(null);
         await cargarDatosCaja();
-        Swal.fire("Turno Finalizado", "La caja ha sido cerrada correctamente.", "success");
+        Swal.fire("Turno Finalizado", "La caja ha sido cerrada y el arqueo registrado.", "success");
       }
     }
   };
 
   /**
-   * Forzar refresco manual de la vista
+   * Forzar refresco manual de toda la información
    */
   const refrescarTodo = async () => {
     await cargarDatosCaja();
@@ -272,7 +282,7 @@ export const useCajeroTab = (usuarioId, sucursalId) => {
     getMotivosPorTipo,
     abrirTurno,
     cerrarTurno,
-    cobrarCuenta, // 🚀 Exportado para procesar pagos con inventario
+    cobrarCuenta,
     registrarMovimientoEfectivo,
     refrescarTodo,
     cargarCuentas,

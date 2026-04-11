@@ -11,7 +11,7 @@ const AnaliticaTab = React.lazy(() => import("./Tabs/AnaliticaTab/AnaliticaTab")
 const ConfigTab = React.lazy(() => import("./Tabs/ConfigTab/ConfigTab").then(module => ({ default: module.ConfigTab }))); 
 const ProveedoresTab = React.lazy(() => import("./Tabs/ProveedoresTab").then(module => ({ default: module.ProveedoresTab })));
 const InsumosTab = React.lazy(() => import("./Tabs/InsumosTab").then(module => ({ default: module.InsumosTab })));
-const RecetasTab = React.lazy(() => import("./Tabs/RecetasTab").then(module => ({ default: module.RecetasTab })));
+const RecetasTab = React.lazy(() => import("./Tabs/RecetasTab/RecetasTab").then(module => ({ default: module.RecetasTab })));
 const MenuTab = React.lazy(() => import("./Tabs/MenuTab/MenuTab").then(module => ({ default: module.MenuTab })));
 const EmpleadosTab = React.lazy(() => import("./Tabs/EmpleadosTab").then(module => ({ default: module.EmpleadosTab })));
 const MeseroTab = React.lazy(() => import("./Tabs/MeseroTab/MeseroTab").then(module => ({ default: module.MeseroTab }))); 

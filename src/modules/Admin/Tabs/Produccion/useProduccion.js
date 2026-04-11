@@ -2,107 +2,137 @@
 import { useState, useEffect, useCallback } from 'react';
 import { produccionService } from './Produccion.service';
 import { hasPermission } from '../../../../utils/checkPermiso';
+import Swal from 'sweetalert2';
 
 /**
  * Hook para gestionar la lógica de la pestaña de Producción (Mise en Place).
- * Ahora consume datos procesados nativamente en el backend (PostgreSQL),
- * lo que garantiza que las unidades de medida, la explosión de recetas y 
- * las estimaciones manuales sean consistentes y rápidas.
+ * Consume datos procesados nativamente en el backend (PostgreSQL) y coordina
+ * el registro de producción física con el plan proyectado.
  */
 export const useProduccion = (sucursalId) => {
   const [planProduccion, setPlanProduccion] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false); // Bloqueo para evitar registros dobles
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Controlamos el rango de días para la proyección de demanda (1 a 7 días)
+  // Controlamos el rango de días para la proyección de demanda (por defecto 1 día)
   const [diasProyeccion, setDiasProyeccion] = useState(1);
 
-  // 🛡️ Seguridad: RBAC basado en los permisos del usuario
+  // 🛡️ RBAC: Permisos del usuario
+  // Verifica que estos permisos existan en tu lógica de usuarios
   const puedeVerProduccion = hasPermission('ver_inventario');
   const puedeEditarProduccion = hasPermission('editar_inventario');
 
   /**
-   * Carga los datos desde el Service.
-   * El Service llama a la función RPC 'get_plan_produccion' que ya entrega:
-   * - subreceta_nombre
-   * - cantidad_total (proyectada según recetas y demanda)
-   * - cantidad_actual (stock físico en cocina)
-   * - unidad_medida (la definida en la tabla recetas)
-   * - basado_en_productos (lista de platos que generan la necesidad)
+   * Carga el plan de producción desde el Service.
+   * Cruza la demanda proyectada de ventas con el stock físico de subrecetas.
    */
   const cargarPlan = useCallback(async () => {
-    // Blindaje de seguridad y parámetros
-    if (!sucursalId || !puedeVerProduccion) return;
+    // 🔍 DIAGNÓSTICO: Si la lista sale vacía, descomenta la siguiente línea 
+    // y revisa en la consola si sucursalId es válido y si tienes permisos.
+    // console.log("DEBUG: Intentando cargar plan", { sucursalId, puedeVerProduccion, diasProyeccion });
+
+    if (!sucursalId || isNaN(sucursalId) || !puedeVerProduccion) {
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
-    
-    // Llamada al service que ahora delega el cálculo al motor SQL de Supabase
-    const res = await produccionService.getPlanProduccion(sucursalId, diasProyeccion);
-    
-    if (res.success) {
-      setPlanProduccion(res.data || []);
-    } else {
-      console.error("Error al cargar el plan de producción:", res.error);
+    try {
+      const res = await produccionService.getPlanProduccion(sucursalId, diasProyeccion);
+      
+      if (res.success) {
+        // Aseguramos que los datos lleguen como array
+        setPlanProduccion(res.data || []);
+      } else {
+        console.error("Error al cargar el plan de producción:", res.error);
+        setPlanProduccion([]);
+      }
+    } catch (error) {
+      console.error("Error inesperado en cargarPlan:", error);
       setPlanProduccion([]);
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   }, [sucursalId, diasProyeccion, puedeVerProduccion]);
 
   /**
-   * 🚀 Registra una nueva tanda de producción o un ajuste de inventario.
-   * Después de un éxito, recarga el plan para que los indicadores (Faltantes/Cubiertos)
-   * se actualicen visualmente con el nuevo stock.
-   * * @param {string} nombreSubreceta - Identificador textual de la preparación.
-   * @param {number} cantidad - Valor a sumar (producción) o restar (merma/ajuste).
-   * @param {number} usuarioId - Responsable del movimiento.
+   * 🚀 Maneja el registro de una nueva tanda de producción o ajuste.
+   * Valida la entrada, bloquea doble envío y refresca la vista al terminar.
    */
-  const handleRegistrarProduccion = async (nombreSubreceta, cantidad, usuarioId) => {
+  const handleRegistrarProduccion = useCallback(async (nombreSubreceta, cantidad, usuarioId) => {
     if (!puedeEditarProduccion) {
-      return { success: false, error: "No tienes permisos para editar la producción." };
+      Swal.fire("Acceso denegado", "No tienes permisos para editar inventario.", "error");
+      return { success: false };
     }
-    
+
+    const cantidadNum = parseFloat(cantidad);
+
+    // Validación básica de entrada
+    if (isNaN(cantidadNum) || cantidadNum === 0) {
+      Swal.fire("Cantidad inválida", "Por favor ingresa un número válido diferente de cero.", "warning");
+      return { success: false };
+    }
+
     setIsSubmitting(true);
-    
-    const res = await produccionService.registrarProduccion(
-      sucursalId, 
-      nombreSubreceta, 
-      cantidad, 
-      usuarioId
-    );
+    try {
+      const res = await produccionService.registrarProduccion(
+        sucursalId, 
+        nombreSubreceta, 
+        cantidadNum, 
+        usuarioId
+      );
 
-    if (res.success) {
-      // 🔄 Sincronización inmediata de la vista
-      await cargarPlan();
+      if (res.success) {
+        // Recargamos el plan para actualizar los indicadores de "Cubierto"
+        await cargarPlan();
+        
+        Swal.fire({
+          title: "Registro exitoso",
+          text: `Se han actualizado las existencias de: ${nombreSubreceta}`,
+          icon: "success",
+          timer: 1500,
+          showConfirmButton: false
+        });
+      } else {
+        Swal.fire("Error", res.error, "error");
+      }
+      
+      return res;
+
+    } catch (error) {
+      console.error("Error en handleRegistrarProduccion:", error);
+      Swal.fire("Error crítico", "No se pudo conectar con el servidor.", "error");
+      return { success: false };
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsSubmitting(false);
-    return res;
-  };
+  }, [sucursalId, puedeEditarProduccion, cargarPlan]);
 
   /**
-   * Efecto principal:
-   * Dispara la carga cada vez que cambia la sucursal o el rango de días.
+   * Efecto: Recarga los datos automáticamente cuando cambia la sucursal o los días.
    */
   useEffect(() => {
-    cargarPlan();
-  }, [cargarPlan]);
+    // Solo disparamos la carga si hay una sucursal válida definida
+    if (sucursalId && !isNaN(sucursalId)) {
+      cargarPlan();
+    }
+  }, [cargarPlan, sucursalId]);
 
   return {
-    // 📊 Datos y Estados
+    // Estado de datos
     planProduccion,
     loading,
     isSubmitting,
     
-    // ⚙️ Controladores de Proyección
+    // Configuración de vista
     diasProyeccion,
     setDiasProyeccion,
     
-    // 🚀 Acciones
+    // Acciones manuales
     recargarPlan: cargarPlan,
     registrarProduccion: handleRegistrarProduccion,
     
-    // 🛡️ Facultades del usuario
+    // Facultades de seguridad
     puedeVerProduccion,
     puedeEditarProduccion
   };

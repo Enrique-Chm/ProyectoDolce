@@ -2,10 +2,16 @@
 import { supabase } from '../../../../lib/supabaseClient';
 import { hasPermission } from '../../../../utils/checkPermiso';
 
+/**
+ * SERVICIO DE ESTIMACIONES Y DEMANDA
+ * Centraliza la lógica de proyecciones de venta, ajustes manuales
+ * y sugerencias de compra basadas en el motor de demanda por DOW.
+ */
 export const estimacionesService = {
+  
   /**
-   * 🚀 ACTUALIZADO: Obtiene sugerencias de compra basadas en el motor de demanda por DOW (Día de la semana).
-   * Calcula qué días exactos se van a abastecer y envía el arreglo a Supabase.
+   * 🚀 Obtiene sugerencias de compra basadas en la demanda proyectada (IA + Manual).
+   * Envía un arreglo de días exactos (DOW) para calcular necesidades de stock.
    */
   async getSugerenciasCompra(sucursalId, diasCompra = 1, porcentajeColchon = 0) {
     try {
@@ -13,8 +19,7 @@ export const estimacionesService = {
         return { success: false, error: 'No tienes permisos para ver proyecciones de compra.' };
       }
 
-      // 1. LÓGICA DE FECHAS: Calcular los DOWs (Day of Week) a partir de mañana
-      // JavaScript getDay(): 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
+      // 1. LÓGICA DE FECHAS: Calculamos los DOWs (0-6) de los días siguientes
       const dowsArray = [];
       const hoy = new Date();
       
@@ -24,17 +29,18 @@ export const estimacionesService = {
         dowsArray.push(fechaFutura.getDay());
       }
 
-      // 2. Llamada al NUEVO RPC de demanda inteligente que acepta un arreglo de DOWs
+      // 2. RPC: get_sugerencias_compras_por_dow
+      // Este motor ya cruza recetas, ventas históricas y ajustes manuales
       const { data, error } = await supabase
         .rpc('get_sugerencias_compras_por_dow', { 
           p_sucursal_id: sucursalId,
-          p_dows: dowsArray, // Pasamos el arreglo de días exactos [ej. 1, 2, 3 para Lun, Mar, Mié]
+          p_dows: dowsArray, 
           p_colchon: porcentajeColchon
         });
 
       if (error) throw error;
 
-      // 3. 🛠️ MAPEADO: Sincronización con los nombres de columna del SQL
+      // 3. MAPEADO DE DATOS: Aseguramos formatos numéricos para el Frontend
       const formattedData = (data || []).map(v => ({
         insumo_id: v.insumo_id,
         insumo_nombre: v.insumo_nombre,
@@ -48,7 +54,7 @@ export const estimacionesService = {
         contenido_neto: v.contenido_neto,
         presupuesto_estimado: parseFloat(v.presupuesto_estimado || 0),
         
-        // Atributos necesarios para la edición de políticas
+        // Atributos de política de inventario
         metodo_compra: v.metodo_compra,
         dias_cobertura_objetivo: v.dias_cobertura_objetivo,
         dias_stock_seguridad: v.dias_stock_seguridad,
@@ -58,13 +64,13 @@ export const estimacionesService = {
 
       return { success: true, data: formattedData };
     } catch (error) {
-      console.error("Error en getSugerenciasCompra (Demanda DOW):", error);
+      console.error("Error en getSugerenciasCompra:", error);
       return { success: false, error: error.message };
     }
   },
 
   /**
-   * Obtiene la proyección de PLATILLOS usando Inteligencia por Día de la Semana (DOW).
+   * Obtiene la proyección de PLATILLOS para un día específico (DOW).
    */
   async getProyeccionProductos(sucursalId) {
     try {
@@ -111,7 +117,8 @@ export const estimacionesService = {
   },
 
   /**
-   * Obtiene la matriz semanal completa de promedios.
+   * Obtiene la matriz semanal completa (IA + Manual).
+   * Esta es la función "cerebro" que acabamos de actualizar en el SQL.
    */
   async getPronosticoSemanal(sucursalId) {
     try {
@@ -130,7 +137,7 @@ export const estimacionesService = {
   },
 
   /**
-   * Obtiene las estimaciones MANUALES definidas por el usuario.
+   * Obtiene exclusivamente los ajustes manuales del usuario.
    */
   async getEstimacionesManuales(sucursalId) {
     try {
@@ -149,7 +156,8 @@ export const estimacionesService = {
   },
 
   /**
-   * Guarda, actualiza o ELIMINA una estimación manual.
+   * Guarda o actualiza un ajuste manual. 
+   * Si la cantidad es vacía, elimina el ajuste para volver al promedio IA.
    */
   async guardarEstimacionManual(sucursalId, productoId, dow, cantidad) {
     try {
@@ -157,6 +165,7 @@ export const estimacionesService = {
         return { success: false, error: 'Acceso denegado.' };
       }
 
+      // Si el usuario borra el número, eliminamos el registro para que mande la IA
       if (cantidad === "" || cantidad === null || cantidad === undefined) {
         const { error } = await supabase
           .from('productos_estimaciones_manuales')
@@ -187,7 +196,7 @@ export const estimacionesService = {
   },
 
   /**
-   * Obtiene la lista de proveedores activos.
+   * Catálogo de proveedores para filtrado en la vista de compras.
    */
   async getProveedoresActivos() {
     try {
@@ -206,7 +215,7 @@ export const estimacionesService = {
   },
 
   /**
-   * Trae el historial de movimientos manuales (Kardex).
+   * Kardex de movimientos (para validación de consumos reales).
    */
   async getHistorialConsumo(sucursalId) {
     try {
@@ -235,7 +244,7 @@ export const estimacionesService = {
   },
 
   /**
-   * Actualiza los parámetros de la estrategia de stock.
+   * Actualiza los parámetros de stock (Mínimos, Máximos, Cobertura).
    */
   async actualizarPoliticaCompra(insumoId, data) {
     try {
@@ -260,12 +269,13 @@ export const estimacionesService = {
   },
 
   /**
-   * Registra una compra física y afecta stock.
+   * Afecta el inventario físico al confirmar una compra desde la proyeccion.
    */
   async registrarCompraRealizada(insumoId, cantidadCajas, costoTotal, usuarioId, sucursalId) {
     try {
       if (!hasPermission('editar_inventario')) return { success: false, error: 'Acceso denegado' };
       
+      // 1. Obtener stock actual
       const { data: stockData, error: stockError } = await supabase
         .from('stock_sucursal')
         .select('id, cantidad_actual')
@@ -278,6 +288,7 @@ export const estimacionesService = {
       const stockAntes = stockData ? parseFloat(stockData.cantidad_actual) : 0;
       const stockDespues = stockAntes + parseFloat(cantidadCajas);
 
+      // 2. Insertar movimiento de entrada
       const { error: errorMov } = await supabase
         .from('inventario_movimientos')
         .insert([{
@@ -294,6 +305,7 @@ export const estimacionesService = {
 
       if (errorMov) throw errorMov;
 
+      // 3. Upsert del stock actual
       if (stockData) {
         const { error: errorUpdate } = await supabase
           .from('stock_sucursal')
@@ -317,6 +329,7 @@ export const estimacionesService = {
 
       return { success: true };
     } catch (error) {
+      console.error("Fallo crítico en registrarCompraRealizada:", error);
       return { success: false, error: error.message };
     }
   }

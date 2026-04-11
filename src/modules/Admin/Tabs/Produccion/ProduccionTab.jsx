@@ -1,12 +1,12 @@
 // Archivo: src/modules/Admin/Tabs/Produccion/ProduccionTab.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import s from "../../../../assets/styles/EstilosGenerales.module.css";
 import { useProduccion } from "./useProduccion";
 import { InventarioSubreceta } from "./InventarioSubreceta"; 
 
 /**
  * Componente principal para la Gestión de Producción (Mise en Place).
- * Divide la vista en el Plan de Producción (Demanda) y el Inventario Físico de Preparados.
+ * Integra el análisis de demanda proyectada con el registro físico de stock.
  */
 export const ProduccionTab = ({ sucursalId, usuarioId }) => {
   const {
@@ -21,22 +21,31 @@ export const ProduccionTab = ({ sucursalId, usuarioId }) => {
   const [activeSubTab, setActiveSubTab] = useState("plan"); // 'plan' o 'inventario'
   const [filtroBuscar, setFiltroBuscar] = useState("");
 
-  // --- LÓGICA DE FILTRADO LOCAL (BLINDADA) ---
+  // --- LÓGICA DE FILTRADO ---
   const dataFiltrada = (planProduccion || []).filter((item) => {
-    // 🛡️ Envolvemos todo en String() para evitar que números o nulls crasheen el .toLowerCase()
-    const termino = String(filtroBuscar || "").toLowerCase();
+    // Normalizamos los textos para evitar errores de comparación
+    const termino = String(filtroBuscar || "").toLowerCase().trim();
     const nombre = String(item.subreceta_nombre || "").toLowerCase();
     const origen = String(item.basado_en_productos || "").toLowerCase();
     
-    return !filtroBuscar || nombre.includes(termino) || origen.includes(termino);
+    return !termino || nombre.includes(termino) || origen.includes(termino);
   });
+
+  // 🔍 DEBUG: Descomenta esto para ver en la consola si están llegando los datos del SQL
+  /*
+  useEffect(() => {
+    if (planProduccion.length > 0) {
+      console.log("Datos recibidos del Plan:", planProduccion);
+    }
+  }, [planProduccion]);
+  */
 
   if (!puedeVerProduccion) {
     return (
       <div className={s.emptyState}>
         <div style={{ fontSize: '3rem', marginBottom: '10px' }}>🔒</div>
         <h3 style={{ color: '#334155' }}>Acceso Restringido</h3>
-        <p>No tienes permisos para ver el plan de producción.</p>
+        <p>No tienes permisos suficientes para gestionar la producción.</p>
       </div>
     );
   }
@@ -44,7 +53,7 @@ export const ProduccionTab = ({ sucursalId, usuarioId }) => {
   return (
     <div style={{ animation: "fadeIn 0.3s ease" }}>
       
-      {/* 🚀 CABECERA PRINCIPAL */}
+      {/* 🚀 CABECERA: TÍTULO Y SINCRONIZACIÓN */}
       <section style={{
         backgroundColor: "#ffffff",
         padding: "24px",
@@ -60,12 +69,12 @@ export const ProduccionTab = ({ sucursalId, usuarioId }) => {
       }}>
         <div>
           <h2 style={{ fontSize: "1.4rem", fontWeight: "900", margin: "0 0 4px 0", color: "#0f172a", display: "flex", alignItems: "center", gap: "8px" }}>
-            <span>🔪</span> Mise en Place (Producción)
+            <span>🔪</span> Mise en Place
           </h2>
           <p style={{ fontSize: "13px", color: "#64748b", margin: 0 }}>
             {activeSubTab === "plan" 
-              ? `Análisis de necesidades proyectadas para cubrir la demanda de ${diasProyeccion} día(s).`
-              : "Control de existencias físicas de productos pre-elaborados en cocina."}
+              ? `Necesidades estimadas para cubrir la demanda de ${diasProyeccion} día(s).`
+              : "Inventario físico de preparaciones y subrecetas."}
           </p>
         </div>
         
@@ -73,13 +82,13 @@ export const ProduccionTab = ({ sucursalId, usuarioId }) => {
           className={`${s.btn} ${s.btnPrimary}`} 
           onClick={recargarPlan}
           disabled={loading}
-          style={{ padding: "10px 20px", fontWeight: "800", letterSpacing: "0.5px" }}
+          style={{ padding: "10px 20px", fontWeight: "800", display: "flex", alignItems: "center", gap: "8px" }}
         >
-          {loading ? "Sincronizando..." : "🔄 Actualizar Datos"}
+          {loading ? "Sincronizando..." : <><span>🔄</span> Actualizar Datos</>}
         </button>
       </section>
 
-      {/* 🧭 NAVEGACIÓN INTERNA */}
+      {/* 🧭 NAVEGACIÓN ENTRE PLAN E INVENTARIO */}
       <div style={{ 
         display: "inline-flex", 
         backgroundColor: "#f1f5f9", 
@@ -100,10 +109,7 @@ export const ProduccionTab = ({ sucursalId, usuarioId }) => {
             fontWeight: "800",
             boxShadow: activeSubTab === "plan" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
             cursor: "pointer",
-            transition: "all 0.2s ease",
-            display: "flex",
-            alignItems: "center",
-            gap: "6px"
+            transition: "all 0.2s ease"
           }}
         >
           📋 PLAN DE PRODUCCIÓN
@@ -120,20 +126,16 @@ export const ProduccionTab = ({ sucursalId, usuarioId }) => {
             fontWeight: "800",
             boxShadow: activeSubTab === "inventario" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
             cursor: "pointer",
-            transition: "all 0.2s ease",
-            display: "flex",
-            alignItems: "center",
-            gap: "6px"
+            transition: "all 0.2s ease"
           }}
         >
-          📦 MI STOCK PREPARADO
+          📦 STOCK PREPARADO
         </button>
       </div>
 
-      {/* 🟢 CONTENIDO DE LAS PESTAÑAS */}
       {activeSubTab === "plan" ? (
         <>
-          {/* 🚀 PANEL DE PROYECCIÓN */}
+          {/* 📊 PANEL DE PROYECCIÓN */}
           <div style={{ 
             display: "flex", 
             flexWrap: "wrap",
@@ -143,54 +145,50 @@ export const ProduccionTab = ({ sucursalId, usuarioId }) => {
             marginBottom: "24px", 
             backgroundColor: "#ffffff", 
             borderRadius: "12px",
-            border: "1px solid #e2e8f0",
-            boxShadow: "0 2px 4px rgba(0,0,0,0.02)"
+            border: "1px solid #e2e8f0"
           }}>
-            <div style={{ display: "flex", flexDirection: "column", flex: "1 1 250px" }}>
+            <div style={{ display: "flex", flexDirection: "column", flex: "1 1 220px" }}>
               <label style={{ fontSize: "11px", fontWeight: "900", color: "#475569", marginBottom: "8px", textTransform: "uppercase" }}>
-                Rango de Proyección (Días)
+                Rango de Pronóstico
               </label>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <button 
                   className={s.btn} 
-                  style={{ padding: "8px 16px", fontWeight: "bold", backgroundColor: "#f1f5f9", border: "1px solid #cbd5e1", color: "#334155" }}
+                  style={{ padding: "8px 16px", backgroundColor: "#f1f5f9", border: "1px solid #cbd5e1" }}
                   onClick={() => setDiasProyeccion(Math.max(1, diasProyeccion - 1))}
-                >
-                  -
-                </button>
+                > - </button>
                 <input 
                   type="number" 
                   className={s.inputField} 
-                  style={{ textAlign: "center", width: "80px", margin: 0, fontWeight: "900", fontSize: "1.3rem", color: "var(--color-primary)", backgroundColor: "#f8fafc" }} 
+                  style={{ textAlign: "center", width: "70px", margin: 0, fontWeight: "900", fontSize: "1.2rem", color: "var(--color-primary)" }} 
                   value={diasProyeccion} 
                   min="1"
-                  onChange={(e) => setDiasProyeccion(Math.max(1, parseInt(e.target.value) || 1))} 
+                  readOnly 
                 />
                 <button 
                   className={s.btn} 
-                  style={{ padding: "8px 16px", fontWeight: "bold", backgroundColor: "#f1f5f9", border: "1px solid #cbd5e1", color: "#334155" }}
+                  style={{ padding: "8px 16px", backgroundColor: "#f1f5f9", border: "1px solid #cbd5e1" }}
                   onClick={() => setDiasProyeccion(diasProyeccion + 1)}
-                >
-                  +
-                </button>
+                > + </button>
+                <span style={{ fontSize: "14px", fontWeight: "700", color: "#64748b" }}>Día(s)</span>
               </div>
             </div>
-            <div style={{ flex: 2, fontSize: "13px", color: "#64748b", lineHeight: "1.5", backgroundColor: "#f8fafc", padding: "12px", borderRadius: "8px", border: "1px dashed #cbd5e1" }}>
-              <strong>🤖 Inteligencia Activa:</strong> El sistema analiza el historial de ventas y hace una explosión de recetas para calcular exactamente cuánto necesitas cocinar hoy para no quedarte corto los próximos {diasProyeccion} días.
+            <div style={{ flex: 2, fontSize: "13px", color: "#64748b", backgroundColor: "#f8fafc", padding: "12px", borderRadius: "8px", border: "1px dashed #cbd5e1" }}>
+              <strong>🤖 Análisis Inteligente:</strong> Sumamos el stock físico actual y lo comparamos contra el promedio de ventas proyectado para los próximos días. Si el stock es insuficiente, aparecerá una alerta roja.
             </div>
           </div>
 
-          {/* 🚀 TABLA DE RESULTADOS DE PRODUCCIÓN */}
-          <div className={`${s.adminCard} ${s.tableContainer}`} style={{ padding: 0, borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+          {/* 🚀 TABLA DE RESULTADOS */}
+          <div className={`${s.adminCard} ${s.tableContainer}`} style={{ padding: 0, overflow: 'hidden' }}>
             
             <div style={{ padding: "16px 20px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
               <input
                 type="text"
                 className={s.inputField}
-                placeholder="🔍 Filtrar por nombre de preparación o platillo destino..."
+                placeholder="🔍 Buscar subreceta o plato destino..."
                 value={filtroBuscar}
                 onChange={(e) => setFiltroBuscar(e.target.value)}
-                style={{ width: "100%", maxWidth: "500px", margin: 0, backgroundColor: "#ffffff" }}
+                style={{ width: "100%", maxWidth: "450px", margin: 0 }}
               />
             </div>
 
@@ -198,58 +196,43 @@ export const ProduccionTab = ({ sucursalId, usuarioId }) => {
               <table className={s.table} style={{ minWidth: '900px', margin: 0 }}>
                 <thead className={s.thead}>
                   <tr>
-                    <th className={s.th} style={{ padding: "16px 20px", position: "sticky", left: 0, backgroundColor: "#f8fafc", zIndex: 10, boxShadow: '2px 0 5px rgba(0,0,0,0.02)' }}>PREPARACIÓN / SUBRECETA</th>
-                    <th className={s.th} style={{ textAlign: "center", padding: "16px" }}>DEMANDA</th>
-                    <th className={s.th} style={{ textAlign: "center", padding: "16px" }}>STOCK REAL</th>
-                    <th className={s.th} style={{ textAlign: "center", padding: "16px" }}>PROPORCIÓN</th>
-                    <th className={s.th} style={{ textAlign: "center", padding: "16px" }}>ESTADO / ACCIÓN</th>
-                    <th className={s.th} style={{ padding: "16px" }}>SE USA EN</th>
+                    <th className={s.th} style={{ padding: "16px 20px" }}>PREPARACIÓN / SUBRECETA</th>
+                    <th className={s.th} style={{ textAlign: "center" }}>DEMANDA (PROYECTADA)</th>
+                    <th className={s.th} style={{ textAlign: "center" }}>STOCK ACTUAL</th>
+                    <th className={s.th} style={{ textAlign: "center" }}>ESTADO / BALANCE</th>
+                    <th className={s.th}>DESTINO (PLATOS)</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan="6" style={{ textAlign: "center", padding: "60px", color: "#64748b" }}>
-                        <div className={s.spinner} style={{ margin: "0 auto 10px" }}></div>
-                        Calculando matemáticas de cocina...
+                      <td colSpan="5" style={{ textAlign: "center", padding: "80px" }}>
+                        <div className={s.spinner} style={{ margin: "0 auto 15px" }}></div>
+                        <p style={{ color: "#64748b", fontWeight: "600" }}>Calculando matemáticas de producción...</p>
                       </td>
                     </tr>
                   ) : dataFiltrada.length > 0 ? (
                     dataFiltrada.map((item, idx) => {
-                      const necesario = parseFloat(item.cantidad_total) || 0;
+                      const requerido = parseFloat(item.cantidad_total) || 0;
                       const actual = parseFloat(item.cantidad_actual) || 0;
-                      const porPreparar = Math.max(0, necesario - actual);
-                      const rendimiento = parseFloat(item.rendimiento_base) || 1;
-                      const unidad = item.unidad_medida || ""; 
-
-                      const factorReceta = porPreparar / rendimiento;
-                      let textoReceta = "-";
-                      
-                      if (porPreparar > 0) {
-                        if (Math.abs(factorReceta - 1) < 0.05) textoReceta = "HACER 1 RECETA";
-                        else if (Math.abs(factorReceta - 0.5) < 0.05) textoReceta = "HACER 1/2 RECETA";
-                        else if (Math.abs(factorReceta - 2) < 0.05) textoReceta = "HACER 2 RECETAS";
-                        else textoReceta = `HACER ${factorReceta.toFixed(1)} RECETAS`;
-                      }
-
-                      const esCritico = porPreparar > (necesario * 0.5);
+                      const faltante = Math.max(0, requerido - actual);
+                      const unidad = item.unidad_medida || "Unid";
 
                       return (
-                        <tr key={idx} style={{ backgroundColor: esCritico ? "#fef2f2" : "transparent", borderBottom: "1px solid #f1f5f9" }}>
-                          <td className={s.td} style={{ padding: "16px 20px", position: "sticky", left: 0, backgroundColor: esCritico ? "#fef2f2" : "#ffffff", zIndex: 5, boxShadow: '2px 0 5px rgba(0,0,0,0.02)' }}>
-                            <div style={{ fontWeight: "800", color: "#0f172a", fontSize: "14px" }}>
+                        <tr key={idx} style={{ backgroundColor: faltante > 0 ? "#fffafa" : "transparent", borderBottom: "1px solid #f1f5f9" }}>
+                          <td className={s.td} style={{ padding: "16px 20px" }}>
+                            <div style={{ fontWeight: "800", color: "#1e293b", fontSize: "14px" }}>
                               {item.subreceta_nombre}
                             </div>
                           </td>
-                          <td className={s.td} style={{ textAlign: "center", color: "#475569" }}>
-                            <span style={{ fontWeight: "700", fontSize: "14px" }}>{necesario.toFixed(2)}</span>
-                            <small style={{ fontWeight: "600" }}> {unidad}</small>
+                          <td className={s.td} style={{ textAlign: "center", fontWeight: "700", color: "#475569" }}>
+                            {requerido.toFixed(2)} <small>{unidad}</small>
                           </td>
                           <td className={s.td} style={{ textAlign: "center" }}>
                             <span style={{ 
                               fontWeight: "900", 
-                              fontSize: "14px",
-                              color: actual < necesario ? "#ef4444" : "#10b981" 
+                              color: actual < requerido ? "#ef4444" : "#10b981",
+                              fontSize: "15px"
                             }}>
                               {actual.toFixed(2)}
                             </span>
@@ -257,66 +240,45 @@ export const ProduccionTab = ({ sucursalId, usuarioId }) => {
                           </td>
                           
                           <td className={s.td} style={{ textAlign: "center" }}>
-                            {porPreparar > 0 ? (
+                            {faltante > 0 ? (
                               <div style={{ 
                                 display: "inline-block",
-                                padding: "6px 12px", 
-                                backgroundColor: "#eff6ff", 
-                                color: "#1d4ed8", 
-                                borderRadius: "8px",
+                                padding: "6px 14px",
+                                borderRadius: "20px",
                                 fontSize: "11px",
-                                fontWeight: "900",
-                                border: "1px solid #bfdbfe",
-                                whiteSpace: "nowrap"
-                              }}>
-                                🍳 {textoReceta}
-                              </div>
-                            ) : (
-                              <span style={{ color: "#cbd5e1", fontWeight: "800" }}>—</span>
-                            )}
-                          </td>
-
-                          <td className={s.td} style={{ textAlign: "center" }}>
-                            {porPreparar > 0 ? (
-                              <span style={{ 
-                                display: "inline-block",
-                                padding: "6px 12px",
-                                borderRadius: "8px",
-                                fontSize: "12px",
                                 fontWeight: "900",
                                 backgroundColor: "#fee2e2",
                                 color: "#b91c1c",
-                                whiteSpace: "nowrap"
+                                border: "1px solid #fecaca",
+                                textTransform: "uppercase"
                               }}>
-                                🚨 FALTAN {porPreparar.toFixed(2)} {unidad}
-                              </span>
+                                🚨 Faltan {faltante.toFixed(2)} {unidad}
+                              </div>
                             ) : (
-                              <span style={{ 
+                              <div style={{ 
                                 display: "inline-block",
-                                padding: "6px 12px",
-                                borderRadius: "8px",
-                                fontSize: "12px",
+                                padding: "6px 14px",
+                                borderRadius: "20px",
+                                fontSize: "11px",
                                 fontWeight: "900",
                                 backgroundColor: "#dcfce7",
                                 color: "#15803d",
-                                whiteSpace: "nowrap"
+                                textTransform: "uppercase"
                               }}>
-                                ✅ CUBIERTO
-                              </span>
+                                ✅ Stock Cubierto
+                              </div>
                             )}
                           </td>
-                          <td className={s.td} style={{ padding: "16px" }}>
+
+                          <td className={s.td}>
                             <div style={{ 
                               fontSize: "11px", 
-                              color: "#64748b",
-                              fontWeight: "500",
-                              maxWidth: "200px", 
-                              display: "-webkit-box",
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: "vertical",
-                              overflow: "hidden"
+                              color: "#64748b", 
+                              maxWidth: "280px",
+                              lineHeight: "1.4",
+                              fontStyle: item.basado_en_productos?.includes('Sin demanda') ? 'italic' : 'normal'
                             }}>
-                              {item.basado_en_productos || "Sin platos vinculados"}
+                              {item.basado_en_productos}
                             </div>
                           </td>
                         </tr>
@@ -324,8 +286,10 @@ export const ProduccionTab = ({ sucursalId, usuarioId }) => {
                     })
                   ) : (
                     <tr>
-                      <td colSpan="6" style={{ textAlign: "center", padding: "60px", color: "#94a3b8" }}>
-                        No se detectaron necesidades de producción para este periodo o filtro.
+                      <td colSpan="5" style={{ textAlign: "center", padding: "60px", color: "#94a3b8" }}>
+                        <div style={{ fontSize: "2rem", marginBottom: "10px" }}>📋</div>
+                        <p>No se encontraron subrecetas que coincidan con la búsqueda o la configuración.</p>
+                        <small>Asegúrate de que tus recetas tengan marcada la opción "Es Subreceta".</small>
                       </td>
                     </tr>
                   )}

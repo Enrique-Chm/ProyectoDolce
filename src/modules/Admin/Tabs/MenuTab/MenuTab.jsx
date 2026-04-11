@@ -17,6 +17,9 @@ const getMarginColor = (margen) => {
 
 export const MenuTab = ({ sucursalId }) => {
   const [activeSubTab, setActiveSubTab] = useState("productos");
+  
+  // 👁️ NUEVO ESTADO: Controla si vemos el menú activo o la papelera
+  const [mostrarInactivos, setMostrarInactivos] = useState(false);
 
   const menuTabLogic = useMenuTab(sucursalId);
   const {
@@ -38,7 +41,7 @@ export const MenuTab = ({ sucursalId }) => {
     setFiltroProductos,
     sortConfigProd,
     handleSortProd,
-    productosOrdenados, // <-- Array final ya filtrado y ordenado
+    productosOrdenados, 
     
     // Acciones y Alertas
     handleSubmitProducto,
@@ -46,6 +49,7 @@ export const MenuTab = ({ sucursalId }) => {
     toggleGrupoEnProducto,
     handleCancelProdClick,
     confirmDeleteProducto,
+    handleRestoreProducto, // Consumiendo la función del hook
 
   } = menuTabLogic;
 
@@ -57,6 +61,11 @@ export const MenuTab = ({ sucursalId }) => {
     if (sortConfigProd.key !== key) return " ↕";
     return sortConfigProd.direction === "asc" ? " ▲" : " ▼";
   };
+
+  // 🛡️ FILTRO MAESTRO: Separa los activos de los inactivos según el interruptor
+  const listaFinalProductos = productosOrdenados.filter(p => 
+    mostrarInactivos ? p.activo === false : p.activo !== false
+  );
 
   return (
     <div className={s.tabWrapper}>
@@ -146,7 +155,25 @@ export const MenuTab = ({ sucursalId }) => {
                   </div>
                 </div>
               </div>
-              <div className={s.textMuted}>
+
+              {/* 💡 NUEVA FILA VISUAL: PRECIO NETO Y GANANCIA */}
+              <div className={s.formGrid} style={{ marginTop: "10px" }}>
+                <div className={s.formGroup}>
+                  <label className={s.label}>GANANCIA EN $</label>
+                  <div 
+                    className={s.unitDisplayBox} 
+                    style={{ 
+                      textAlign: "center", 
+                      fontWeight: "700",
+                      color: (prodFormData.ganancia_neta || .1) > 0 ? "#198754" : "#dc3545" 
+                    }}
+                  >
+                    ${(prodFormData.ganancia_neta || 0).toFixed(2)}
+                  </div>
+                </div>
+              </div>
+
+              <div className={s.textMuted} style={{ marginTop: "15px" }}>
                 <label className={s.label}>VINCULAR GRUPOS DE EXTRAS</label>
                 <SearchableSelect
                   options={gruposMaestros.filter(
@@ -207,22 +234,38 @@ export const MenuTab = ({ sucursalId }) => {
           </aside>
 
           <div className={`${s.adminCard} ${s.tableContainer}`}>
-            {/* BARRA DE FILTROS EN UNA SOLA LÍNEA */}
+            
+            {/* 👁️ BARRA DE BÚSQUEDA Y TOGGLE DE PAPELERA */}
             <div
               style={{
                 padding: "10px 15px",
                 borderBottom: "1px solid var(--color-border)",
-                background: "var(--color-bg-light, #f8f9fa)"
+                background: "var(--color-bg-light, #f8f9fa)",
+                display: "flex",
+                gap: "15px",
+                alignItems: "center"
               }}
             >
               <input
                 type="text"
                 className={s.inputField}
-                style={{ margin: 0 }}
+                style={{ margin: 0, flex: 1 }}
                 placeholder="Buscar producto por nombre o categoría..."
                 value={filtroProductos}
                 onChange={(e) => setFiltroProductos(e.target.value)}
               />
+              <label style={{ 
+                cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", 
+                fontSize: "13px", color: "#64748b", fontWeight: "600", userSelect: "none" 
+              }}>
+                <input
+                  type="checkbox"
+                  checked={mostrarInactivos}
+                  onChange={(e) => setMostrarInactivos(e.target.checked)}
+                  style={{ cursor: "pointer", width: "16px", height: "16px" }}
+                />
+                 Ver Inactivos
+              </label>
             </div>
 
             <table className={s.table}>
@@ -256,29 +299,52 @@ export const MenuTab = ({ sucursalId }) => {
                   >
                     VENTA (CON IVA) {getSortIcon("venta")}
                   </th>
+                  {/* 💡 NUEVA COLUMNA DE GANANCIA NETA */}
+                  <th
+                    className={s.th}
+                    style={{ cursor: "pointer", userSelect: "none" }}
+                    onClick={() => handleSortProd("ganancia")}
+                  >
+                    GANANCIA NETA {getSortIcon("ganancia")}
+                  </th>
                   <th className={`${s.th} ${s.tdRight}`}>ACCIONES</th>
                 </tr>
               </thead>
               <tbody>
-                {productosOrdenados.length === 0 ? (
+                {listaFinalProductos.length === 0 ? (
                   <tr>
                     <td
-                      colSpan="5"
+                      colSpan="6" /* 👈 Cambiado a 6 columnas */
                       style={{ padding: "40px", textAlign: "center", color: "var(--color-text-muted)" }}
                     >
-                      {loading ? "Cargando productos..." : "No se encontraron productos con los filtros actuales."}
+                      {loading 
+                        ? "Cargando productos..." 
+                        : mostrarInactivos 
+                          ? "La papelera está vacía." 
+                          : "No se encontraron productos con los filtros actuales."}
                     </td>
                   </tr>
                 ) : (
-                  productosOrdenados.map((p) => {
+                  listaFinalProductos.map((p) => {
                     const costoBase = p.costo_actual || 0;
                     const ventaBase = p.precio_venta || 0;
                     const netoBase = ventaBase / IVA_FACTOR;
                     const margenBase = netoBase > 0 ? (((netoBase - costoBase) / netoBase) * 100).toFixed(1) : 0;
+                    
+                    // 💡 NUEVO CÁLCULO
+                    const gananciaNeta = netoBase - costoBase;
+                    
                     return (
-                      <tr key={p.id}>
+                      <tr key={p.id} style={{ opacity: p.activo === false ? 0.6 : 1, transition: "opacity 0.2s" }}>
                         <td className={s.td}>
-                          <div className={s.productTitle}>{p.nombre}</div>
+                          <div className={s.productTitle}>
+                            {p.nombre}
+                            {p.activo === false && (
+                              <span className={s.badge} style={{ background: "#fee2e2", color: "#ef4444", marginLeft: "8px", fontSize: "10px" }}>
+                                INACTIVO
+                              </span>
+                            )}
+                          </div>
                           <div className={s.textMuted}>
                             {(p.grupos || []).map((g) => (
                               <span key={g.id} className={s.badge}>
@@ -302,22 +368,50 @@ export const MenuTab = ({ sucursalId }) => {
                             {margenBase}% Margen Neto
                           </div>
                         </td>
+                        {/* 💡 CELDA DE GANANCIA NETA */}
+                        <td className={s.td}>
+                          <div className={s.priceValue} style={{ color: gananciaNeta > 0 ? "#198754" : "#dc3545" }}>
+                            ${gananciaNeta.toFixed(2)}
+                          </div>
+                        </td>
                         <td className={`${s.td} ${s.tdRight}`}>
                           <div className={s.actionsWrapper}>
-                            <button
-                              className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`}
-                              onClick={() => handleEditProd(p)}
-                            >
-                              {puedeEditar ? "📝" : "👁️"}
-                            </button>
-                            {puedeBorrar && (
+                            
+                            {/* 👁️ SI ESTÁ INACTIVO, MOSTRAMOS BOTÓN DE REVIVIR */}
+                            {p.activo === false ? (
                               <button
-                                className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`}
-                                onClick={() => confirmDeleteProducto(p.id, p.nombre)}
+                                className={`${s.btn} ${s.btnOutlineSuccess} ${s.btnSmall}`}
+                                style={{ padding: "4px 10px", fontSize: "12px", display: "flex", gap: "5px", alignItems: "center" }}
+                                onClick={() => {
+                                  if (handleRestoreProducto) {
+                                    handleRestoreProducto(p.id, p.nombre);
+                                  } else {
+                                    alert("Por favor agrega la función 'handleRestoreProducto' en tu useMenuTab.js para reactivarlo.");
+                                  }
+                                }}
                               >
-                                ❌
+                                ♻️ Restaurar
                               </button>
+                            ) : (
+                              /* BOTONES NORMALES DE EDITAR Y BORRAR */
+                              <>
+                                <button
+                                  className={`${s.btn} ${s.btnOutlineEditar} ${s.btnEditar}`}
+                                  onClick={() => handleEditProd(p)}
+                                >
+                                  {puedeEditar ? "📝" : "👁️"}
+                                </button>
+                                {puedeBorrar && (
+                                  <button
+                                    className={`${s.btn} ${s.btnOutlineDanger} ${s.btnSmall}`}
+                                    onClick={() => confirmDeleteProducto(p.id, p.nombre)}
+                                  >
+                                    ❌
+                                  </button>
+                                )}
+                              </>
                             )}
+
                           </div>
                         </td>
                       </tr>

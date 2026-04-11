@@ -4,7 +4,7 @@ import { productosService } from './Menu.service';
 import { hasPermission } from '../../../../utils/checkPermiso';
 import { IVA_FACTOR } from '../../../../utils/taxConstants'; 
 import toast from 'react-hot-toast'; 
-import Swal from 'sweetalert2'; // 👈 Importamos Swal para manejar las alertas desde el hook
+import Swal from 'sweetalert2'; 
 
 export const useMenuTab = (sucursalId) => {
   const [productos, setProductos] = useState([]);
@@ -29,6 +29,8 @@ export const useMenuTab = (sucursalId) => {
     categoria: '', 
     precio_venta: '', 
     costo_referencia: 0,
+    precio_neto: 0,    // 💡 NUEVO: Guardaremos el precio sin IVA
+    ganancia_neta: 0,  // 💡 NUEVO: Guardaremos el dinero de ganancia
     margen_en_vivo: 0, 
     disponible: true,
     grupos_vinculados: [] 
@@ -94,17 +96,24 @@ export const useMenuTab = (sucursalId) => {
     fetchData(); 
   }, [fetchData]);
 
-  // EFECTO: CÁLCULO DE MARGEN EN TIEMPO REAL (PRODUCTO PRINCIPAL)
+  // 💡 EFECTO: CÁLCULO DE MARGEN, NETO Y GANANCIA EN TIEMPO REAL
   useEffect(() => {
     const costoP = parseFloat(prodFormData.costo_referencia) || 0;
     const ventaBruta = parseFloat(prodFormData.precio_venta) || 0;
     
     const ventaNeta = ventaBruta / IVA_FACTOR;
+    const ganancia = ventaNeta - costoP;
+    
     const margenP = ventaNeta > 0 
-      ? (((ventaNeta - costoP) / ventaNeta) * 100).toFixed(1) 
+      ? ((ganancia / ventaNeta) * 100).toFixed(1) 
       : 0;
 
-    setProdFormData(prev => ({ ...prev, margen_en_vivo: margenP }));
+    setProdFormData(prev => ({ 
+      ...prev, 
+      precio_neto: ventaNeta, 
+      ganancia_neta: ganancia,
+      margen_en_vivo: margenP 
+    }));
   }, [prodFormData.precio_venta, prodFormData.costo_referencia]);
 
 
@@ -244,14 +253,25 @@ export const useMenuTab = (sucursalId) => {
 
   const handleDeleteProd = async (id) => {
     if (!puedeBorrar) return toast.error("Permiso denegado.");
-    const idToast = toast.loading("Eliminando...");
+    
     try {
       const { error } = await productosService.deleteProducto(id);
       if (error) throw error;
-      toast.success("Eliminado", { id: idToast });
       fetchData();
     } catch (err) {
-      toast.error("Error: " + err.message, { id: idToast });
+      toast.error("Ocurrió un error inesperado al eliminar.");
+    }
+  };
+
+  const handleRestoreProducto = async (id, nombre) => {
+    if (!puedeEditar) return toast.error("Permiso denegado.");
+    
+    try {
+      const { error } = await productosService.restoreProducto(id);
+      if (error) throw error;
+      fetchData();
+    } catch (err) {
+      toast.error(`Error al restaurar ${nombre}`);
     }
   };
 
@@ -270,7 +290,17 @@ export const useMenuTab = (sucursalId) => {
 
   const resetProdForm = () => {
     setEditProdId(null);
-    setProdFormData({ nombre: '', categoria: '', precio_venta: '', costo_referencia: 0, margen_en_vivo: 0, grupos_vinculados: [], disponible: true });
+    setProdFormData({ 
+      nombre: '', 
+      categoria: '', 
+      precio_venta: '', 
+      costo_referencia: 0, 
+      precio_neto: 0,
+      ganancia_neta: 0,
+      margen_en_vivo: 0, 
+      grupos_vinculados: [], 
+      disponible: true 
+    });
   };
 
   const resetGrupoForm = () => {
@@ -280,14 +310,20 @@ export const useMenuTab = (sucursalId) => {
 
   const handleEditProd = (p) => {
     const costoPrincipal = recetasCosteadas.find(r => r.nombre === p.nombre)?.costo_final || 0;
+    const ventaBruta = p.precio_venta || 0;
+    const ventaNeta = ventaBruta / IVA_FACTOR;
+    const ganancia = ventaNeta - costoPrincipal;
+
     setEditProdId(p.id);
     setProdFormData({
       nombre: p.nombre,
       categoria: p.categoria,
-      precio_venta: p.precio_venta,
+      precio_venta: ventaBruta,
       disponible: p.disponible,
       costo_referencia: costoPrincipal,
-      margen_en_vivo: 0, 
+      precio_neto: ventaNeta,
+      ganancia_neta: ganancia,
+      margen_en_vivo: 0, // El efecto lo recalculará enseguida
       grupos_vinculados: (p.grupos || []).map(g => g.id) 
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -337,13 +373,13 @@ export const useMenuTab = (sucursalId) => {
 
   const confirmDeleteProducto = (id, nombre) => {
     Swal.fire({
-      title: `¿Quitar "${nombre}" del menú?`,
-      text: "El producto ya no estará disponible para la venta, pero su receta se mantendrá intacta.",
-      icon: "error",
+      title: `¿Mandar "${nombre}" a la papelera?`,
+      text: "El producto se ocultará del punto de venta, pero su historial de ventas quedará intacto.",
+      icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#d33",
       cancelButtonColor: "#6c757d",
-      confirmButtonText: "Sí, quitar del menú",
+      confirmButtonText: "Sí, ocultar producto",
       cancelButtonText: "Cancelar",
     }).then((result) => { if (result.isConfirmed) handleDeleteProd(id); });
   };
@@ -418,6 +454,15 @@ export const useMenuTab = (sucursalId) => {
       const ventaB = b.precio_venta || 0;
       return sortConfigProd.direction === "asc" ? ventaA - ventaB : ventaB - ventaA;
     }
+    if (sortConfigProd.key === "ganancia") {
+      const netoA = (a.precio_venta || 0) / IVA_FACTOR;
+      const gananciaA = netoA - (a.costo_actual || 0);
+      
+      const netoB = (b.precio_venta || 0) / IVA_FACTOR;
+      const gananciaB = netoB - (b.costo_actual || 0);
+      
+      return sortConfigProd.direction === "asc" ? gananciaA - gananciaB : gananciaB - gananciaA;
+    }
     return 0;
   });
 
@@ -458,8 +503,8 @@ export const useMenuTab = (sucursalId) => {
     handleSubmitProducto, handleEditProd, handleDeleteProd, resetProdForm, toggleGrupoEnProducto,
     handleSubmitGrupo, handleEditGrupo, handleDeleteGrupo, resetGrupoForm, addOpcion, removeOpcion, updateOpcion,
     
-    // Interacciones (Alertas)
-    handleCancelProdClick, confirmDeleteProducto,
+    // Interacciones (Alertas) y Restauración
+    handleCancelProdClick, confirmDeleteProducto, handleRestoreProducto,
     handleCancelGrupoClick, confirmDeleteGrupo
   };
 };

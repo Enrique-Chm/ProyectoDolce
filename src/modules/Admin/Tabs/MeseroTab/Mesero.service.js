@@ -84,7 +84,8 @@ export const MeseroService = {
           )
         `)
         .eq('sucursal_id', Number(sucursalId))
-        .eq('disponible', true); 
+        .eq('disponible', true)
+        .eq('activo', true);
 
       if (error) {
         console.error("Error al obtener menú POS:", error);

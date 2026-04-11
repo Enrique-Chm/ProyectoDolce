@@ -3,6 +3,10 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { estimacionesService } from './Estimaciones.service';
 import { hasPermission } from '../../../../utils/checkPermiso'; 
 
+/**
+ * Hook Maestro para la pestaña de Proyecciones y Estimaciones.
+ * Coordina la inteligencia de demanda (IA) con los ajustes manuales del usuario.
+ */
 export const useEstimacionesTab = (sucursalId) => { 
   const [sugerencias, setSugerencias] = useState([]);
   const [proveedores, setProveedores] = useState([]);
@@ -14,7 +18,7 @@ export const useEstimacionesTab = (sucursalId) => {
   const [filtroProveedor, setFiltroProveedor] = useState('todos');
   const [compradosIds, setCompradosIds] = useState([]);
   
-  // Estado para controlar los días históricos (Kardex/Movimientos)
+  // Estado para controlar el rango del Kardex/Movimientos
   const [diasHistoricos, setDiasHistoricos] = useState(15); 
 
   // 🚀 CONTROLADORES DE DEMANDA DINÁMICA
@@ -28,8 +32,8 @@ export const useEstimacionesTab = (sucursalId) => {
   const puedeEditarInventario = hasPermission('editar_inventario');
 
   /**
-   * 🚀 LÓGICA DE DÍA PROYECTADO
-   * Calcula qué día de la semana es "mañana" para la interfaz.
+   * 📅 LÓGICA DE DÍA PROYECTADO
+   * Determina el nombre del día de mañana para resaltar en las tablas.
    */
   const diaProyectado = useMemo(() => {
     const nombresDias = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
@@ -37,17 +41,16 @@ export const useEstimacionesTab = (sucursalId) => {
     return nombresDias[mañanaIndex];
   }, []);
 
+  /**
+   * 🔄 CARGA MULTI-FUENTE EN PARALELO
+   * Obtiene datos de IA, ajustes manuales, proveedores y movimientos.
+   */
   const cargarDatos = useCallback(async () => {
-    // 🛡️ BLINDAJE
     if ((!puedeVerInventario && !puedeVerProveedores) || !sucursalId) return;
 
     setLoading(true);
-
     try {
-      /**
-       * 🛡️ Solicitamos todos los datos necesarios en paralelo.
-       * Cada vez que diasCompra cambia, getSugerenciasCompra enviará el arreglo exacto de DOWs al SQL.
-       */
+      // Ejecutamos todas las peticiones al mismo tiempo para optimizar velocidad
       const [resS, resP, resH, resPP, resPS, resEM] = await Promise.all([
         puedeVerInventario ? estimacionesService.getSugerenciasCompra(sucursalId, diasCompra, porcentajeColchon) : { success: true, data: [] },
         puedeVerProveedores ? estimacionesService.getProveedoresActivos() : { success: true, data: [] },
@@ -63,19 +66,19 @@ export const useEstimacionesTab = (sucursalId) => {
       if (resPP.success) setProyeccionProductos(resPP.data || []); 
       if (resPS.success) setPronosticoSemanal(resPS.data || []);
       if (resEM.success) setEstimacionesManuales(resEM.data || []); 
+      
     } catch (error) {
-      console.error("Error al cargar datos de estimaciones:", error);
+      console.error("Error crítico al cargar useEstimacionesTab:", error);
     } finally {
       setLoading(false);
     }
   }, [puedeVerInventario, puedeVerProveedores, sucursalId, diasHistoricos, diasCompra, porcentajeColchon]);
 
   /**
-   * Filtrado por proveedor sobre los datos de demanda.
+   * 🔍 FILTRADO DE COMPRAS
    */
   const sugerenciasFiltradas = useMemo(() => {
     if (!puedeVerInventario) return [];
-    
     const base = Array.isArray(sugerencias) ? sugerencias : [];
     return base.filter(item => 
       filtroProveedor === 'todos' || item.proveedor_nombre === filtroProveedor
@@ -83,12 +86,10 @@ export const useEstimacionesTab = (sucursalId) => {
   }, [sugerencias, filtroProveedor, puedeVerInventario]);
 
   /**
-   * Calcula el presupuesto total basándose en los insumos necesarios.
-   * Excluye los que ya fueron marcados como "comprados" en la sesión actual.
+   * 💰 CÁLCULO DE PRESUPUESTO EN VIVO
    */
   const presupuestoTotal = useMemo(() => {
     if (!puedeVerInventario) return 0;
-
     const baseFiltrada = Array.isArray(sugerenciasFiltradas) ? sugerenciasFiltradas : [];
     const baseComprados = Array.isArray(compradosIds) ? compradosIds : [];
 
@@ -100,6 +101,9 @@ export const useEstimacionesTab = (sucursalId) => {
       }, 0);
   }, [sugerenciasFiltradas, compradosIds, puedeVerInventario]);
 
+  /**
+   * 📝 ACCIÓN: Actualizar parámetros de stock (Min/Max/Seguridad)
+   */
   const guardarPolitica = async (id, politicaData) => {
     if (!puedeEditarInventario) return { success: false, error: "No tienes permisos." };
     
@@ -109,18 +113,21 @@ export const useEstimacionesTab = (sucursalId) => {
   };
 
   /**
-   * 🚀 ACCIÓN: Guarda estimación manual de ventas.
+   * ✏️ ACCIÓN: Guardar ajuste manual de ventas por día (DOW)
    */
   const guardarEstimacionManual = async (productoId, dow, cantidad) => {
     if (!puedeEditarInventario) return { success: false, error: "No tienes permisos." };
 
     const res = await estimacionesService.guardarEstimacionManual(sucursalId, productoId, dow, cantidad);
-    if (res.success) await cargarDatos();
+    if (res.success) {
+      // Recargamos datos para que el cambio manual se refleje en compras y IA
+      await cargarDatos();
+    }
     return res;
   };
 
   /**
-   * 🚀 ACCIÓN: Registra la compra y actualiza stock.
+   * 🛒 ACCIÓN: Confirmar compra realizada y afectar inventario
    */
   const confirmarCompra = async (insumo, usuarioId) => {
     if (!puedeEditarInventario) return { success: false, error: "No tienes permisos." };
@@ -134,19 +141,20 @@ export const useEstimacionesTab = (sucursalId) => {
     );
     
     if (res.success) {
+      // Marcamos como comprado localmente para el presupuesto y refrescamos
       setCompradosIds(prev => [...(Array.isArray(prev) ? prev : []), insumo.insumo_id]);
       await cargarDatos();
     }
     return res;
   };
 
-  // Disparo automático de carga al cambiar sucursal o parámetros de demanda
+  // Efecto principal: Recarga automática al cambiar filtros de demanda o sucursal
   useEffect(() => { 
     cargarDatos(); 
   }, [cargarDatos]); 
 
   return {
-    // Datos
+    // --- ESTADO DE DATOS ---
     sugerenciasFiltradas, 
     proveedores: puedeVerProveedores ? proveedores : [],
     historialConsumo,
@@ -155,30 +163,30 @@ export const useEstimacionesTab = (sucursalId) => {
     estimacionesManuales, 
     presupuestoTotal,
     
-    // Estados y setters
+    // --- ESTADOS DE UI ---
     filtroProveedor, 
     setFiltroProveedor,
     loading, 
     compradosIds,
     
-    // Controladores Proyección
+    // --- PARÁMETROS DE DEMANDA ---
     diasCompra,
     setDiasCompra,
     porcentajeColchon,
     setPorcentajeColchon,
 
-    // Configuración
+    // --- CONFIGURACIÓN ---
     diasHistoricos, 
     setDiasHistoricos, 
     diaProyectado, 
     
-    // Acciones
+    // --- MÉTODOS DE ACCIÓN ---
     recargarDatos: cargarDatos, 
     guardarPolitica,
     guardarEstimacionManual, 
     confirmarCompra,
 
-    // Banderas
+    // --- PERMISOS ---
     puedeVerInventario,
     puedeVerProveedores,
     puedeEditarInventario

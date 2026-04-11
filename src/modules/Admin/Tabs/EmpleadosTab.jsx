@@ -276,7 +276,7 @@ export const EmpleadosTab = () => {
                     color: emp.rolSeleccionado === r.id ? "white" : "var(--color-text-muted)",
                   }}
                   onClick={() => emp.seleccionarRol(r.id)}
-                >
+                > 
                   {r.nombre_rol.toUpperCase()}
                 </div>
               ))}

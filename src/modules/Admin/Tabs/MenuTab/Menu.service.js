@@ -1,4 +1,4 @@
-// Archivo: src/services/productos.service.js
+// Archivo: src/modules/Admin/Tabs/MenuTab/Menu.service.js
 import { supabase } from '../../../../lib/supabaseClient';
 import { hasPermission } from '../../../../utils/checkPermiso'; // 🛡️ Importación de seguridad
 import toast from 'react-hot-toast'; // 🍞 Feedback visual
@@ -184,16 +184,21 @@ export const productosService = {
     }
   },
 
+  /**
+   * 🛡️ BORRADO LÓGICO: Apaga el producto sin destruir su historial de ventas
+   */
   async deleteProducto(id) {
     if (!hasPermission('borrar_registros')) {
       toast.error("No tienes permisos para eliminar.");
       return { error: "Acceso denegado" };
     }
-    const tId = toast.loading("Eliminando producto...");
+    const tId = toast.loading("Enviando producto a la papelera...");
     try {
-      const { error } = await supabase.from('productosmenu').delete().eq('id', id);
+      // Usamos UPDATE en lugar de DELETE para cambiar activo = false
+      const { error } = await supabase.from('productosmenu').update({ activo: false }).eq('id', id);
       if (error) throw error;
-      toast.success("Producto eliminado", { id: tId });
+      
+      toast.success("Producto enviado a la papelera", { id: tId });
       return { error: null };
     } catch (error) {
       toast.error("Error al eliminar", { id: tId });
@@ -201,6 +206,30 @@ export const productosService = {
     }
   },
 
+  /**
+   * ♻️ RESTAURAR: Revive un producto previamente enviado a la papelera
+   */
+  async restoreProducto(id) {
+    if (!hasPermission('editar_productos')) {
+      toast.error("No tienes permisos para restaurar.");
+      return { error: "Acceso denegado" };
+    }
+    const tId = toast.loading("Restaurando producto...");
+    try {
+      const { error } = await supabase.from('productosmenu').update({ activo: true }).eq('id', id);
+      if (error) throw error;
+      
+      toast.success("Producto restaurado al menú", { id: tId });
+      return { error: null };
+    } catch (error) {
+      toast.error("Error al restaurar", { id: tId });
+      return { error };
+    }
+  },
+
+  /**
+   * Elimina un Grupo Maestro de modificadores
+   */
   async deleteGrupo(id) {
     if (!hasPermission('borrar_registros')) {
       toast.error("No tienes permisos para eliminar grupos.");

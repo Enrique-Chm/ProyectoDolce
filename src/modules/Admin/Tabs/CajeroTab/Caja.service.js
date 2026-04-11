@@ -183,8 +183,8 @@ export const CajaService = {
   },
 
   /**
-   * 🚀 ACTUALIZADO: Finaliza la venta y ejecuta el DESCUENTO HÍBRIDO DE INVENTARIO.
-   * Ahora requiere el sucursalId para procesar correctamente el stock.
+   * 🚀 FINALIZA LA VENTA Y DESCUENTA INVENTARIO
+   * Actualiza el estado del folio y dispara la explosión de recetas en SQL.
    */
   finalizarVenta: async (idVenta, datos, sucursalId) => {
     if (!hasPermission('editar_ventas')) {
@@ -192,7 +192,7 @@ export const CajaService = {
     }
 
     try {
-      // 1. Actualizamos los datos de la venta (pago, estado, cierre)
+      // 1. Preparamos el payload de actualización de la venta
       const updatePayload = {
         estado: datos.estado || 'pagado',
         metodo_pago: datos.metodo_pago,
@@ -204,6 +204,7 @@ export const CajaService = {
       if (datos.motivo_descuento !== undefined) updatePayload.motivo_descuento = datos.motivo_descuento;
       if (datos.total !== undefined) updatePayload.total = parseFloat(datos.total);
 
+      // 2. Actualizamos la tabla 'ventas'
       const { data: ventaActualizada, error: errorVenta } = await supabase
         .from('ventas')
         .update(updatePayload)
@@ -213,7 +214,7 @@ export const CajaService = {
 
       if (errorVenta) throw errorVenta;
 
-      // 2. Recuperamos los productos del ticket para descontar inventario
+      // 3. Recuperamos los productos para el proceso de inventario
       const { data: detalles, error: errorDetalle } = await supabase
         .from('ventas_detalle')
         .select('producto_id, cantidad')
@@ -221,7 +222,7 @@ export const CajaService = {
 
       if (errorDetalle) throw errorDetalle;
 
-      // 3. Ejecutamos el Descuento Híbrido mediante RPC
+      // 4. Ejecutamos el Descuento Híbrido mediante RPC (Lógica SQL)
       if (detalles && detalles.length > 0) {
         const promesasDescuento = detalles.map(item => 
           supabase.rpc('procesar_descuento_hibrido', {
@@ -231,14 +232,19 @@ export const CajaService = {
           })
         );
 
-        // Esperamos a que todos los procesos de inventario terminen
-        await Promise.all(promesasDescuento);
+        const resultados = await Promise.all(promesasDescuento);
+        
+        // Verificamos si hubo algún error en los RPC
+        const algunError = resultados.find(r => r.error);
+        if (algunError) {
+          console.warn("Venta procesada, pero algunos productos no actualizaron stock:", algunError.error);
+        }
       }
 
       return { data: ventaActualizada, error: null };
 
     } catch (err) {
-      console.error("Error crítico en finalizarVenta con inventario:", err);
+      console.error("Error crítico en finalizarVenta:", err);
       return { data: null, error: err };
     }
   },
