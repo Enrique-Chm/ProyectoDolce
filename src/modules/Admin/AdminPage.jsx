@@ -1,230 +1,147 @@
-// Archivo: src/modules/Admin/AdminPage.jsx
-import React, { useState, useEffect, useMemo, Suspense } from "react";
-import { Navigate } from "react-router-dom";
-import s from "../../assets/styles/EstilosGenerales.module.css";
-import { authService } from "../../services/Auth.service";
-import { sucursalesService } from "../../services/Sucursales.service";
-import { useSessionGuard } from "../../hooks/useSessionGuard";
+// src/modules/Admin/AdminPage.jsx
+import React, { useState } from 'react';
+import styles from '../../assets/styles/EstilosGenerales.module.css';
 
-// 🚀 LAZY LOADING: Componentes de las pestañas
-const AnaliticaTab = React.lazy(() => import("./Tabs/AnaliticaTab/AnaliticaTab").then(module => ({ default: module.AnaliticaTab })));
-const ConfigTab = React.lazy(() => import("./Tabs/ConfigTab/ConfigTab").then(module => ({ default: module.ConfigTab }))); 
-const ProveedoresTab = React.lazy(() => import("./Tabs/ProveedoresTab").then(module => ({ default: module.ProveedoresTab })));
-const InsumosTab = React.lazy(() => import("./Tabs/InsumosTab").then(module => ({ default: module.InsumosTab })));
-const RecetasTab = React.lazy(() => import("./Tabs/RecetasTab/RecetasTab").then(module => ({ default: module.RecetasTab })));
-const MenuTab = React.lazy(() => import("./Tabs/MenuTab/MenuTab").then(module => ({ default: module.MenuTab })));
-const EmpleadosTab = React.lazy(() => import("./Tabs/EmpleadosTab").then(module => ({ default: module.EmpleadosTab })));
-const MeseroTab = React.lazy(() => import("./Tabs/MeseroTab/MeseroTab").then(module => ({ default: module.MeseroTab }))); 
-const ImpresorasTab = React.lazy(() => import("./Tabs/ImpresorasTab").then(module => ({ default: module.ImpresorasTab })));
-const GastosTab = React.lazy(() => import("./Tabs/GastosTab").then(module => ({ default: module.GastosTab })));
-const CajeroTab = React.lazy(() => import('./Tabs/CajeroTab/CajeroTab'));
-const InventariosTab = React.lazy(() => import("./Tabs/InventariosTab/InventariosTab")); 
-const EstimacionesTab = React.lazy(() => import("./Tabs/Proyeccion/EstimacionesTab")); 
+// Importamos Auth (Ruta corregida según tu estructura: ../Auth/...)
+import Login from '../Auth/Login';
+import { useAuth } from '../Auth/useAuth';
 
-// 🚀 NUEVO: Tab de Producción
-const ProduccionTab = React.lazy(() => import("./Tabs/Produccion/ProduccionTab").then(module => ({ default: module.ProduccionTab })));
+// Importamos las pestañas de Admin
+import Pedidos from './Tabs/Pedidos/Pedidos';
+import NuevoPedido from './Tabs/NuevoPedido/NuevoPedido'; 
+import ChecklistPedido from './Tabs/Pedidos/ChecklistPedido'; 
+import Historial from './Tabs/Historial/Historial';
+import Productos from './Tabs/Productos/Productos'; 
 
-const AdminPage = () => {
-  useSessionGuard();
+// Sub-pestañas de Configuración
+import Configuracion from './Tabs/Configuracion/Configuracion';
+import Proveedores from './Tabs/Configuracion/Proveedores';
+import Trabajadores from './Tabs/Configuracion/Trabajadores';
+import Sucursales from './Tabs/Configuracion/Sucursales';
 
-  const [userSession, setUserSession] = useState(authService.getCurrentSession());
-  const isAdmin = userSession?.user?.rol === 'Administrador' || userSession?.user?.rol_id === 1;
-
-  // 💡 ESTADO PARA MOSTRAR/OCULTAR LA BARRA LATERAL
-  const [showSidebar, setShowSidebar] = useState(true);
-
-  const tabsConfig = useMemo(() => [
-    { id: 'analitica', label: 'Dashboard', permiso: 'ver_analitica' }, 
-    { id: 'estimaciones', label: 'Proyección Compras', permiso: 'ver_inventario' },
-    { id: 'produccion', label: 'Producción', permiso: 'ver_inventario' }, // 🚀 Nuevo Tab
-    { id: 'gastos', label: 'Gastos Operativos', permiso: 'ver_gastos' }, 
-    { id: 'mesero', label: 'Mesero', permiso: 'ver_comandas' },
-    { id: 'cajero', label: 'Caja', permiso: 'ver_ventas' },
-    { id: 'kardex', label: 'Inventarios', permiso: 'ver_inventario' },
-    { id: 'insumos', label: 'Insumos', permiso: 'ver_insumos' },
-    { id: 'recetas', label: 'Recetas', permiso: 'ver_recetas' }, 
-    { id: 'productos', label: 'Menú ', permiso: 'crear_productos' }, 
-    { id: 'proveedores', label: 'Proveedores', permiso: 'ver_proveedores' },
-    { id: 'empleados', label: 'Empleados', permiso: 'ver_usuarios' }, 
-    { id: 'impresoras', label: 'Impresoras', permiso: 'ver_configuracion' },
-    { id: 'config', label: 'Configuración', permiso: 'ver_configuracion' }
-  ], []);
-
-  const visibleTabs = useMemo(() => {
-    if (!userSession) return [];
-    if (isAdmin) return tabsConfig;
-    return tabsConfig.filter(tab => userSession.permisos.includes(tab.permiso));
-  }, [userSession, isAdmin, tabsConfig]);
-
-  const [activeTab, setActiveTab] = useState('');
-
-  useEffect(() => {
-    if (visibleTabs.length > 0 && !activeTab) {
-      setActiveTab(visibleTabs[0].id);
-    }
-  }, [visibleTabs, activeTab]);
+export default function AdminPage() {
+  const { usuario, cerrarSesion } = useAuth();
   
-  const [filterSucursal, setFilterSucursal] = useState(userSession?.user?.sucursal_id || 1);
-  const [listaSucursales, setListaSucursales] = useState([]);
+  // Estado de navegación
+  const [tabActiva, setTabActiva] = useState('pedidos');
+  const [ordenIdSeleccionada, setOrdenIdSeleccionada] = useState(null);
 
-  useEffect(() => {
-    if (userSession) { 
-      cargarSucursales(); 
-    }
-  }, [userSession]);
-
-  const cargarSucursales = async () => {
-    if (isAdmin || userSession?.permisos?.includes('ver_sucursales')) {
-      const { data } = await sucursalesService.getAll();
-      setListaSucursales(data || []);
-    }
-  };
-
-  const handleLogout = () => {
-    authService.logout();
-    setUserSession(null);
-  };
-
-  if (!userSession) {
-    return <Navigate to="/login" replace />;
+  // --- ESCUDO DE SEGURIDAD ---
+  if (!usuario) {
+    return <Login onLoginSuccess={() => window.location.reload()} />;
   }
 
-  return (
-    <div className={s.adminLayout}>
+  const abrirChecklist = (id) => {
+    setOrdenIdSeleccionada(id);
+    setTabActiva('checklist');
+  };
+
+  const renderizarTab = () => {
+    switch (tabActiva) {
+      case 'pedidos':
+        return <Pedidos onNuevoPedido={() => setTabActiva('nuevo_pedido')} onVerLista={abrirChecklist} />;
       
-      {/* 🔝 TOPBAR UNIFICADO */}
-      <header className={s.topBar}>
-        
-        {/* Bloque Izquierdo: Botón Menú, Logo y Selector de Sucursal */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
-          
-          <button 
-            onClick={() => setShowSidebar(!showSidebar)}
-            className={s.btn}
-            style={{ 
-              background: 'transparent', 
-              color: 'var(--color-primary)', 
-              border: '1px solid var(--color-border)',
-              padding: '6px 12px',
-              fontSize: '18px'
-            }}
-            title={showSidebar ? "Ocultar menú" : "Mostrar menú"}
-          >
-            ☰
-          </button>
+      case 'nuevo_pedido':
+        return <NuevoPedido onVolver={() => setTabActiva('pedidos')} />;
 
-          <h2 className={s.logoTitle} style={{ margin: 0, fontSize: '1.4rem', letterSpacing: '-0.5px' }}>
-            Ki<span style={{ color: 'var(--color-primary)' }}>Kitchen</span>
-          </h2>
-          
-          {isAdmin && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span className={s.label} style={{ margin: 0, fontSize: '11px' }}>
-                SUCURSAL:
-              </span>
-              <select 
-                className={"s.priceValue"} style={{  
-                  border: 'none', 
-                  background: 'transparent', 
-                  color: 'var(--color-primary)', 
-                  fontSize: '13px',
-                  fontWeight: '700',
-                  outline: 'none', 
-                  cursor: 'pointer',
-                  minWidth: '50px',
-                  padding: 0,
-                  appearance: 'auto'
-                }}
-                value={filterSucursal} 
-                onChange={(e) => setFilterSucursal(parseInt(e.target.value))}
-              >
-                {listaSucursales.map(suc => (
-                  <option 
-                    key={suc.id} 
-                    value={suc.id}
-                    style={{ color: 'var(--color-text-main)', background: 'white' }}
-                  >
-                    {suc.nombre}
-                  </option>
-                ))}
-              </select>
+      case 'checklist':
+        return <ChecklistPedido ordenId={ordenIdSeleccionada} onVolver={() => setTabActiva('pedidos')} />;
+      
+      case 'historial':
+        return <Historial onVerDetalle={abrirChecklist} />;
+      
+      // Ajustes: Solo si es Gerente
+      case 'configuracion':
+        return (
+          <Configuracion 
+            onAbrirProductos={() => setTabActiva('productos')} 
+            onAbrirProveedores={() => setTabActiva('proveedores')}
+            onAbrirTrabajadores={() => setTabActiva('trabajadores')}
+            onAbrirSucursales={() => setTabActiva('sucursales')}
+            onLogout={cerrarSesion}
+          />
+        );
+      
+      case 'productos':
+        return <Productos onVolver={() => setTabActiva('configuracion')} />;
+
+      case 'proveedores':
+        return <Proveedores onVolver={() => setTabActiva('configuracion')} />;
+
+      case 'trabajadores':
+        return <Trabajadores onVolver={() => setTabActiva('configuracion')} />;
+
+      case 'sucursales':
+        return <Sucursales onVolver={() => setTabActiva('configuracion')} />;
+      
+      default:
+        return <Pedidos onNuevoPedido={() => setTabActiva('nuevo_pedido')} onVerLista={abrirChecklist} />;
+    }
+  };
+
+  return (
+    <div className={styles.appContainer} style={{ padding: 0 }}> 
+      
+      <main className={styles.mainContent} style={{ padding: 'var(--space-md)', paddingBottom: '100px' }}>
+        
+        {/* Banner de Usuario Superior */}
+        <header style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          marginBottom: 'var(--space-md)',
+          padding: '8px 4px'
+        }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className="material-symbols-outlined" style={{ color: 'var(--color-primary)' }}>person</span>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
+                    Hola, <b>{usuario.nombre}</b> <span style={{ opacity: 0.6 }}>({usuario.rol})</span>
+                </p>
             </div>
-          )}
-          
-        </div>
-
-        {/* Bloque Derecho: Info del Usuario y Logout */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <div className={s.label} style={{ textAlign: 'right', marginBottom: 0 }}>
-            <span style={{ fontWeight: 'bold', color: 'var(--color-text-main)', fontSize: '12px' }}>
-              {userSession.user.nombre.toUpperCase()}
-            </span>
-            <br />
-            <span style={{ color: 'gray', fontSize: '10px' }} className={s.hideOnMobile}>
-              {!isAdmin ? `Sucursal ID: ${userSession.user.sucursal_id}` : 'Administrador Global'}
-            </span>
-          </div>
-          <button onClick={handleLogout} className={`${s.btn} ${s.btnOutlineDanger}`} style={{ padding: '6px 12px', fontSize: '11px' }}>
-            SALIR ✕
-          </button>
-        </div>
-      </header>
-
-      {/* 🧭 CUERPO PRINCIPAL */}
-      <div className={s.adminContainer}>
-        
-        {showSidebar && (
-          <aside className={s.sidebar}>
-            <nav className={s.sidebarNav}>
-              {visibleTabs.map((tab) => (
-                <button 
-                  key={tab.id} 
-                  onClick={() => setActiveTab(tab.id)} 
-                  className={`${s.navItem} ${activeTab === tab.id ? s.activeNavItem : ''}`}
-                >
-                  {tab.label.toUpperCase()}
+            {tabActiva !== 'configuracion' && (
+                <button onClick={cerrarSesion} style={{ background: 'none', border: 'none', color: 'var(--color-tertiary)', display: 'flex' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>logout</span>
                 </button>
-              ))}
-            </nav>
-          </aside>
+            )}
+        </header>
+
+        {renderizarTab()}
+      </main>
+
+      {/* Navegación Inferior Dinámica */}
+      <nav className={styles.bottomNav} style={{ 
+        display: 'grid', 
+        gridTemplateColumns: usuario.rol === 'Gerente' ? '1fr 1fr 1fr' : '1fr 1fr' 
+      }}>
+        
+        <button 
+          className={`${styles.navItem} ${['pedidos', 'nuevo_pedido', 'checklist'].includes(tabActiva) ? styles.active : ''}`}
+          onClick={() => setTabActiva('pedidos')}
+        >
+          <span className="material-symbols-outlined">format_list_bulleted</span>
+          <span>Activos</span>
+        </button>
+
+        <button 
+          className={`${styles.navItem} ${tabActiva === 'historial' ? styles.active : ''}`}
+          onClick={() => setTabActiva('historial')}
+        >
+          <span className="material-symbols-outlined">history</span>
+          <span>Historial</span>
+        </button>
+
+        {/* Solo el Gerente ve el botón de Ajustes */}
+        {usuario.rol === 'Gerente' && (
+          <button 
+            className={`${styles.navItem} ${['configuracion', 'productos', 'proveedores', 'trabajadores', 'sucursales'].includes(tabActiva) ? styles.active : ''}`}
+            onClick={() => setTabActiva('configuracion')}
+          >
+            <span className="material-symbols-outlined">settings</span>
+            <span>Ajustes</span>
+          </button>
         )}
 
-        <main className={s.mainContent}>
-          <section className={s.tabContent}>
-            <Suspense fallback={
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '80px', color: 'gray', fontWeight: 'bold' }}>
-                <div className={s.spinner}></div>
-                Cargando módulo...
-              </div>
-            }>
-                {activeTab === 'analitica' && <AnaliticaTab sucursalId={filterSucursal} />}
-                {activeTab === 'mesero' && <MeseroTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
-                {activeTab === 'cajero' && <CajeroTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
-                {activeTab === 'insumos' && <InsumosTab sucursalId={filterSucursal} />}
-                {activeTab === 'kardex' && <InventariosTab sucursalId={filterSucursal} usuarioId={userSession.user.id} />}
-                {activeTab === 'estimaciones' && <EstimacionesTab sucursalId={filterSucursal} />}
-                
-                {/* 🚀 TAB DE PRODUCCIÓN ACTUALIZADO CON usuarioId */}
-                {activeTab === 'produccion' && (
-                  <ProduccionTab 
-                    sucursalId={filterSucursal} 
-                    usuarioId={userSession.user.id} 
-                  />
-                )}
-
-                {activeTab === 'gastos' && <GastosTab />}
-                {activeTab === 'recetas' && <RecetasTab sucursalId={filterSucursal} />}
-                {activeTab === 'productos' && <MenuTab sucursalId={filterSucursal} />}
-                {activeTab === 'proveedores' && <ProveedoresTab sucursalId={filterSucursal} />}
-                {activeTab === 'empleados' && <EmpleadosTab />}
-                {activeTab === 'impresoras' && <ImpresorasTab sucursalId={filterSucursal} />}
-                {activeTab === 'config' && <ConfigTab />}
-            </Suspense>
-          </section>
-        </main>
-      </div>
+      </nav>
     </div>
   );
-};
-
-export default AdminPage;
+}

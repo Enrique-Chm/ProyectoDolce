@@ -1,35 +1,57 @@
 /* src/assets/styles/variables.css */
 :root {
-  /* Colores de Marca (Unificados del Comandero y Admin) */
-  --color-primary: #005696;
-  --color-primary-rgb: 0, 86, 150; /* Necesario para rgba() */
-  --color-primary-hover: #004477;
-  --color-secondary: #64748b;
+  /* =========================================
+     PALETA DE COLORES "EDITORIAL INVENTORY"
+     ========================================= */
+  --color-primary: #00453e;             /* Esmeralda oscuro (Textos primarios, botones) */
+  --color-primary-container: #005f56;   /* Esmeralda medio (Gradientes) */
+  --color-primary-fixed: #a6f1e4;       /* Verde menta claro (Badges) */
+  --color-on-primary-fixed: #005048;    /* Texto oscuro sobre menta */
 
-  /* Estados */
-  --color-success: #10b981;
-  --color-danger: #ef4444;
-  --color-warning: #f59e0b;
-  --color-info: #3b82f6;
+  --color-secondary-container: #cfe6f2; /* Azul claro pastel (Badges Pending) */
+  --color-on-secondary-fixed: #354a53;  /* Texto oscuro sobre azul pastel */
 
-  /* Fondos y Superficies */
-  --color-bg-app: #f3f4f6;
-  --color-bg-card: #ffffff;
-  --color-bg-muted: #f8fafc;
-  --color-bg-otros: #418f71;
-  /* Texto */
-  --color-text-main: #090a0e;
-  --color-text-muted: #42454b;
-  --color-text-white: #ffffff;
-  --color-text-blue: var(--color-primary-hover); /* Bordes y Sombras */
-  --color-border-dark: #d1d5db;
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-  --color-border: #d1d5db;
+  --color-tertiary: #642e1a;            /* Marrón/Rojo oscuro (Alertas urgentes) */
+  --color-tertiary-container: #80442f;  /* Fondo para alertas urgentes */
+  --color-tertiary-fixed: #ffdbcf;      /* Naranja/Coral pastel (Badges Urgent) */
 
-/* Tipografía y Formas */
-  --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --radius-ui: 12px;     /* Elementos internos más suaves */
-  --radius-button: 12px; /* Botones accesibles y redondeados */
-  --radius-card: 24px;   /* Tarjetas con curvas amplias y modernas */
+  /* Superficies y Fondos */
+  --color-background: #f8f9fa;          /* Fondo base de la app */
+  --color-surface-lowest: #ffffff;      /* Tarjetas blancas */
+  --color-surface-low: #f3f4f5;         /* Tarjetas gris muy claro */
+  --color-surface-high: #e7e8e9;        /* Elementos destacados gris medio */
+
+  /* Textos y Bordes */
+  --text-main: #191c1d;
+  --text-muted: #3f4947;
+  --text-light: #6f7977;
+  --border-ghost: rgba(190, 201, 198, 0.15); /* Borde sutil del diseño */
+  
+  /* Gradiente especial del diseño */
+  --gradient-editorial: linear-gradient(135deg, #00453e 0%, #005f56 100%);
+
+  /* =========================================
+     TIPOGRAFÍA
+     ========================================= */
+  --font-headline: 'Work Sans', sans-serif;
+  --font-body: 'Manrope', sans-serif;
+  --font-label: 'Inter', sans-serif;
+
+  /* =========================================
+     SISTEMA DE ESPACIADO Y BORDES
+     ========================================= */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1.5rem;  /* Equivalente a p-6 en Tailwind */
+  --space-lg: 2rem;    /* Equivalente a p-8 en Tailwind */
+  
+  --radius-sm: 0.125rem; /* Bordes casi cuadrados y elegantes */
+  --radius-md: 0.25rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-full: 9999px;
+
+  /* Sombras */
+  --shadow-nav: 0 -12px 32px -4px rgba(25, 28, 29, 0.06);
+  --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }

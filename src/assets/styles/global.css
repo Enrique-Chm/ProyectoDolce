@@ -1,86 +1,42 @@
 /* src/assets/styles/global.css */
+@import url('https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;600;700;800&family=Manrope:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+
 @import './variables.css';
 
-/* Aplicar a todo el proyecto para cálculos de ancho exactos */
 *, *::before, *::after {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent; 
 }
 
-/* Evitar selecciones accidentales al tocar la pantalla en tablets */
-.btn-ui, .navItem, .productCard {
-  user-select: none;
-  -webkit-tap-highlight-color: transparent;
-}
-/* Botones Estándar */
-.btn-ui {
-  padding: 10px 20px;
-  border-radius: var(--radius-button);
-  font-weight: 700;
-  cursor: pointer;
-  border: none;
-  transition: all 0.2s ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
 }
 
-.btn-ui-primary {
-  background-color: var(--color-primary);
-  color: var(--color-text-white);
+body {
+  background-color: var(--color-background);
+  color: var(--text-main);
+  font-family: var(--font-body); /* Manrope por defecto */
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
 }
 
-.btn-ui-primary:hover {
-  background-color: var(--color-primary-hover);
+/* Aplicando Work Sans a todos los títulos automáticamente */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-headline);
+  letter-spacing: -0.02em; /* Tracking-tight del diseño */
 }
 
-.btn-ui-outline {
-  background-color: transparent;
-  border: 1px solid var(--color-border);
-  color: var(--color-text-muted);
+/* Configuración de Material Symbols */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
 
-/* Tarjetas Reutilizables */
-.card-ui {
-  background-color: var(--color-bg-card);
-  border-radius: var(--radius-card);
-  border: 1px solid var(--color-border);
-  padding: 20px;
-  box-shadow: var(--shadow-md);
-}
-
-/* Flexbox Helpers */
-.flex-center { display: flex; align-items: center; justify-content: center; }
-.flex-between { display: flex; align-items: center; justify-content: space-between; }
-
-/* Contenedor que se divide en 2 columnas en PC y 1 columna en Tablet/Móvil */
-.admin-split-layout {
-  display: grid;
-  grid-template-columns: 1fr 1fr; /* Dos columnas iguales en escritorio */
-  gap: 24px;
-  align-items: start;
-}
-
-/* Cuando la pantalla sea menor a 1024px (Tablets y menos) */
-@media (max-width: 1024px) {
-  .admin-split-layout {
-    grid-template-columns: 1fr; /* Cambia a una sola columna */
-    gap: 32px; /* Aumentamos el espacio entre el formulario y la tabla */
-  }
-}
-
-.admin-split-layout-sidebar {
-  display: grid;
-  /* En PC: Formulario de 350px y el resto para la tabla */
-  grid-template-columns: 350px 1fr; 
-  gap: 25px;
-  align-items: start;
-}
-
-/* El "truco" para la tablet */
-@media (max-width: 1024px) {
-  .admin-split-layout-sidebar {
-    grid-template-columns: 1fr; /* Una sola columna: todo al 100% de ancho */
-    gap: 30px; /* Más espacio vertical para que respiren las secciones */
-  }
+img, picture, svg {
+  display: block;
+  max-width: 100%;
 }
