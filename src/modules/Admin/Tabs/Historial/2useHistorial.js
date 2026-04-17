@@ -1,15 +1,23 @@
 // src/modules/Admin/Tabs/Historial/2useHistorial.js
 import { useState, useCallback } from 'react';
 import { HistorialService } from './1Historial.service';
-import { AuthService } from '../../../Auth/Auth.service'; // <-- Importado para filtrar por identidad
+import { AuthService } from '../../../Auth/Auth.service';
 import toast from 'react-hot-toast';
 
 export const useHistorial = () => {
   const [loading, setLoading] = useState(false);
   const [ordenesHistorial, setOrdenesHistorial] = useState([]);
   
-  // Obtenemos la sesión para saber qué permisos de visualización aplicar
+  // Obtenemos la sesión
   const sesion = AuthService.getSesion();
+
+  /**
+   * ESTABILIZACIÓN DE DEPENDENCIAS
+   * Extraemos valores primitivos (strings/booleans) para evitar que el cambio de 
+   * referencia del objeto 'sesion' genere un bucle infinito en el useEffect.
+   */
+  const sucursalId = sesion?.sucursal_id;
+  const esAdmin = sesion?.permisos?.configuracion?.leer || false;
 
   // ==========================================
   // 1. CARGA DE DATOS CON FILTRO DE SEGURIDAD
@@ -23,25 +31,29 @@ export const useHistorial = () => {
 
       let datosFiltrados = data || [];
 
-      // LÓGICA DE VISIBILIDAD:
-      // Si no es Gerente o Comprador, filtramos para que solo vea su sucursal
-      if (sesion && sesion.rol !== 'Gerente' && sesion.rol !== 'Comprador') {
-        datosFiltrados = datosFiltrados.filter(orden => orden.sucursal_id === sesion.sucursal_id);
+      /**
+       * LÓGICA DE VISIBILIDAD DINÁMICA:
+       * Si el usuario no tiene permisos globales (no es Admin/Gerente), 
+       * solo puede ver el historial de su propia sucursal.
+       */
+      if (!esAdmin && sucursalId) {
+        datosFiltrados = datosFiltrados.filter(orden => orden.sucursal_id === sucursalId);
       }
 
       setOrdenesHistorial(datosFiltrados);
     } catch (err) {
-      console.error("Error en useHistorial:", err);
+      console.error("Error en cargarHistorial:", err);
       toast.error('No se pudo cargar el historial de órdenes');
     } finally {
       setLoading(false);
     }
-  }, [sesion]);
+  }, [sucursalId, esAdmin]); // Dependencias estables
 
   // ==========================================
   // 2. BÚSQUEDA POR FOLIO (RESPETANDO EL FILTRO)
   // ==========================================
   const buscarFolio = async (termino) => {
+    // Si el campo de búsqueda está vacío, recargamos la lista completa
     if (!termino.trim()) return cargarHistorial();
 
     setLoading(true);
@@ -52,13 +64,14 @@ export const useHistorial = () => {
 
       let datosFiltrados = data || [];
 
-      // Aplicamos el mismo filtro de seguridad en la búsqueda
-      if (sesion && sesion.rol !== 'Gerente' && sesion.rol !== 'Comprador') {
-        datosFiltrados = datosFiltrados.filter(orden => orden.sucursal_id === sesion.sucursal_id);
+      // Aplicamos el mismo filtro de seguridad en los resultados de búsqueda
+      if (!esAdmin && sucursalId) {
+        datosFiltrados = datosFiltrados.filter(orden => orden.sucursal_id === sucursalId);
       }
 
       setOrdenesHistorial(datosFiltrados);
     } catch (err) {
+      console.error("Error en buscarFolio:", err);
       toast.error('Error al realizar la búsqueda');
     } finally {
       setLoading(false);

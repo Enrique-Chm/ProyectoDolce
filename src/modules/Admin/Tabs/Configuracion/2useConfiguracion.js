@@ -12,7 +12,7 @@ export const useConfiguracion = () => {
   const [trabajadores, setTrabajadores] = useState([]);
   const [unidadesMedida, setUnidadesMedida] = useState([]);
   const [areasUso, setAreasUso] = useState([]);
-  const [roles, setRoles] = useState([]); // <-- Nuevo estado para Roles
+  const [roles, setRoles] = useState([]); 
 
   // Estado para selectores en formularios (unificado para Productos/Trabajadores)
   const [catalogosSelectores, setCatalogosSelectores] = useState({
@@ -20,7 +20,7 @@ export const useConfiguracion = () => {
     areas: [],
     sucursales: [],
     proveedores: [],
-    roles: [] // <-- Incluimos roles aquí para el registro de empleados
+    roles: [] 
   });
 
   // ==========================================
@@ -67,7 +67,6 @@ export const useConfiguracion = () => {
     setAreasUso(data || []);
   }, []);
 
-  // Nuevo método para cargar Roles
   const cargarRoles = useCallback(async () => {
     setLoading(true);
     const { data, error } = await ConfiguracionService.getRoles();
@@ -87,7 +86,7 @@ export const useConfiguracion = () => {
       areas: res.areas,
       sucursales: res.sucursales,
       proveedores: res.proveedores,
-      roles: res.roles // <-- Sincronizamos los roles
+      roles: res.roles 
     });
   }, []);
 
@@ -108,7 +107,9 @@ export const useConfiguracion = () => {
     if (error) {
       let mensajeAmigable = 'No se pudo guardar la información.';
       
-      if (error.code === '23505') mensajeAmigable = 'Error: Ya existe un registro con esos datos.';
+      // Manejo de errores específicos de PostgreSQL / Supabase
+      if (error.code === '23505') mensajeAmigable = 'Error: Ya existe un registro con esos datos (duplicado).';
+      if (error.code === '23503') mensajeAmigable = 'Error: Referencia inválida (el rol o sucursal no existe).';
       if (error.code === '23502') mensajeAmigable = 'Error: Faltan campos obligatorios.';
       if (error.code === '42703') mensajeAmigable = `Error Técnico: Columna no encontrada.`;
       
@@ -136,7 +137,6 @@ export const useConfiguracion = () => {
   const guardarTrabajador = (data) => 
     guardarDatoGenerico(ConfiguracionService.guardarTrabajador, data, cargarTrabajadores);
 
-  // Nuevo alias para guardar Rol
   const guardarRol = (data) => 
     guardarDatoGenerico(ConfiguracionService.guardarRol, data, cargarRoles);
 
@@ -155,7 +155,7 @@ export const useConfiguracion = () => {
       return false;
     }
     
-    toast.success('Estatus actualizado');
+    toast.success('Estatus actualizado correctamente');
     if (callbackCarga) await callbackCarga();
     return true;
   };
@@ -168,7 +168,7 @@ export const useConfiguracion = () => {
     trabajadores,
     unidadesMedida,
     areasUso,
-    roles, // <-- Expuesto
+    roles, 
     catalogosSelectores,
 
     // Métodos de carga expuestos
@@ -177,14 +177,14 @@ export const useConfiguracion = () => {
     cargarTrabajadores,
     cargarUnidadesMedida,
     cargarAreasUso,
-    cargarRoles, // <-- Expuesto
+    cargarRoles, 
     cargarCatalogosParaFormularios,
 
     // Métodos de acción expuestos
     guardarSucursal,
     guardarProveedor,
     guardarTrabajador,
-    guardarRol, // <-- Expuesto
+    guardarRol, 
     cambiarEstatus
   };
 };

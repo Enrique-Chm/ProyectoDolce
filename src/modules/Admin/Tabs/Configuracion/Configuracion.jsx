@@ -7,13 +7,21 @@ export default function Configuracion({
   onAbrirProductos, 
   onAbrirProveedores, 
   onAbrirTrabajadores,
-  onAbrirSucursales // <-- Nueva prop para navegación
+  onAbrirSucursales,
+  onAbrirRoles, // <-- Nueva prop para gestionar roles
+  onLogout      // <-- Prop para el cierre de sesión
 }) {
-  // Extraemos la lógica y el estado de nuestro Custom Hook
+  // Extraemos la lógica y el estado de nuestro Custom Hook actualizado
   const { 
     loading, 
-    sucursales, proveedores, trabajadores, 
-    cargarSucursales, cargarProveedores, cargarTrabajadores 
+    sucursales, 
+    proveedores, 
+    trabajadores, 
+    roles, // <-- Nuevo estado
+    cargarSucursales, 
+    cargarProveedores, 
+    cargarTrabajadores,
+    cargarRoles // <-- Nuevo método
   } = useConfiguracion();
 
   // Cargamos todos los catálogos al montar la pantalla para mostrar métricas reales
@@ -21,7 +29,8 @@ export default function Configuracion({
     cargarSucursales();
     cargarProveedores();
     cargarTrabajadores();
-  }, [cargarSucursales, cargarProveedores, cargarTrabajadores]);
+    cargarRoles(); // Sincronizamos los roles también
+  }, [cargarSucursales, cargarProveedores, cargarTrabajadores, cargarRoles]);
 
   return (
     <div className={styles.fadeIN}>
@@ -43,18 +52,17 @@ export default function Configuracion({
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '16px' }}>
           {loading 
             ? "Sincronizando datos..." 
-            : `Gestionando ${sucursales.length} sucursal(es) activa(s).`
+            : `Gestionando ${sucursales.length} sucursal(es) activa(s) en el sistema.`
           }
         </p>
 
-        {/* BOTÓN CONECTADO A SUCURSALES */}
         <button 
           onClick={onAbrirSucursales}
           className={`${styles.btnBase} ${styles.btnSecondary}`} 
           style={{ width: 'fit-content' }}
         >
-          <span className="material-symbols-outlined" style={{ fontSize: '1.125rem' }}>edit</span>
-          Editar Sucursales
+          <span className="material-symbols-outlined" style={{ fontSize: '1.125rem' }}>location_on</span>
+          Gestionar Sucursales
         </button>
       </section>
 
@@ -68,7 +76,7 @@ export default function Configuracion({
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '16px' }}>
           {loading 
             ? "Cargando métricas..." 
-            : `Actualmente cuentas con ${proveedores.length} proveedores y ${trabajadores.length} trabajadores registrados.`
+            : `Tienes ${proveedores.length} proveedores registrados y un catálogo de productos listo para operar.`
           }
         </p>
 
@@ -84,33 +92,55 @@ export default function Configuracion({
             <span className="material-symbols-outlined" style={{ fontSize: '1.125rem' }}>local_shipping</span>
             Proveedores
           </button>
+        </div>
+      </section>
 
+      {/* --- TARJETA: SEGURIDAD Y PERSONAL --- */}
+      <section className={styles.card} style={{ marginBottom: 'var(--space-md)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+          <span className="material-symbols-outlined" style={{ color: 'var(--color-primary)', fontSize: '1.5rem' }}>shield_person</span>
+          <h2 className={styles.subtitle} style={{ fontSize: '1.25rem' }}>Personal y Seguridad</h2>
+        </div>
+
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '16px' }}>
+          {loading 
+            ? "Validando accesos..." 
+            : `Contamos con ${trabajadores.length} trabajadores distribuidos en ${roles.length} niveles de acceso (roles).`
+          }
+        </p>
+
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           {/* BOTÓN: TRABAJADORES */}
-          <button onClick={onAbrirTrabajadores} className={`${styles.btnBase} ${styles.btnOutlined}`}>
+          <button onClick={onAbrirTrabajadores} className={`${styles.btnBase} ${styles.btnPrimary}`}>
             <span className="material-symbols-outlined" style={{ fontSize: '1.125rem' }}>badge</span>
             Trabajadores
+          </button>
+
+          {/* BOTÓN: ROLES (Nuevo módulo) */}
+          <button onClick={onAbrirRoles} className={`${styles.btnBase} ${styles.btnSecondary}`}>
+            <span className="material-symbols-outlined" style={{ fontSize: '1.125rem' }}>admin_panel_settings</span>
+            Roles y Permisos
           </button>
         </div>
       </section>
 
-      {/* --- TARJETA: SEGURIDAD Y CUENTA --- */}
+      {/* --- TARJETA: CUENTA --- */}
       <section className={styles.card}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-          <span className="material-symbols-outlined" style={{ color: 'var(--color-tertiary)', fontSize: '1.5rem' }}>shield_person</span>
-          <h2 className={styles.subtitle} style={{ fontSize: '1.25rem' }}>Cuenta y Seguridad</h2>
+          <span className="material-symbols-outlined" style={{ color: '#ba1a1a', fontSize: '1.5rem' }}>logout</span>
+          <h2 className={styles.subtitle} style={{ fontSize: '1.25rem' }}>Sesión</h2>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px', marginTop: '4px', marginBottom: '16px', alignItems: 'center' }}>
-           <span style={{ fontSize: '0.65rem', fontWeight: 'bold', color: 'var(--color-on-primary-fixed)', backgroundColor: 'var(--color-primary-fixed)', padding: '2px 6px', borderRadius: '4px', textTransform: 'uppercase' }}>
-             Administrador
-           </span>
-           <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-             Sesión activa
-           </p>
-        </div>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '16px' }}>
+          Finaliza tu sesión actual para salir del panel administrativo de forma segura.
+        </p>
 
-        <button className={`${styles.btnBase} ${styles.btnDanger}`} style={{ width: 'fit-content' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '1.125rem' }}>logout</span>
+        <button 
+          onClick={onLogout} 
+          className={`${styles.btnBase} ${styles.btnDanger}`} 
+          style={{ width: 'fit-content' }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: '1.125rem' }}>power_settings_new</span>
           Cerrar Sesión
         </button>
       </section>

@@ -14,6 +14,8 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
   } = usePedidos();
 
   const sesion = AuthService.getSesion();
+  // Extraemos los permisos de la sesión para validar acciones
+  const permisos = sesion?.permisos?.pedidos || {};
 
   useEffect(() => {
     if (ordenId) {
@@ -33,9 +35,17 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
 
   if (!detalleOrdenActual) return null;
 
+  // LÓGICA DE ESTADO Y PERMISOS
   const esSoloLectura = ['Completado', 'Cancelado'].includes(detalleOrdenActual.estatus);
-  const puedeEditar = !esSoloLectura && (sesion?.rol === 'Gerente' || sesion?.rol === 'Comprador');
+  
+  /**
+   * Un usuario puede editar el checklist si:
+   * 1. La orden no está finalizada o cancelada.
+   * 2. Su rol tiene permiso de 'editar' en el módulo de pedidos.
+   */
+  const puedeEditar = !esSoloLectura && permisos.editar;
 
+  // Métricas de progreso
   const itemsComprados = detalleOrdenActual.detalles.filter(d => d.estatus === 'Comprado').length;
   const totalItems = detalleOrdenActual.detalles.length;
   const progreso = totalItems > 0 ? (itemsComprados / totalItems) * 100 : 0;
@@ -60,7 +70,7 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
             {esSoloLectura ? 'Resumen' : 'Surtido'}
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', margin: 0 }}>
-             Proveedor: <b style={{ color: 'var(--text-main)' }}>{detalleOrdenActual.proveedor?.nombre || 'Pendiente'}</b>
+              Proveedor: <b style={{ color: 'var(--text-main)' }}>{detalleOrdenActual.proveedor?.nombre || 'Pendiente'}</b>
           </p>
         </div>
         <button onClick={onVolver} className={styles.btnSecondary} style={{ padding: '6px', borderRadius: '8px' }}>
@@ -72,7 +82,7 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
       <div style={{ marginBottom: '16px', backgroundColor: 'white', padding: '10px', borderRadius: '12px', border: '1px solid var(--border-ghost)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.65rem', fontWeight: '800', textTransform: 'uppercase' }}>
           <span style={{ color: progreso === 100 ? 'var(--color-primary)' : 'var(--text-light)' }}>
-              {progreso === 100 ? 'COMPLETO' : 'PROGRESO'}
+              {progreso === 100 ? 'COMPLETO' : 'PROGRESO SURTIDO'}
           </span>
           <span>{itemsComprados} / {totalItems}</span>
         </div>
@@ -104,7 +114,7 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
                 backgroundColor: esComprado ? 'var(--color-surface-lowest)' : 'white',
                 borderColor: esComprado ? 'transparent' : 'var(--border-ghost)',
                 opacity: esComprado ? 0.7 : 1,
-                padding: '8px 12px', // Reducido significativamente
+                padding: '8px 12px', 
                 borderRadius: '10px'
               }}
             >
@@ -158,6 +168,7 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
       </div>
 
       {/* --- PIE DE PÁGINA FLOTANTE --- */}
+      {/* El botón de finalizar solo aparece si el usuario tiene permiso de edición */}
       {puedeEditar && (
         <footer style={{ 
           position: 'fixed', 

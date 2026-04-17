@@ -18,7 +18,11 @@ export const AuthService = {
         estatus,
         sucursal_id,
         sucursal:Cat_sucursales(nombre),
-        rol:Cat_Roles(nombre)
+        rol:Cat_Roles(
+          id,
+          nombre,
+          permisos
+        )
       `)
       .eq('usuario', usuario)    // Búsqueda por la columna 'usuario'
       .eq('password', password)  // Comparación directa de contraseña
@@ -27,19 +31,25 @@ export const AuthService = {
 
     // Si hay error de Supabase o no hay datos, las credenciales son inválidas
     if (error || !data) {
+      console.error("Error en login:", error?.message);
       return { 
         data: null, 
         error: 'ID de Usuario o contraseña incorrectos' 
       };
     }
 
-    // Preparamos el objeto de sesión con la información necesaria para el Front-End
-    // Ahora incluimos los datos de la sucursal para automatizar pedidos
+    /**
+     * Preparamos el objeto de sesión con la información necesaria para el Front-End.
+     * Ahora incluimos el objeto 'permisos' para habilitar/deshabilitar funciones
+     * dinámicamente en la interfaz.
+     */
     const sesion = {
       id: data.id,
-      nombre: data.nombre_completo,
+      nombre_completo: data.nombre_completo,
       usuario: data.usuario,
-      rol: data.rol?.nombre || 'Sin Rol',
+      rol_id: data.rol?.id,
+      rol_nombre: data.rol?.nombre || 'Sin Rol',
+      permisos: data.rol?.permisos || {}, // <--- Aquí inyectamos el JSON de permisos
       sucursal_id: data.sucursal_id,
       sucursal_nombre: data.sucursal?.nombre || 'Sin Sucursal Asignada'
     };
@@ -56,9 +66,14 @@ export const AuthService = {
   getSesion() {
     const saved = localStorage.getItem('sesion_compra');
     try {
-      return saved ? JSON.parse(saved) : null;
+      if (!saved) return null;
+      
+      const parsed = JSON.parse(saved);
+      // Validamos que tenga la estructura mínima esperada
+      return parsed.id ? parsed : null;
     } catch (e) {
-      console.error("Error al parsear sesión:", e);
+      console.error("Error al recuperar sesión:", e);
+      localStorage.removeItem('sesion_compra');
       return null;
     }
   },
@@ -68,6 +83,7 @@ export const AuthService = {
    */
   logout() {
     localStorage.removeItem('sesion_compra');
+    // Forzamos el reload para limpiar todos los estados de los hooks en memoria
     window.location.reload(); 
   }
 };

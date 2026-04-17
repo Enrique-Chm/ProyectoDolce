@@ -8,23 +8,25 @@ export default function Historial({ onVerDetalle }) {
   const { loading, ordenesHistorial, cargarHistorial, buscarFolio } = useHistorial();
   const [busqueda, setBusqueda] = useState('');
   
-  // Obtenemos la sesión para personalizar el título según el rol
+  // Obtenemos la sesión para validar permisos
   const sesion = AuthService.getSesion();
+  const esAdmin = sesion?.permisos?.configuracion?.leer || false;
 
-  // Cargar datos al montar el componente
+  // Sincronizamos con la base de datos al montar
   useEffect(() => {
     cargarHistorial();
   }, [cargarHistorial]);
 
-  // Manejador del buscador (con debounce natural al escribir)
+  // Manejador del buscador con actualización de estado y llamada al hook
   const handleSearch = (e) => {
     const valor = e.target.value;
     setBusqueda(valor);
     buscarFolio(valor);
   };
 
-  // Función para formatear fechas de manera elegante y local
+  // Formateador de fechas localizado
   const formatearFecha = (fechaStr) => {
+    if (!fechaStr) return 'N/A';
     const fecha = new Date(fechaStr);
     return fecha.toLocaleDateString('es-MX', {
       day: '2-digit',
@@ -35,12 +37,20 @@ export default function Historial({ onVerDetalle }) {
     });
   };
 
+  // Formateador de moneda MXN
+  const formatearDinero = (monto) => {
+    return new Intl.NumberFormat('es-MX', { 
+      style: 'currency', 
+      currency: 'MXN' 
+    }).format(monto || 0);
+  };
+
   return (
     <div className={styles.fadeIN}>
       {/* --- ENCABEZADO --- */}
       <header style={{ marginBottom: 'var(--space-lg)' }}>
         <span className={styles.labelTop} style={{ display: 'block', marginBottom: '4px' }}>
-          {sesion?.rol === 'Gerente' ? 'AUDITORÍA GLOBAL' : `REGISTROS ${sesion?.sucursal_nombre}`}
+          {esAdmin ? 'AUDITORÍA GLOBAL' : `REGISTROS ${sesion?.sucursal_nombre || ''}`}
         </span>
         <h1 className={styles.title} style={{ fontSize: '2.8rem', lineHeight: '1', marginBottom: 'var(--space-md)' }}>
           Órdenes<br />Finalizadas
@@ -88,8 +98,8 @@ export default function Historial({ onVerDetalle }) {
               style={{ 
                 cursor: 'pointer',
                 borderLeft: orden.estatus === 'Completado' 
-                  ? '6px solid #2e7d32' 
-                  : '6px solid #c62828',
+                  ? '6px solid var(--color-primary)' 
+                  : '6px solid #ba1a1a',
                 backgroundColor: 'white',
                 transition: 'transform 0.2s ease'
               }}
@@ -111,9 +121,9 @@ export default function Historial({ onVerDetalle }) {
                   padding: '6px 10px',
                   borderRadius: '8px',
                   textTransform: 'uppercase',
-                  backgroundColor: orden.estatus === 'Completado' ? '#e8f5e9' : '#ffebee',
-                  color: orden.estatus === 'Completado' ? '#2e7d32' : '#c62828',
-                  border: orden.estatus === 'Completado' ? '1px solid #c8e6c9' : '1px solid #ffcdd2'
+                  backgroundColor: orden.estatus === 'Completado' ? 'var(--color-primary-container)' : '#ffebee',
+                  color: orden.estatus === 'Completado' ? 'var(--color-on-primary-container)' : '#ba1a1a',
+                  border: `1px solid ${orden.estatus === 'Completado' ? 'var(--color-primary)' : '#ffcdd2'}`
                 }}>
                   {orden.estatus}
                 </span>
@@ -149,7 +159,7 @@ export default function Historial({ onVerDetalle }) {
                 <div style={{ textAlign: 'right' }}>
                     <span style={{ display: 'block', fontSize: '0.6rem', color: 'var(--text-light)', fontWeight: 'bold' }}>VALOR TOTAL</span>
                     <span style={{ fontWeight: '900', color: 'var(--color-primary)', fontSize: '1.1rem' }}>
-                      ${orden.total_estimado?.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                      {formatearDinero(orden.total_estimado)}
                     </span>
                 </div>
               </div>
@@ -166,9 +176,9 @@ export default function Historial({ onVerDetalle }) {
             <span className="material-symbols-outlined" style={{ fontSize: '4rem', color: 'var(--border-ghost)', marginBottom: '1rem' }}>
               folder_open
             </span>
-            <h2 className={styles.subtitle} style={{ color: 'var(--text-muted)' }}>Historial Vacío</h2>
+            <h2 className={styles.subtitle} style={{ color: 'var(--text-muted)' }}>Sin coincidencias</h2>
             <p style={{ color: 'var(--text-light)', fontSize: '0.9rem' }}>
-              No hay registros que coincidan con los criterios.
+              No se encontraron registros que coincidan con "{busqueda}".
             </p>
           </div>
         )}

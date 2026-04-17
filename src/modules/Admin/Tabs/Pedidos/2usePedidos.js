@@ -1,51 +1,68 @@
 // src/modules/Admin/Tabs/Pedidos/2usePedidos.js
 import { useState, useCallback } from 'react';
 import { PedidosService } from './1Pedidos.Service';
-import { AuthService } from '../../../Auth/Auth.service'; // <-- Importado para la lógica de roles
+import { AuthService } from '../../../Auth/Auth.service'; 
 import toast from 'react-hot-toast';
 
 export const usePedidos = () => {
   const [loading, setLoading] = useState(false);
   
-  // Recuperamos la sesión actual para aplicar filtros de seguridad
+  // Recuperamos la sesión actual
   const sesion = AuthService.getSesion();
   
   // Estado para el Dashboard (Solo lo que está en curso)
   const [ordenesActivas, setOrdenesActivas] = useState([]);
   
-  // Estado para el Checklist (Operación en tiempo real en el mercado)
+  // Estado para el Checklist (Operación en tiempo real)
   const [detalleOrdenActual, setDetalleOrdenActual] = useState(null);
+
+  /**
+   * EXTRAER VALORES PRIMITIVOS PARA DEPENDENCIAS
+   * Esto es vital para evitar el bucle infinito. Usamos el ID y el permiso (boolean)
+   * en lugar del objeto 'sesion' completo, ya que los objetos cambian de referencia 
+   * en cada renderizado.
+   */
+  const sucursalId = sesion?.sucursal_id;
+  const tieneAccesoGlobal = sesion?.permisos?.configuracion?.leer || false;
 
   // ==========================================
   // OBTENCIÓN DE DATOS (READ)
   // ==========================================
 
-  // 1. Carga las órdenes para la pestaña "Activos" con filtro por sucursal
+  /**
+   * Carga las órdenes para la pestaña "Activos" aplicando filtros de seguridad.
+   * Las dependencias [sucursalId, tieneAccesoGlobal] ahora son estables.
+   */
   const cargarOrdenesActivas = useCallback(async () => {
     setLoading(true);
     const { data, error } = await PedidosService.getOrdenesActivas();
-    setLoading(false);
     
     if (error) {
       toast.error('Error al sincronizar pedidos activos');
-      console.error(error);
+      console.error("Error getOrdenesActivas:", error.message);
+      setLoading(false);
       return;
     }
 
     let datosFinales = data || [];
 
-    // LÓGICA DE VISIBILIDAD POR ROL:
-    // - Gerente y Comprador: Ven TODO.
-    // - Cocina (y otros): Solo ven los pedidos de SU propia sucursal.
-    if (sesion && sesion.rol !== 'Gerente' && sesion.rol !== 'Comprador') {
-        datosFinales = datosFinales.filter(orden => orden.sucursal_id === sesion.sucursal_id);
+    /**
+     * LÓGICA DE VISIBILIDAD BASADA EN PERMISOS JSON:
+     * Si no tiene acceso global, filtramos por la sucursal del usuario.
+     */
+    if (!tieneAccesoGlobal && sucursalId) {
+        datosFinales = datosFinales.filter(orden => orden.sucursal_id === sucursalId);
     }
 
     setOrdenesActivas(datosFinales);
-  }, [sesion]);
+    setLoading(false);
+  }, [sucursalId, tieneAccesoGlobal]);
 
-  // 2. Carga el detalle de una orden (Para el Checklist o edición)
+  /**
+   * Carga el detalle profundo de una orden (Cabecera + Partidas)
+   */
   const cargarDetalleDeOrden = useCallback(async (ordenId) => {
+    if (!ordenId) return;
     setLoading(true);
     const { data, error } = await PedidosService.getDetalleDeOrden(ordenId);
     setLoading(false);
@@ -62,26 +79,29 @@ export const usePedidos = () => {
   // ACCIONES DEL CHECKLIST (OPERACIONES DE PRODUCTOS)
   // ==========================================
 
-  // 3. Toggle de estatus de un producto (Optimistic UI para rapidez en el móvil)
+  /**
+   * Cambia el estado de un item (Pendiente <-> Comprado).
+   * Usa Optimistic UI para que la experiencia en móviles sea instantánea.
+   */
   const toggleEstatusItem = async (detalleId, estatusActual) => {
     const nuevoEstatus = estatusActual === 'Comprado' ? 'Pendiente' : 'Comprado';
     
     if (detalleOrdenActual) {
-      // Guardamos backup por si falla la red
+      // 1. Guardamos backup por si falla la conexión
       const backup = { ...detalleOrdenActual };
       
-      // Aplicamos cambio instantáneo en la pantalla
+      // 2. Actualizamos la UI inmediatamente (Optimista)
       const nuevosDetalles = detalleOrdenActual.detalles.map(det => 
         det.id === detalleId ? { ...det, estatus: nuevoEstatus } : det
       );
       setDetalleOrdenActual({ ...detalleOrdenActual, detalles: nuevosDetalles });
 
-      // Enviamos a la base de datos
+      // 3. Enviamos la petición a Supabase
       const { error } = await PedidosService.actualizarEstatusItem(detalleId, nuevoEstatus);
       
       if (error) {
-        toast.error('Error de conexión al actualizar item');
-        setDetalleOrdenActual(backup); // Revertimos al estado anterior
+        toast.error('Error de red al actualizar item');
+        setDetalleOrdenActual(backup); // Revertimos en caso de error
         return false;
       }
     }
@@ -92,7 +112,9 @@ export const usePedidos = () => {
   // ACCIONES DE LA ORDEN (CIERRE Y GESTIÓN)
   // ==========================================
 
-  // 4. Cambiar estatus global (Pasar a 'En Proceso', 'Completado', etc.)
+  /**
+   * Cambia el estatus global de la orden (ej: pasar a 'Completado')
+   */
   const cambiarEstatusOrden = async (ordenId, nuevoEstatus) => {
     setLoading(true);
     const { error } = await PedidosService.actualizarEstatusOrden(ordenId, nuevoEstatus);
@@ -103,27 +125,30 @@ export const usePedidos = () => {
       return false;
     }
 
-    // FEEDBACK VISUAL
+    // Feedback visual al usuario
     if (nuevoEstatus === 'Completado') {
-      toast.success('¡Orden enviada al Historial!');
+      toast.success('¡Orden finalizada y guardada!');
     } else {
-      toast.success(`Orden actualizada a ${nuevoEstatus}`);
+      toast.success(`Orden marcada como ${nuevoEstatus}`);
     }
     
-    // LOGICA DE REFRESCO:
+    // Limpieza de estados tras completar o cancelar
     if (['Completado', 'Cancelado'].includes(nuevoEstatus)) {
       setOrdenesActivas(prev => prev.filter(o => o.id !== ordenId));
       setDetalleOrdenActual(null);
     } else {
+      // Si solo cambió a "En Proceso", refrescamos la lista
       await cargarOrdenesActivas();
     }
     
     return true;
   };
 
-  // 5. Cancelación directa desde el Dashboard o Checklist
+  /**
+   * Cancela la orden completa
+   */
   const cancelarPedido = async (ordenId) => {
-    if (!window.confirm('¿Confirmas que deseas cancelar este pedido? Se moverá al historial como cancelado.')) return;
+    if (!window.confirm('¿Seguro que deseas cancelar este pedido? Se moverá al historial como cancelado.')) return;
 
     setLoading(true);
     const { error } = await PedidosService.cancelarOrden(ordenId);

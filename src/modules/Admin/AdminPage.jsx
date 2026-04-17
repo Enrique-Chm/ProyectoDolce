@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import styles from '../../assets/styles/EstilosGenerales.module.css';
 
-// Importamos Auth (Ruta corregida según tu estructura: ../Auth/...)
+// Importamos Auth
 import Login from '../Auth/Login';
 import { useAuth } from '../Auth/useAuth';
 
@@ -18,6 +18,7 @@ import Configuracion from './Tabs/Configuracion/Configuracion';
 import Proveedores from './Tabs/Configuracion/Proveedores';
 import Trabajadores from './Tabs/Configuracion/Trabajadores';
 import Sucursales from './Tabs/Configuracion/Sucursales';
+import Roles from './Tabs/Configuracion/Roles'; // <-- Nuevo componente importado
 
 export default function AdminPage() {
   const { usuario, cerrarSesion } = useAuth();
@@ -30,6 +31,10 @@ export default function AdminPage() {
   if (!usuario) {
     return <Login onLoginSuccess={() => window.location.reload()} />;
   }
+
+  // Extraemos los permisos para facilitar la lectura en el código
+  // Asumimos que el objeto usuario tiene: { ..., rol: { nombre: '...', permisos: { ... } } }
+  const permisos = usuario.permisos || {};
 
   const abrirChecklist = (id) => {
     setOrdenIdSeleccionada(id);
@@ -50,7 +55,6 @@ export default function AdminPage() {
       case 'historial':
         return <Historial onVerDetalle={abrirChecklist} />;
       
-      // Ajustes: Solo si es Gerente
       case 'configuracion':
         return (
           <Configuracion 
@@ -58,6 +62,7 @@ export default function AdminPage() {
             onAbrirProveedores={() => setTabActiva('proveedores')}
             onAbrirTrabajadores={() => setTabActiva('trabajadores')}
             onAbrirSucursales={() => setTabActiva('sucursales')}
+            onAbrirRoles={() => setTabActiva('roles')} // <-- Nuevo callback
             onLogout={cerrarSesion}
           />
         );
@@ -74,10 +79,17 @@ export default function AdminPage() {
       case 'sucursales':
         return <Sucursales onVolver={() => setTabActiva('configuracion')} />;
       
+      case 'roles': // <-- Caso para la nueva pestaña
+        return <Roles onVolver={() => setTabActiva('configuracion')} />;
+      
       default:
         return <Pedidos onNuevoPedido={() => setTabActiva('nuevo_pedido')} onVerLista={abrirChecklist} />;
     }
   };
+
+  // Variable para controlar si el usuario puede ver el botón de Ajustes
+  // Ahora depende de si tiene permiso de 'leer' en el módulo de configuración
+  const puedeConfigurar = permisos.configuracion?.leer || false;
 
   return (
     <div className={styles.appContainer} style={{ padding: 0 }}> 
@@ -94,12 +106,17 @@ export default function AdminPage() {
         }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span className="material-symbols-outlined" style={{ color: 'var(--color-primary)' }}>person</span>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
-                    Hola, <b>{usuario.nombre}</b> <span style={{ opacity: 0.6 }}>({usuario.rol})</span>
-                </p>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
+                      Hola, <b>{usuario.nombre_completo || usuario.nombre}</b>
+                  </p>
+                  <span style={{ fontSize: '0.65rem', opacity: 0.7, color: 'var(--color-primary)', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                    {usuario.rol_nombre || 'Usuario'}
+                  </span>
+                </div>
             </div>
             {tabActiva !== 'configuracion' && (
-                <button onClick={cerrarSesion} style={{ background: 'none', border: 'none', color: 'var(--color-tertiary)', display: 'flex' }}>
+                <button onClick={cerrarSesion} style={{ background: 'none', border: 'none', color: 'var(--color-tertiary)', display: 'flex', cursor: 'pointer' }}>
                     <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>logout</span>
                 </button>
             )}
@@ -111,7 +128,8 @@ export default function AdminPage() {
       {/* Navegación Inferior Dinámica */}
       <nav className={styles.bottomNav} style={{ 
         display: 'grid', 
-        gridTemplateColumns: usuario.rol === 'Gerente' ? '1fr 1fr 1fr' : '1fr 1fr' 
+        // Si tiene permiso de configuración, dividimos en 3 columnas, si no, en 2.
+        gridTemplateColumns: puedeConfigurar ? '1fr 1fr 1fr' : '1fr 1fr' 
       }}>
         
         <button 
@@ -130,10 +148,10 @@ export default function AdminPage() {
           <span>Historial</span>
         </button>
 
-        {/* Solo el Gerente ve el botón de Ajustes */}
-        {usuario.rol === 'Gerente' && (
+        {/* El botón de Ajustes ahora es dinámico por permiso JSON */}
+        {puedeConfigurar && (
           <button 
-            className={`${styles.navItem} ${['configuracion', 'productos', 'proveedores', 'trabajadores', 'sucursales'].includes(tabActiva) ? styles.active : ''}`}
+            className={`${styles.navItem} ${['configuracion', 'productos', 'proveedores', 'trabajadores', 'sucursales', 'roles'].includes(tabActiva) ? styles.active : ''}`}
             onClick={() => setTabActiva('configuracion')}
           >
             <span className="material-symbols-outlined">settings</span>

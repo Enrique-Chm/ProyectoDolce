@@ -65,7 +65,7 @@ export const ConfiguracionService = {
   async getRoles() {
     const { data, error } = await supabase
       .from('Cat_Roles')
-      .select('*')
+      .select('*') // Aquí ya trae la nueva columna 'permisos' (JSONB)
       .order('nombre', { ascending: true });
     return { data, error };
   },
@@ -96,8 +96,8 @@ export const ConfiguracionService = {
       .select(`
         *,
         sucursal:Cat_sucursales(id, nombre),
-        rol:Cat_Roles(id, nombre)
-      `)
+        rol:Cat_Roles(id, nombre, permisos) 
+      `) // Actualizado para incluir 'permisos' en la relación del rol
       .order('nombre_completo', { ascending: true });
     return { data, error };
   },
@@ -109,7 +109,7 @@ export const ConfiguracionService = {
       delete dataLimpia.id;
     }
 
-    // Limpieza de relaciones Foreign Key
+    // Limpieza de relaciones Foreign Key para evitar errores de integridad
     if (!dataLimpia.sucursal_id || dataLimpia.sucursal_id === "") {
       dataLimpia.sucursal_id = null;
     }
@@ -118,6 +118,9 @@ export const ConfiguracionService = {
       dataLimpia.rol_id = null;
     }
 
+    // El password debería venir ya manejado desde el form, 
+    // en Supabase puedes guardarlo en texto plano si tu lógica de login es manual 
+    // o usar pgcrypto en el futuro.
     const { data, error } = await supabase
       .from('Cat_Trabajadores')
       .upsert([dataLimpia])
@@ -151,12 +154,12 @@ export const ConfiguracionService = {
   // 6. UTILIDADES: CARGA MASIVA PARA FORMULARIOS
   // ==========================================
   async getCatalogosParaSelectores() {
-    // Añadimos roles a la carga masiva para el formulario de trabajadores
+    // Se cargan todos los catálogos necesarios para llenar los ComboBox/Selects de los formularios
     const [unidades, areas, sucursales, proveedores, roles] = await Promise.all([
       supabase.from('Cat_UM').select('id, nombre, abreviatura').eq('estatus', 'Activo'),
       supabase.from('Cat_Areas_Uso').select('id, nombre').eq('estatus', 'Activo'),
-      supabase.from('Cat_sucursales').select('id, nombre'),
-      supabase.from('Cat_Proveedores').select('id, nombre'),
+      supabase.from('Cat_sucursales').select('id, nombre').eq('estatus', 'Activo'),
+      supabase.from('Cat_Proveedores').select('id, nombre').eq('estatus', 'Activo'),
       supabase.from('Cat_Roles').select('id, nombre').eq('estatus', 'Activo')
     ]);
 
