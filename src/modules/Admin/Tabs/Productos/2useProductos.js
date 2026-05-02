@@ -11,7 +11,7 @@ export const useProductos = () => {
     proveedores: [],
     sucursales: [],
     unidades: [],
-    areas: []
+    categorias: [] 
   });
 
   // ==========================================
@@ -41,7 +41,7 @@ export const useProductos = () => {
       proveedores: data.proveedores,
       sucursales: data.sucursales,
       unidades: data.unidades,
-      areas: data.areas
+      categorias: data.categorias
     });
   }, []);
 
@@ -50,14 +50,20 @@ export const useProductos = () => {
   // ==========================================
   const guardarProducto = async (productoData) => {
     setLoading(true);
-    const { data, error } = await ProductosService.guardarProducto(productoData);
+
+    // Nos aseguramos de que sucursales_ids sea siempre un arreglo de UUIDs válido antes de enviar
+    const payload = {
+      ...productoData,
+      sucursales_ids: Array.isArray(productoData.sucursales_ids) ? productoData.sucursales_ids : []
+    };
+
+    const { data, error } = await ProductosService.guardarProducto(payload);
     setLoading(false);
 
     if (error) {
       // --- TRATAMIENTO DETALLADO DEL ERROR ---
       const mensajePrincipal = error.message || 'Error desconocido';
       const pista = error.hint ? `\nSugerencia: ${error.hint}` : '';
-      const detalles = error.details ? `\nDetalles: ${error.details}` : '';
       
       // Mostramos un toast persistente para que el usuario alcance a leer el error técnico
       toast.error(

@@ -13,6 +13,7 @@ export const useConfiguracion = () => {
   const [unidadesMedida, setUnidadesMedida] = useState([]);
   const [areasUso, setAreasUso] = useState([]);
   const [roles, setRoles] = useState([]); 
+  const [categorias, setCategorias] = useState([]); // Agregado para el manejo de categorías
 
   // Estado para selectores en formularios (unificado para Productos/Trabajadores)
   const [catalogosSelectores, setCatalogosSelectores] = useState({
@@ -20,7 +21,8 @@ export const useConfiguracion = () => {
     areas: [],
     sucursales: [],
     proveedores: [],
-    roles: [] 
+    roles: [],
+    categorias: [] // Agregado para el manejo de categorías
   });
 
   // ==========================================
@@ -75,6 +77,14 @@ export const useConfiguracion = () => {
     setRoles(data || []);
   }, []);
 
+  const cargarCategorias = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await ConfiguracionService.getCategorias();
+    setLoading(false);
+    if (error) return toast.error('Error al cargar categorías');
+    setCategorias(data || []);
+  }, []);
+
   // Carga masiva para dropdowns (optimiza peticiones en formularios)
   const cargarCatalogosParaFormularios = useCallback(async () => {
     setLoading(true);
@@ -86,7 +96,8 @@ export const useConfiguracion = () => {
       areas: res.areas,
       sucursales: res.sucursales,
       proveedores: res.proveedores,
-      roles: res.roles 
+      roles: res.roles,
+      categorias: res.categorias // Asignamos las categorías obtenidas del servicio
     });
   }, []);
 
@@ -140,6 +151,9 @@ export const useConfiguracion = () => {
   const guardarRol = (data) => 
     guardarDatoGenerico(ConfiguracionService.guardarRol, data, cargarRoles);
 
+  const guardarCategoria = (data) => 
+    guardarDatoGenerico(ConfiguracionService.guardarCategoria, data, cargarCategorias);
+
   // ==========================================
   // MÉTODOS DE ESTATUS (TOGGLE ACTIVO/INACTIVO)
   // ==========================================
@@ -169,6 +183,7 @@ export const useConfiguracion = () => {
     unidadesMedida,
     areasUso,
     roles, 
+    categorias, // Expuesto para componentes consumidores
     catalogosSelectores,
 
     // Métodos de carga expuestos
@@ -178,6 +193,7 @@ export const useConfiguracion = () => {
     cargarUnidadesMedida,
     cargarAreasUso,
     cargarRoles, 
+    cargarCategorias, // Expuesto para cargar categorías individuales
     cargarCatalogosParaFormularios,
 
     // Métodos de acción expuestos
@@ -185,6 +201,7 @@ export const useConfiguracion = () => {
     guardarProveedor,
     guardarTrabajador,
     guardarRol, 
+    guardarCategoria, // Expuesto para guardar categorías individuales
     cambiarEstatus
   };
 };

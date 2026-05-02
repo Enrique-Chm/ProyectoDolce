@@ -67,7 +67,7 @@
 .btnBase {
   padding: 0.75rem 1.5rem;
   border-radius: var(--radius-sm);
-  font-family: var(--font-label); /* Usa Inter según tu manual */
+  font-family: var(--font-label);
   font-size: 0.875rem;
   font-weight: 600;
   display: inline-flex;
@@ -83,41 +83,54 @@
   transform: scale(0.98);
 }
 
-/* 1. Primary (#005F56) */
+/* 1. Primary */
 .btnPrimary {
-  background-color: #005F56;
-  color: #ffffff;
+  background-color: var(--color-primary);
+  color: var(--color-surface-lowest);
   box-shadow: var(--shadow-card);
 }
-.btnPrimary:hover { opacity: 0.9; }
-
-/* 2. Secondary (Fondo Neutral #F8F9FA, Texto Secondary #455A64) */
-.btnSecondary {
-  background-color: #F8F9FA;
-  color: #455A64;
+.btnPrimary:hover {
+  background-color: var(--color-primary-container);
+  opacity: 0.95;
 }
-.btnSecondary:hover { background-color: #e2e8f0; }
+
+/* 2. Secondary */
+.btnSecondary {
+  background-color: var(--color-surface-low);
+  color: var(--text-muted);
+}
+.btnSecondary:hover {
+  background-color: var(--color-surface-high);
+}
 
 /* 3. Inverted (Fondo oscuro) */
 .btnInverted {
-  background-color: #2e3132; 
-  color: #ffffff;
+  background-color: var(--text-main); 
+  color: var(--color-surface-lowest);
 }
-.btnInverted:hover { opacity: 0.9; }
+.btnInverted:hover {
+  opacity: 0.9;
+}
 
 /* 4. Outlined (Borde sutil, fondo transparente) */
 .btnOutlined {
   background-color: transparent;
-  color: #455A64;
-  border: 1px solid #bec9c6;
+  color: var(--text-muted);
+  border: 1px solid var(--border-ghost);
 }
-.btnOutlined:hover { background-color: #F8F9FA; }
+.btnOutlined:hover {
+  background-color: var(--color-surface-low);
+}
 
-/* Botón de peligro/borrar (Basado en el icono rojo de tu manual) */
+/* Botón de peligro/borrar */
 .btnDanger {
-  background-color: #ba1a1a;
+  background-color: #ba1a1a; /* Rojo alerta universal */
   color: #ffffff;
 }
+.btnDanger:hover {
+  opacity: 0.9;
+}
+
 /* --- BADGES (Etiquetas de estado) --- */
 .badge {
   font-family: var(--font-label);
@@ -153,7 +166,7 @@
   left: 0;
   width: 100%;
   height: 80px;
-  background-color: rgba(255, 255, 255, 0.8);
+  background-color: var(--color-surface-lowest);
   backdrop-filter: blur(16px);
   box-shadow: var(--shadow-nav);
   display: flex;
@@ -185,20 +198,26 @@
   margin-top: 0.25rem;
 }
 
-/* Estado Activo de la navegación (Burbuja verde) */
+/* Estado Activo de la navegación (Acorde a la paleta rústica seleccionada) */
 .navItem.active {
-  background-color: #d1fae5; /* emerald-100 */
-  color: #022c22; /* emerald-950 */
+  background-color: var(--color-primary-fixed);
+  color: var(--color-on-primary-fixed);
   border-radius: var(--radius-full);
 }
+
 .inputEditorial, .selectEditorial {
   padding: 12px;
   border-radius: 4px;
   border: 1px solid var(--border-ghost);
   width: 100%;
   background-color: var(--color-surface-lowest);
+  color: var(--text-main);
   font-family: var(--font-body);
   font-size: 0.9rem;
   transition: border-color 0.2s;
 }
-.inputEditorial:focus { border-color: var(--color-primary); outline: none; }
+
+.inputEditorial:focus {
+  border-color: var(--color-primary);
+  outline: none;
+}

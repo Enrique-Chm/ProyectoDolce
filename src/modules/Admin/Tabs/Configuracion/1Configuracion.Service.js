@@ -118,9 +118,7 @@ export const ConfiguracionService = {
       dataLimpia.rol_id = null;
     }
 
-    // El password debería venir ya manejado desde el form, 
-    // en Supabase puedes guardarlo en texto plano si tu lógica de login es manual 
-    // o usar pgcrypto en el futuro.
+    // El password debería venir ya manejado desde el form
     const { data, error } = await supabase
       .from('Cat_Trabajadores')
       .upsert([dataLimpia])
@@ -132,7 +130,7 @@ export const ConfiguracionService = {
   },
 
   // ==========================================
-  // 5. CATÁLOGOS TÉCNICOS (UM y Áreas de Uso)
+  // 5. CATÁLOGOS TÉCNICOS (UM, Áreas de Uso y Categorías)
   // ==========================================
   async getUnidadesMedida() {
     const { data, error } = await supabase
@@ -150,17 +148,43 @@ export const ConfiguracionService = {
     return { data, error };
   },
 
+  async getCategorias() {
+    const { data, error } = await supabase
+      .from('Cat_Categorias')
+      .select('*')
+      .order('nombre', { ascending: true });
+    return { data, error };
+  },
+
+  async guardarCategoria(categoriaData) {
+    const dataLimpia = { ...categoriaData };
+
+    if (!dataLimpia.id || dataLimpia.id === "" || String(dataLimpia.id) === "null") {
+      delete dataLimpia.id;
+    }
+
+    const { data, error } = await supabase
+      .from('Cat_Categorias')
+      .upsert([dataLimpia])
+      .select()
+      .single();
+
+    if (error) console.error("Error al guardar categoría:", error.message);
+    return { data, error };
+  },
+
   // ==========================================
   // 6. UTILIDADES: CARGA MASIVA PARA FORMULARIOS
   // ==========================================
   async getCatalogosParaSelectores() {
     // Se cargan todos los catálogos necesarios para llenar los ComboBox/Selects de los formularios
-    const [unidades, areas, sucursales, proveedores, roles] = await Promise.all([
+    const [unidades, areas, sucursales, proveedores, roles, categorias] = await Promise.all([
       supabase.from('Cat_UM').select('id, nombre, abreviatura').eq('estatus', 'Activo'),
       supabase.from('Cat_Areas_Uso').select('id, nombre').eq('estatus', 'Activo'),
       supabase.from('Cat_sucursales').select('id, nombre').eq('estatus', 'Activo'),
       supabase.from('Cat_Proveedores').select('id, nombre').eq('estatus', 'Activo'),
-      supabase.from('Cat_Roles').select('id, nombre').eq('estatus', 'Activo')
+      supabase.from('Cat_Roles').select('id, nombre').eq('estatus', 'Activo'),
+      supabase.from('Cat_Categorias').select('id, nombre').filter('estatus', 'ilike', 'activo')
     ]);
 
     return {
@@ -169,7 +193,8 @@ export const ConfiguracionService = {
       sucursales: sucursales.data || [],
       proveedores: proveedores.data || [],
       roles: roles.data || [],
-      error: unidades.error || areas.error || sucursales.error || proveedores.error || roles.error
+      categorias: categorias.data || [],
+      error: unidades.error || areas.error || sucursales.error || proveedores.error || roles.error || categorias.error
     };
   },
 
@@ -177,7 +202,7 @@ export const ConfiguracionService = {
   // 7. ACCIÓN GENÉRICA DE BORRADO/DESACTIVACIÓN
   // ==========================================
   async toggleEstatusGenerico(tabla, id, estatusActual) {
-    const nuevoEstatus = estatusActual === 'Activo' ? 'Inactivo' : 'Activo';
+    const nuevoEstatus = (estatusActual === 'Activo' || estatusActual === 'activo') ? 'Inactivo' : 'Activo';
     
     const { data, error } = await supabase
       .from(tabla)

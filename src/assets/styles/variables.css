@@ -1,34 +1,34 @@
 /* src/assets/styles/variables.css */
 :root {
-  /* =========================================
-     PALETA DE COLORES "EDITORIAL INVENTORY"
+/* =========================================
+     PALETA DE COLORES "MEDITERRANEO RÚSTICO"
      ========================================= */
-  --color-primary: #00453e;             /* Esmeralda oscuro (Textos primarios, botones) */
-  --color-primary-container: #005f56;   /* Esmeralda medio (Gradientes) */
-  --color-primary-fixed: #a6f1e4;       /* Verde menta claro (Badges) */
-  --color-on-primary-fixed: #005048;    /* Texto oscuro sobre menta */
+  --color-primary: #a23f27;             /* Rojo terracota / ladrillo (Textos primarios, botones) */
+  --color-primary-container: #bc4c31;   /* Teja / óxido medio (Gradientes, hover) */
+  --color-primary-fixed: #ffdacf;       /* Coral/melocotón muy claro (Badges Completados) */
+  --color-on-primary-fixed: #411306;    /* Marrón rojizo oscuro (Texto sobre badge) */
 
-  --color-secondary-container: #cfe6f2; /* Azul claro pastel (Badges Pending) */
-  --color-on-secondary-fixed: #354a53;  /* Texto oscuro sobre azul pastel */
+  --color-secondary-container: #f4e4d4; /* Arena / almendra cálido (Badges Pendiente) */
+  --color-on-secondary-fixed: #503f33;  /* Sombra tierra oscura (Texto sobre arena) */
 
-  --color-tertiary: #642e1a;            /* Marrón/Rojo oscuro (Alertas urgentes) */
-  --color-tertiary-container: #80442f;  /* Fondo para alertas urgentes */
-  --color-tertiary-fixed: #ffdbcf;      /* Naranja/Coral pastel (Badges Urgent) */
+  --color-tertiary: #a16422;            /* Ocre quemado (Alertas o acciones secundarias) */
+  --color-tertiary-container: #c47c2d;  /* Fondo para elementos destacados/urgentes */
+  --color-tertiary-fixed: #fef0cb;      /* Amarillo mostaza suave (Badges Urgent) */
 
   /* Superficies y Fondos */
-  --color-background: #f8f9fa;          /* Fondo base de la app */
-  --color-surface-lowest: #ffffff;      /* Tarjetas blancas */
-  --color-surface-low: #f3f4f5;         /* Tarjetas gris muy claro */
-  --color-surface-high: #e7e8e9;        /* Elementos destacados gris medio */
+  --color-background: #faf7f5;          /* Blanco cálido / marfil de fondo base */
+  --color-surface-lowest: #ffffff;      /* Tarjetas blancas puras */
+  --color-surface-low: #f5ede7;         /* Gris cálido / lino sutil para fondos de tarjetas */
+  --color-surface-high: #ebdcd2;        /* Elementos destacados o separadores */
 
   /* Textos y Bordes */
-  --text-main: #191c1d;
-  --text-muted: #3f4947;
-  --text-light: #6f7977;
-  --border-ghost: rgba(190, 201, 198, 0.15); /* Borde sutil del diseño */
+  --text-main: #2b2421;                 /* Grafito cálido oscuro */
+  --text-muted: #52433e;                /* Arcilla oscuro para textos secundarios */
+  --text-light: #7a6a64;                /* Sombra suave para subtítulos o fechas */
+  --border-ghost: rgba(186, 164, 157, 0.25); /* Borde sutil en tono arcilla */
   
   /* Gradiente especial del diseño */
-  --gradient-editorial: linear-gradient(135deg, #00453e 0%, #005f56 100%);
+  --gradient-editorial: linear-gradient(135deg, #a23f27 0%, #bc4c31 100%);
 
   /* =========================================
      TIPOGRAFÍA

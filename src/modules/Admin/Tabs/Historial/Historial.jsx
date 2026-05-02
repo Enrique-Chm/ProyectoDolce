@@ -5,17 +5,29 @@ import { useHistorial } from './2useHistorial';
 import { AuthService } from '../../../Auth/Auth.service';
 
 export default function Historial({ onVerDetalle }) {
-  const { loading, ordenesHistorial, cargarHistorial, buscarFolio } = useHistorial();
+  const { 
+    loading, 
+    ordenesHistorial, 
+    cargarHistorialPorFechas, 
+    buscarFolio 
+  } = useHistorial();
+
   const [busqueda, setBusqueda] = useState('');
+
+  // Rango de fechas inicial: últimos 30 días
+  const [fechas, setFechas] = useState({
+    inicio: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
+    fin: new Date().toISOString().split('T')[0]
+  });
   
   // Obtenemos la sesión para validar permisos
   const sesion = AuthService.getSesion();
   const esAdmin = sesion?.permisos?.configuracion?.leer || false;
 
-  // Sincronizamos con la base de datos al montar
+  // Sincronizamos con la base de datos al montar o al cambiar fechas
   useEffect(() => {
-    cargarHistorial();
-  }, [cargarHistorial]);
+    cargarHistorialPorFechas(fechas.inicio, fechas.fin);
+  }, [cargarHistorialPorFechas, fechas.inicio, fechas.fin]);
 
   // Manejador del buscador con actualización de estado y llamada al hook
   const handleSearch = (e) => {
@@ -24,7 +36,7 @@ export default function Historial({ onVerDetalle }) {
     buscarFolio(valor);
   };
 
-  // Formateador de fechas localizado
+  // Formateador de fechas localizado para el listado
   const formatearFecha = (fechaStr) => {
     if (!fechaStr) return 'N/A';
     const fecha = new Date(fechaStr);
@@ -56,8 +68,53 @@ export default function Historial({ onVerDetalle }) {
           Órdenes<br />Finalizadas
         </h1>
 
+        {/* CONTROLES DE RANGO DE FECHAS COMPRIMIDO */}
+        <div style={{ 
+          marginBottom: '16px', 
+          display: 'flex', 
+          flexWrap: 'wrap', 
+          gap: '8px', 
+          alignItems: 'center', 
+          justifyContent: 'space-between',
+          padding: '8px 12px', 
+          backgroundColor: 'var(--color-surface-lowest)', 
+          borderRadius: '12px', 
+          border: '1px solid var(--border-ghost)' 
+        }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <label className={styles.labelTop} style={{ fontSize: '0.6rem', opacity: 0.8, margin: 0, flexShrink: 0 }}>DESDE</label>
+              <input 
+                type="date" 
+                value={fechas.inicio} 
+                onChange={(e) => setFechas({ ...fechas, inicio: e.target.value })} 
+                className={styles.inputEditorial}
+                style={{ width: 'auto', height: '32px', padding: '0 6px', fontSize: '0.8rem', borderRadius: '6px' }}
+              />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <label className={styles.labelTop} style={{ fontSize: '0.6rem', opacity: 0.8, margin: 0, flexShrink: 0 }}>HASTA</label>
+              <input 
+                type="date" 
+                value={fechas.fin} 
+                onChange={(e) => setFechas({ ...fechas, fin: e.target.value })} 
+                className={styles.inputEditorial}
+                style={{ width: 'auto', height: '32px', padding: '0 6px', fontSize: '0.8rem', borderRadius: '6px' }}
+              />
+            </div>
+          </div>
+          <button 
+            onClick={() => cargarHistorialPorFechas(fechas.inicio, fechas.fin)} 
+            className={`${styles.btnBase} ${styles.btnPrimary}`} 
+            style={{ height: '32px', padding: '0 12px', fontSize: '0.75rem', borderRadius: '6px', minWidth: 'unset' }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>search</span>
+            Filtrar
+          </button>
+        </div>
+
         {/* BUSCADOR EDITORIAL */}
-        <div style={{ position: 'relative', marginTop: 'var(--space-md)' }}>
+        <div style={{ position: 'relative' }}>
           <span 
             className="material-symbols-outlined" 
             style={{ 
@@ -72,7 +129,7 @@ export default function Historial({ onVerDetalle }) {
           </span>
           <input 
             type="text"
-            placeholder="Buscar por folio o proveedor..."
+            placeholder="Buscar por folio..."
             value={busqueda}
             onChange={handleSearch}
             className={styles.inputEditorial}
@@ -178,7 +235,7 @@ export default function Historial({ onVerDetalle }) {
             </span>
             <h2 className={styles.subtitle} style={{ color: 'var(--text-muted)' }}>Sin coincidencias</h2>
             <p style={{ color: 'var(--text-light)', fontSize: '0.9rem' }}>
-              No se encontraron registros que coincidan con "{busqueda}".
+              No se encontraron registros que coincidan con la búsqueda.
             </p>
           </div>
         )}

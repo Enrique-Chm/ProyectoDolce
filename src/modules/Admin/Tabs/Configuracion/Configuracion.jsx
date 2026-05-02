@@ -8,8 +8,9 @@ export default function Configuracion({
   onAbrirProveedores, 
   onAbrirTrabajadores,
   onAbrirSucursales,
-  onAbrirRoles, // <-- Nueva prop para gestionar roles
-  onLogout      // <-- Prop para el cierre de sesión
+  onAbrirRoles, 
+  onAbrirCategorias, // <-- Nueva prop para gestionar categorías
+  onLogout      
 }) {
   // Extraemos la lógica y el estado de nuestro Custom Hook actualizado
   const { 
@@ -17,11 +18,13 @@ export default function Configuracion({
     sucursales, 
     proveedores, 
     trabajadores, 
-    roles, // <-- Nuevo estado
+    roles, 
+    categorias, // <-- Nuevo estado para categorías
     cargarSucursales, 
     cargarProveedores, 
     cargarTrabajadores,
-    cargarRoles // <-- Nuevo método
+    cargarRoles,
+    cargarCategorias // <-- Nuevo método para cargar categorías
   } = useConfiguracion();
 
   // Cargamos todos los catálogos al montar la pantalla para mostrar métricas reales
@@ -29,8 +32,9 @@ export default function Configuracion({
     cargarSucursales();
     cargarProveedores();
     cargarTrabajadores();
-    cargarRoles(); // Sincronizamos los roles también
-  }, [cargarSucursales, cargarProveedores, cargarTrabajadores, cargarRoles]);
+    cargarRoles(); 
+    cargarCategorias(); // Sincronizamos las categorías también
+  }, [cargarSucursales, cargarProveedores, cargarTrabajadores, cargarRoles, cargarCategorias]);
 
   return (
     <div className={styles.fadeIN}>
@@ -76,7 +80,7 @@ export default function Configuracion({
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '16px' }}>
           {loading 
             ? "Cargando métricas..." 
-            : `Tienes ${proveedores.length} proveedores registrados y un catálogo de productos listo para operar.`
+            : `Tienes ${proveedores.length} proveedores registrados, ${categorias.length} categorías de insumos y un catálogo de productos listo para operar.`
           }
         </p>
 
@@ -91,6 +95,12 @@ export default function Configuracion({
           <button onClick={onAbrirProveedores} className={`${styles.btnBase} ${styles.btnOutlined}`}>
             <span className="material-symbols-outlined" style={{ fontSize: '1.125rem' }}>local_shipping</span>
             Proveedores
+          </button>
+
+          {/* BOTÓN: CATEGORÍAS */}
+          <button onClick={onAbrirCategorias} className={`${styles.btnBase} ${styles.btnSecondary}`}>
+            <span className="material-symbols-outlined" style={{ fontSize: '1.125rem' }}>category</span>
+            Categorías
           </button>
         </div>
       </section>
@@ -116,7 +126,7 @@ export default function Configuracion({
             Trabajadores
           </button>
 
-          {/* BOTÓN: ROLES (Nuevo módulo) */}
+          {/* BOTÓN: ROLES */}
           <button onClick={onAbrirRoles} className={`${styles.btnBase} ${styles.btnSecondary}`}>
             <span className="material-symbols-outlined" style={{ fontSize: '1.125rem' }}>admin_panel_settings</span>
             Roles y Permisos

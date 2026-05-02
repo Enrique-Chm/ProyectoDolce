@@ -12,6 +12,9 @@ export const usePedidos = () => {
   
   // Estado para el Dashboard (Solo lo que está en curso)
   const [ordenesActivas, setOrdenesActivas] = useState([]);
+
+  // Estado para el Historial (Órdenes Completadas / Canceladas en rango de fechas)
+  const [ordenesHistorial, setOrdenesHistorial] = useState([]);
   
   // Estado para el Checklist (Operación en tiempo real)
   const [detalleOrdenActual, setDetalleOrdenActual] = useState(null);
@@ -55,6 +58,40 @@ export const usePedidos = () => {
     }
 
     setOrdenesActivas(datosFinales);
+    setLoading(false);
+  }, [sucursalId, tieneAccesoGlobal]);
+
+  /**
+   * Carga el historial de órdenes completadas o canceladas filtrado por rango de fechas
+   * aplicando los mismos filtros de seguridad de sucursal.
+   */
+  const cargarHistorialPorFechas = useCallback(async (fechaInicio, fechaFin) => {
+    if (!fechaInicio || !fechaFin) {
+      toast.error('Selecciona un rango de fechas válido');
+      return;
+    }
+
+    setLoading(true);
+    const { data, error } = await PedidosService.getHistorialPorFechas(fechaInicio, fechaFin);
+    
+    if (error) {
+      toast.error('Error al recuperar historial');
+      console.error("Error getHistorialPorFechas:", error.message);
+      setLoading(false);
+      return;
+    }
+
+    let datosFinales = data || [];
+
+    /**
+     * LÓGICA DE VISIBILIDAD BASADA EN PERMISOS JSON:
+     * Filtramos por sucursal de igual manera que con las activas si no es administrador global.
+     */
+    if (!tieneAccesoGlobal && sucursalId) {
+      datosFinales = datosFinales.filter(orden => orden.sucursal_id === sucursalId);
+    }
+
+    setOrdenesHistorial(datosFinales);
     setLoading(false);
   }, [sucursalId, tieneAccesoGlobal]);
 
@@ -106,6 +143,33 @@ export const usePedidos = () => {
       }
     }
     return true;
+  };
+
+  /**
+   * Pasa un producto no disponible al segundo proveedor registrado de ese insumo.
+   * Crea una nueva orden para el segundo proveedor y retira el item de la orden actual.
+   */
+  const pasarASegundoProveedor = async (detalleId, productoId) => {
+    if (!detalleId || !productoId) return false;
+    setLoading(true);
+
+    try {
+      const { error } = await PedidosService.cambiarAlSegundoProveedor(detalleId, productoId);
+
+      if (error) {
+        toast.error(error.message || 'No se pudo transferir el insumo al segundo proveedor');
+        setLoading(false);
+        return false;
+      }
+
+      setLoading(false);
+      return true;
+    } catch (err) {
+      console.error('Error en pasarASegundoProveedor:', err);
+      toast.error('Ocurrió un error inesperado');
+      setLoading(false);
+      return false;
+    }
   };
 
   // ==========================================
@@ -168,11 +232,14 @@ export const usePedidos = () => {
   return {
     loading,
     ordenesActivas,
+    ordenesHistorial,
     detalleOrdenActual,
     setDetalleOrdenActual,
     cargarOrdenesActivas,
+    cargarHistorialPorFechas,
     cargarDetalleDeOrden,
     toggleEstatusItem,
+    pasarASegundoProveedor,
     cambiarEstatusOrden,
     cancelarPedido
   };

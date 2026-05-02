@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import styles from '../../../../assets/styles/EstilosGenerales.module.css';
 import { useConfiguracion } from './2useConfiguracion';
+import { supabase } from '../../../../lib/supabaseClient';
 import toast from 'react-hot-toast';
 
 export default function Roles({ onVolver }) {
@@ -14,13 +15,16 @@ export default function Roles({ onVolver }) {
   } = useConfiguracion();
 
   const [mostrandoFormulario, setMostrandoFormulario] = useState(false);
+  const [todasCategorias, setTodasCategorias] = useState([]);
 
   // --- ESTRUCTURA INICIAL DE PERMISOS ---
+  // Incluye el arreglo vacío para las categorías permitidas por rol
   const permisosIniciales = {
     productos: { leer: false, crear: false, editar: false, borrar: false },
     pedidos: { leer: false, crear: false, editar: false, borrar: false },
     trabajadores: { leer: false, crear: false, editar: false, borrar: false },
-    configuracion: { leer: false, crear: false, editar: false, borrar: false }
+    configuracion: { leer: false, crear: false, editar: false, borrar: false },
+    categorias_permitidas: []
   };
 
   const estadoInicial = {
@@ -33,8 +37,25 @@ export default function Roles({ onVolver }) {
 
   const [formData, setFormData] = useState(estadoInicial);
 
+  // Cargamos los roles de soporte y las categorías para las asignaciones
   useEffect(() => {
     cargarRoles();
+    
+    const cargarCategorias = async () => {
+      const { data, error } = await supabase
+        .from('Cat_Categorias')
+        .select('id, nombre')
+        .eq('estatus', 'activo')
+        .order('nombre');
+        
+      if (error) {
+        console.error("Error al cargar categorías:", error.message);
+        return;
+      }
+      setTodasCategorias(data || []);
+    };
+
+    cargarCategorias();
   }, [cargarRoles]);
 
   const handleInputChange = (e) => {
@@ -56,6 +77,40 @@ export default function Roles({ onVolver }) {
     }));
   };
 
+  // Función para alternar permisos de categorías individuales
+  const handleCategoryToggle = (categoriaId) => {
+    setFormData(prev => {
+      const actuales = prev.permisos.categorias_permitidas || [];
+      const nuevas = actuales.includes(categoriaId)
+        ? actuales.filter(id => id !== categoriaId)
+        : [...actuales, categoriaId];
+      
+      return {
+        ...prev,
+        permisos: {
+          ...prev.permisos,
+          categorias_permitidas: nuevas
+        }
+      };
+    });
+  };
+
+  // Función para marcar/desmarcar todas las categorías a la vez
+  const handleSelectAllCategories = () => {
+    const actuales = formData.permisos.categorias_permitidas || [];
+    if (actuales.length === todasCategorias.length) {
+      setFormData(prev => ({
+        ...prev,
+        permisos: { ...prev.permisos, categorias_permitidas: [] }
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        permisos: { ...prev.permisos, categorias_permitidas: todasCategorias.map(c => c.id) }
+      }));
+    }
+  };
+
   const abrirCrear = () => {
     setFormData(estadoInicial);
     setMostrandoFormulario(true);
@@ -67,8 +122,12 @@ export default function Roles({ onVolver }) {
       nombre: rol.nombre || '',
       descripcion: rol.descripcion || '',
       estatus: rol.estatus || 'Activo',
-      // Si el rol no tiene permisos definidos, usamos los iniciales
-      permisos: rol.permisos || permisosIniciales
+      // Si el rol ya tiene permisos definidos, usamos un merge para mantener la compatibilidad
+      permisos: {
+        ...permisosIniciales,
+        ...(rol.permisos || {}),
+        categorias_permitidas: rol.permisos?.categorias_permitidas || []
+      }
     });
     setMostrandoFormulario(true);
   };
@@ -91,7 +150,7 @@ export default function Roles({ onVolver }) {
         <td key={accion} style={{ textAlign: 'center', padding: '12px' }}>
           <input 
             type="checkbox" 
-            checked={formData.permisos[modulo][accion]} 
+            checked={formData.permisos[modulo]?.[accion] || false} 
             onChange={() => handlePermissionChange(modulo, accion)}
             style={{ width: '20px', height: '20px', cursor: 'pointer' }}
           />
@@ -171,6 +230,74 @@ export default function Roles({ onVolver }) {
               </div>
             </div>
 
+            {/* --- SELECCIÓN DE CATEGORÍAS PERMITIDAS --- */}
+            <div style={{ marginTop: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <label className={styles.labelTop} style={{ margin: 0 }}>
+                  CATEGORÍAS PERMITIDAS PARA ESTE ROL
+                </label>
+                <button 
+                  type="button" 
+                  onClick={handleSelectAllCategories}
+                  style={{ 
+                    background: 'none', border: 'none', color: 'var(--color-primary)', 
+                    fontWeight: 'bold', fontSize: '0.8rem', cursor: 'pointer' 
+                  }}
+                >
+                  {formData.permisos.categorias_permitidas?.length === todasCategorias.length
+                    ? 'DESMARCAR TODAS'
+                    : 'MARCAR TODAS'}
+                </button>
+              </div>
+
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
+                Define a qué categorías de productos tiene permiso de requisitar este rol. 
+                Si no seleccionas ninguna categoría, el rol tendrá acceso a <b>todas</b> por defecto.
+              </p>
+
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', 
+                gap: '10px',
+                backgroundColor: 'var(--color-surface-lowest)', 
+                padding: '16px', 
+                borderRadius: '12px', 
+                border: '1px solid var(--border-ghost)' 
+              }}>
+                {todasCategorias.map((cat) => {
+                  const estaMarcada = formData.permisos.categorias_permitidas?.includes(cat.id);
+                  return (
+                    <div 
+                      key={cat.id} 
+                      onClick={() => handleCategoryToggle(cat.id)}
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '10px', 
+                        cursor: 'pointer',
+                        backgroundColor: estaMarcada ? 'var(--color-surface-low)' : 'white',
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        border: '1px solid',
+                        borderColor: estaMarcada ? 'var(--color-primary)' : 'var(--border-ghost)',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <input 
+                        type="checkbox" 
+                        checked={estaMarcada || false} 
+                        readOnly 
+                        style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                      />
+                      <span style={{ fontSize: '0.85rem', fontWeight: estaMarcada ? 'bold' : 'normal', color: 'var(--text-main)' }}>
+                        {cat.nombre}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             <button 
               onClick={procesarGuardado} 
               disabled={loading} 
@@ -223,12 +350,18 @@ export default function Roles({ onVolver }) {
                 {/* Mini resumen de permisos activados */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed var(--border-color)' }}>
                   {Object.entries(rol.permisos || {}).map(([mod, p]) => (
-                    p.leer && (
+                    p && p.leer && (
                       <span key={mod} style={{ fontSize: '0.65rem', background: 'var(--color-surface-low)', padding: '2px 6px', borderRadius: '4px', textTransform: 'uppercase' }}>
                         {mod}
                       </span>
                     )
                   ))}
+                  {/* Etiqueta para saber si tiene categorías limitadas */}
+                  {rol.permisos?.categorias_permitidas?.length > 0 && (
+                    <span style={{ fontSize: '0.65rem', background: 'var(--color-surface-low)', color: 'var(--color-primary)', padding: '2px 6px', borderRadius: '4px', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                      {rol.permisos.categorias_permitidas.length} CATS.
+                    </span>
+                  )}
                 </div>
               </div>
             ))}

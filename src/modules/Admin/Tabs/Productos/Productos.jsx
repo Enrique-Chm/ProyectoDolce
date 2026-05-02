@@ -1,5 +1,5 @@
 // src/modules/Admin/Tabs/Productos/Productos.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import styles from '../../../../assets/styles/EstilosGenerales.module.css';
 import { useProductos } from './2useProductos';
 import toast from 'react-hot-toast';
@@ -13,20 +13,20 @@ export default function Productos({ onVolver }) {
 
   const [mostrandoFormulario, setMostrandoFormulario] = useState(false);
   
-  // 1. ESTADO INICIAL CON EL 100% DE TUS CAMPOS SQL
+  // 1. ESTADO INICIAL ACTUALIZADO: Cambiamos sucursal_id por sucursales_ids (array)
   const estadoInicialFormulario = {
     id: null,
     nombre: '',
     marca: '',
     modelo: '',
-    tipo: '',
+    categoria_id: '',
     presentacion: '',
     contenido: '',
     costo_actual: '',
     proveedor_id: '',
-    sucursal_id: '',
+    proveedor_secundario_id: '',
+    sucursales_ids: [], // Array de sucursales seleccionadas
     um_id: '',
-    area_uso_id: '',
     activo: true
   };
   
@@ -45,6 +45,44 @@ export default function Productos({ onVolver }) {
     });
   };
 
+  // --- MANEJADORES PARA SELECCIÓN MÚLTIPLE DE SUCURSALES ---
+  const handleSucursalCheckboxChange = (id) => {
+    const idsActuales = Array.isArray(formData.sucursales_ids) ? formData.sucursales_ids : [];
+    if (idsActuales.includes(id)) {
+      setFormData({
+        ...formData,
+        sucursales_ids: idsActuales.filter(sucId => sucId !== id)
+      });
+    } else {
+      setFormData({
+        ...formData,
+        sucursales_ids: [...idsActuales, id]
+      });
+    }
+  };
+
+  const handleToggleTodasLasSucursales = (checked) => {
+    if (checked) {
+      const todosLosIds = catalogos.sucursales.map(s => s.id);
+      setFormData({
+        ...formData,
+        sucursales_ids: todosLosIds
+      });
+    } else {
+      setFormData({
+        ...formData,
+        sucursales_ids: []
+      });
+    }
+  };
+
+  // Validación visual para saber si todas están seleccionadas
+  const todasSeleccionadas = useMemo(() => {
+    if (!catalogos.sucursales || catalogos.sucursales.length === 0) return false;
+    const idsActuales = Array.isArray(formData.sucursales_ids) ? formData.sucursales_ids : [];
+    return catalogos.sucursales.every(s => idsActuales.includes(s.id));
+  }, [catalogos.sucursales, formData.sucursales_ids]);
+
   const abrirParaCrear = () => {
     setFormData(estadoInicialFormulario);
     setMostrandoFormulario(true);
@@ -56,14 +94,14 @@ export default function Productos({ onVolver }) {
       nombre: producto.nombre || '',
       marca: producto.marca || '',
       modelo: producto.modelo || '',
-      tipo: producto.tipo || '',
+      categoria_id: producto.categoria_id || '',
       presentacion: producto.presentacion || '',
       contenido: producto.contenido || '',
       costo_actual: producto.costo_actual || '',
       proveedor_id: producto.proveedor_id || '',
-      sucursal_id: producto.sucursal_id || '',
+      proveedor_secundario_id: producto.proveedor_secundario_id || '',
+      sucursales_ids: Array.isArray(producto.sucursales_ids) ? producto.sucursales_ids : [],
       um_id: producto.um_id || '',
-      area_uso_id: producto.area_uso_id || '',
       activo: producto.activo
     });
     setMostrandoFormulario(true);
@@ -75,15 +113,16 @@ export default function Productos({ onVolver }) {
       return;
     }
 
-    // Limpieza de datos: Convertimos strings vacíos a NULL para que Supabase no dé error
+    // Limpieza de datos antes de enviar al backend
     const datosLimpios = {
       ...formData,
       contenido: formData.contenido === '' ? null : Number(formData.contenido),
       costo_actual: formData.costo_actual === '' ? null : Number(formData.costo_actual),
       proveedor_id: formData.proveedor_id || null,
-      sucursal_id: formData.sucursal_id || null,
-      area_uso_id: formData.area_uso_id || null,
+      proveedor_secundario_id: formData.proveedor_secundario_id || null,
+      sucursales_ids: Array.isArray(formData.sucursales_ids) ? formData.sucursales_ids : [],
       um_id: formData.um_id || null,
+      categoria_id: formData.categoria_id || null
     };
 
     const exito = await guardarProducto(datosLimpios);
@@ -91,12 +130,14 @@ export default function Productos({ onVolver }) {
   };
 
   return (
-    <div>
+    <div style={{ width: '100%', maxWidth: '100%' }}>
       {/* --- ENCABEZADO --- */}
       <header style={{ marginBottom: 'var(--space-lg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <span className={styles.labelTop} style={{ display: 'block', marginBottom: 'var(--space-xs)' }}>Catálogo Maestro</span>
-          <h1 className={styles.title}>{mostrandoFormulario ? (formData.id ? 'Editar Producto' : 'Nuevo Producto') : 'Productos'}</h1>
+          <h1 className={styles.title} style={{ fontSize: '2.25rem' }}>
+            {mostrandoFormulario ? (formData.id ? 'Editar Producto' : 'Nuevo Producto') : 'Productos'}
+          </h1>
         </div>
         <button 
           onClick={mostrandoFormulario ? () => setMostrandoFormulario(false) : onVolver} 
@@ -135,8 +176,13 @@ export default function Productos({ onVolver }) {
               </div>
 
               <div>
-                <label className={styles.labelTop}>Tipo / Categoría</label>
-                <input type="text" name="tipo" value={formData.tipo} onChange={handleInputChange} placeholder="Ej: Perecederos" className={styles.inputEditorial} />
+                <label className={styles.labelTop}>Categoría</label>
+                <select name="categoria_id" value={formData.categoria_id} onChange={handleInputChange} className={styles.selectEditorial}>
+                  <option value="">-- Sin Asignar --</option>
+                  {catalogos.categorias && catalogos.categorias.map(c => (
+                    <option key={c.id} value={c.id}>{c.nombre}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -169,7 +215,7 @@ export default function Productos({ onVolver }) {
               </div>
             </div>
 
-            {/* BLOQUE 3: LOGÍSTICA */}
+            {/* BLOQUE 3: LOGÍSTICA Y SUCURSALES MÚLTIPLES */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <h3 className={styles.labelTop} style={{ color: 'var(--color-primary)', borderBottom: '1px solid var(--border-ghost)', paddingBottom: '8px' }}>Logística y Estatus</h3>
               
@@ -181,20 +227,53 @@ export default function Productos({ onVolver }) {
                 </select>
               </div>
 
+              {/* Selector de Proveedor Secundario */}
               <div>
-                <label className={styles.labelTop}>Área de Uso</label>
-                <select name="area_uso_id" value={formData.area_uso_id} onChange={handleInputChange} className={styles.selectEditorial}>
+                <label className={styles.labelTop}>Proveedor Secundario</label>
+                <select name="proveedor_secundario_id" value={formData.proveedor_secundario_id} onChange={handleInputChange} className={styles.selectEditorial}>
                   <option value="">-- Sin Asignar --</option>
-                  {catalogos.areas.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}
+                  {catalogos.proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
                 </select>
               </div>
 
+              {/* --- PANEL DE CHECKBOXES DE SUCURSAL MÚLTIPLE --- */}
               <div>
-                <label className={styles.labelTop}>Sucursal</label>
-                <select name="sucursal_id" value={formData.sucursal_id} onChange={handleInputChange} className={styles.selectEditorial}>
-                  <option value="">-- Todas --</option>
-                  {catalogos.sucursales.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-                </select>
+                <label className={styles.labelTop} style={{ display: 'block', marginBottom: '8px' }}>Disponibilidad por Sucursal</label>
+                <div style={{
+                  backgroundColor: 'var(--color-surface-lowest)',
+                  border: '1px solid var(--border-ghost)',
+                  borderRadius: '12px',
+                  padding: '12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  maxHeight: '160px',
+                  overflowY: 'auto'
+                }}>
+                  {/* Opción global para todas */}
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-main)', borderBottom: '1px solid var(--border-ghost)', paddingBottom: '6px' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={todasSeleccionadas}
+                      onChange={(e) => handleToggleTodasLasSucursales(e.target.checked)}
+                      style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                    />
+                    Todas las sucursales
+                  </label>
+
+                  {/* Listado individual de checkboxes */}
+                  {catalogos.sucursales.map(suc => (
+                    <label key={suc.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.825rem', color: 'var(--text-muted)' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={Array.isArray(formData.sucursales_ids) && formData.sucursales_ids.includes(suc.id)}
+                        onChange={() => handleSucursalCheckboxChange(suc.id)}
+                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                      />
+                      {suc.nombre}
+                    </label>
+                  ))}
+                </div>
               </div>
 
               <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
@@ -231,12 +310,29 @@ export default function Productos({ onVolver }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div onClick={() => abrirParaEditar(prod)} style={{ cursor: 'pointer', flex: 1 }}>
                     <h2 className={styles.subtitle} style={{ marginBottom: '4px' }}>{prod.nombre}</h2>
-                    <div style={{ display: 'flex', gap: '12px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    <div style={{ display: 'flex', gap: '12px', fontSize: '0.75rem', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
                       <span>{prod.marca || 'Sin marca'}</span>
                       <span>•</span>
                       <span>{prod.unidad_medida?.abreviatura}</span>
                       <span>•</span>
+                      <span>{prod.categoria?.nombre || 'Sin categoría'}</span>
+                      <span>•</span>
                       <span style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>${prod.costo_actual}</span>
+                    </div>
+
+                    {/* --- BADGES DE SUCURSALES ASIGNADAS --- */}
+                    <div style={{ marginTop: '8px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                      {(!prod.sucursales_ids || prod.sucursales_ids.length === 0) ? (
+                        <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'var(--color-surface-low)', color: 'var(--text-light)', border: '1px solid var(--border-ghost)' }}>
+                          Todas las sucursales
+                        </span>
+                      ) : (
+                        prod.sucursales?.map(s => (
+                          <span key={s.id} style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'var(--color-surface-low)', color: 'var(--text-muted)', border: '1px solid var(--border-ghost)' }}>
+                            {s.nombre}
+                          </span>
+                        ))
+                      )}
                     </div>
                   </div>
                   
@@ -244,7 +340,7 @@ export default function Productos({ onVolver }) {
                     <button onClick={() => abrirParaEditar(prod)} className={`${styles.btnBase} ${styles.btnSecondary}`} style={{ padding: '8px' }}>
                       <span className="material-symbols-outlined" style={{ fontSize: '1.25rem' }}>edit</span>
                     </button>
-                    <button onClick={() => toggleEstatus(prod.id, prod.activo)} className={`${styles.btnBase} ${styles.btnOutlined}`} style={{ padding: '8px', color: prod.activo ? '#ba1a1a' : '#005F56' }}>
+                    <button onClick={() => toggleEstatus(prod.id, prod.activo)} className={`${styles.btnBase} ${styles.btnOutlined}`} style={{ padding: '8px', color: prod.activo ? '#ba1a1a' : 'var(--color-primary)' }}>
                       <span className="material-symbols-outlined" style={{ fontSize: '1.25rem' }}>{prod.activo ? 'block' : 'check_circle'}</span>
                     </button>
                   </div>

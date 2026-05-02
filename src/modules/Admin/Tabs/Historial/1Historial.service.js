@@ -55,5 +55,37 @@ export const HistorialService = {
     }
 
     return { data, error };
+  },
+
+  // ==========================================
+  // 3. HISTORIAL FILTRADO POR RANGO DE FECHAS
+  // ==========================================
+  /**
+   * Recupera las órdenes con estatus Completado o Cancelado dentro de un rango de fechas.
+   * @param {string} fechaInicio - Fecha inicial en formato YYYY-MM-DD
+   * @param {string} fechaFin - Fecha final en formato YYYY-MM-DD
+   */
+  async getHistorialPorFechas(fechaInicio, fechaFin) {
+    const inicioIso = `${fechaInicio}T00:00:00.000Z`;
+    const finIso = `${fechaFin}T23:59:59.999Z`;
+
+    const { data, error } = await supabase
+      .from('BD_Ordenes_Compra')
+      .select(`
+        *,
+        proveedor:Cat_Proveedores(nombre),
+        solicitante:Cat_Trabajadores(nombre_completo),
+        sucursal:Cat_sucursales(nombre)
+      `)
+      .in('estatus', ['Completado', 'Cancelado'])
+      .gte('created_at', inicioIso)
+      .lte('created_at', finIso)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error("Error al cargar historial por fechas:", error.message);
+    }
+
+    return { data, error };
   }
 };

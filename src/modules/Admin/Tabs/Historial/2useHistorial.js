@@ -47,10 +47,41 @@ export const useHistorial = () => {
     } finally {
       setLoading(false);
     }
-  }, [sucursalId, esAdmin]); // Dependencias estables
+  }, [sucursalId, esAdmin]);
 
   // ==========================================
-  // 2. BÚSQUEDA POR FOLIO (RESPETANDO EL FILTRO)
+  // 2. CARGA DE DATOS POR RANGO DE FECHAS
+  // ==========================================
+  const cargarHistorialPorFechas = useCallback(async (fechaInicio, fechaFin) => {
+    if (!fechaInicio || !fechaFin) {
+      toast.error('Selecciona un rango de fechas válido');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data, error } = await HistorialService.getHistorialPorFechas(fechaInicio, fechaFin);
+      
+      if (error) throw error;
+
+      let datosFiltrados = data || [];
+
+      // Aplicamos la misma lógica de visibilidad dinámica
+      if (!esAdmin && sucursalId) {
+        datosFiltrados = datosFiltrados.filter(orden => orden.sucursal_id === sucursalId);
+      }
+
+      setOrdenesHistorial(datosFiltrados);
+    } catch (err) {
+      console.error("Error en cargarHistorialPorFechas:", err);
+      toast.error('No se pudo cargar el historial por fechas');
+    } finally {
+      setLoading(false);
+    }
+  }, [sucursalId, esAdmin]);
+
+  // ==========================================
+  // 3. BÚSQUEDA POR FOLIO (RESPETANDO EL FILTRO)
   // ==========================================
   const buscarFolio = async (termino) => {
     // Si el campo de búsqueda está vacío, recargamos la lista completa
@@ -82,6 +113,7 @@ export const useHistorial = () => {
     loading,
     ordenesHistorial,
     cargarHistorial,
+    cargarHistorialPorFechas,
     buscarFolio
   };
 };
