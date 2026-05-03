@@ -316,7 +316,7 @@ export default function NuevoPedido({ onVolver }) {
               onClick={procesarOrden} 
               disabled={loading || carrito.length === 0}
               className={`${styles.btnBase} ${styles.btnPrimary}`} 
-              style={{ width: '100%', padding: '1.2rem', fontSize: '1.1rem' }}
+              style={{ width: '100%', padding: '1rem', fontSize: '1rem' }}
             >
               <span className="material-symbols-outlined">{loading ? 'hourglass_empty' : 'send_and_archive'}</span>
               {loading ? 'ENVIANDO...' : 'ENVIAR REQUISICIÓN'}

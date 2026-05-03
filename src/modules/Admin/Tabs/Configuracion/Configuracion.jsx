@@ -55,7 +55,7 @@ export default function Configuracion({
         
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '16px' }}>
           {loading 
-            ? "Sincronizando datos..." 
+            ? `Gestionando sucursal(es) activa(s) en el sistema.`
             : `Gestionando ${sucursales.length} sucursal(es) activa(s) en el sistema.`
           }
         </p>
@@ -79,7 +79,7 @@ export default function Configuracion({
 
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '16px' }}>
           {loading 
-            ? "Cargando métricas..." 
+            ? `Tienes ${proveedores.length} proveedores registrados, categorías de insumos y un catálogo de productos listo para operar.`
             : `Tienes ${proveedores.length} proveedores registrados, ${categorias.length} categorías de insumos y un catálogo de productos listo para operar.`
           }
         </p>
@@ -114,7 +114,7 @@ export default function Configuracion({
 
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '16px' }}>
           {loading 
-            ? "Validando accesos..." 
+            ? `Contamos con ${trabajadores.length} trabajadores distribuidos en niveles de acceso (roles).`
             : `Contamos con ${trabajadores.length} trabajadores distribuidos en ${roles.length} niveles de acceso (roles).`
           }
         </p>
