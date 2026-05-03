@@ -141,7 +141,7 @@ export default function Categorias({ onVolver }) {
             <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No hay categorías registradas aún.</p>
           )}
 
-          {/* LISTA DE FILAS COMPACTAS PARA MÓVIL (Visualización óptima y compacta) */}
+          {/* LISTA DE FILAS COMPACTAS PARA MÓVIL */}
           <div style={{ 
             display: 'flex', 
             flexDirection: 'column',
@@ -162,7 +162,7 @@ export default function Categorias({ onVolver }) {
                     opacity: esActivo ? 1 : 0.65,
                     borderLeft: esActivo ? '4px solid var(--color-primary)' : '4px solid #999',
                     borderTop: 'none',
-                    padding: '8px 12px',
+                    padding: '12px 16px',
                     borderRadius: '10px',
                     backgroundColor: 'white',
                     boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
@@ -172,10 +172,10 @@ export default function Categorias({ onVolver }) {
                   }}
                 >
                   {/* Bloque Izquierdo: Información Resumida */}
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap' }}>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
                       <h4 className={styles.subtitle} style={{ 
-                        fontSize: '0.875rem', 
+                        fontSize: '0.925rem', 
                         margin: 0, 
                         fontWeight: 'bold', 
                         color: 'var(--text-main)', 
@@ -186,10 +186,10 @@ export default function Categorias({ onVolver }) {
                         {cat.nombre}
                       </h4>
                       <span style={{ 
-                        fontSize: '0.55rem', 
+                        fontSize: '0.65rem', 
                         background: esActivo ? 'var(--color-primary-fixed)' : 'var(--color-surface-high)', 
                         color: esActivo ? 'var(--color-on-primary-fixed)' : 'var(--text-muted)', 
-                        padding: '1px 6px', 
+                        padding: '2px 8px', 
                         borderRadius: '4px', 
                         fontWeight: 'bold',
                         textTransform: 'uppercase',
@@ -200,13 +200,13 @@ export default function Categorias({ onVolver }) {
                     </div>
 
                     {/* Descripción Corta */}
-                    <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>description</span>
+                    <p style={{ margin: 0, fontSize: '0.725rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '0.95rem' }}>description</span>
                       {cat.descripcion || 'Sin descripción registrada'}
                     </p>
                   </div>
                   
-                  {/* Bloque Derecho: Botones de Acción Mini */}
+                  {/* Bloque Derecho: Botones de Acción */}
                   <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                     <button 
                       onClick={() => abrirEditar(cat)} 

@@ -1,7 +1,8 @@
 // src/modules/Admin/Tabs/Configuracion/Configuracion.jsx
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import styles from '../../../../assets/styles/EstilosGenerales.module.css';
 import { useConfiguracion } from './2useConfiguracion';
+import ImportadorMasivo from './ImportadorMasivo';
 
 export default function Configuracion({ 
   onAbrirProductos, 
@@ -27,6 +28,9 @@ export default function Configuracion({
     cargarCategorias // <-- Nuevo método para cargar categorías
   } = useConfiguracion();
 
+  // Estado para controlar la vista del importador masivo
+  const [mostrandoImportador, setMostrandoImportador] = useState(false);
+
   // Cargamos todos los catálogos al montar la pantalla para mostrar métricas reales
   useEffect(() => {
     cargarSucursales();
@@ -35,6 +39,11 @@ export default function Configuracion({
     cargarRoles(); 
     cargarCategorias(); // Sincronizamos las categorías también
   }, [cargarSucursales, cargarProveedores, cargarTrabajadores, cargarRoles, cargarCategorias]);
+
+  // Si el usuario activa el importador masivo, mostramos esa pantalla
+  if (mostrandoImportador) {
+    return <ImportadorMasivo onVolver={() => setMostrandoImportador(false)} />;
+  }
 
   return (
     <div className={styles.fadeIN}>
@@ -132,6 +141,27 @@ export default function Configuracion({
             Roles y Permisos
           </button>
         </div>
+      </section>
+
+      {/* --- NUEVA TARJETA: ADMINISTRACIÓN AVANZADA (HERRAMIENTAS DE DATOS) --- */}
+      <section className={styles.card} style={{ marginBottom: 'var(--space-md)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+          <span className="material-symbols-outlined" style={{ color: 'var(--color-primary)', fontSize: '1.5rem' }}>database</span>
+          <h2 className={styles.subtitle} style={{ fontSize: '1.25rem' }}>Administración Avanzada</h2>
+        </div>
+
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '16px' }}>
+          Carga de forma masiva proveedores, sucursales y productos mediante plantillas CSV optimizadas para tu negocio.
+        </p>
+
+        <button 
+          onClick={() => setMostrandoImportador(true)} 
+          className={`${styles.btnBase} ${styles.btnPrimary}`} 
+          style={{ width: 'fit-content' }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: '1.125rem' }}>upload_file</span>
+          Importación Masiva
+        </button>
       </section>
 
       {/* --- TARJETA: CUENTA --- */}

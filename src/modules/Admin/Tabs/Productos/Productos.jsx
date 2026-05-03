@@ -8,12 +8,12 @@ export default function Productos({ onVolver }) {
   const { 
     loading, productos, catalogos, 
     cargarProductos, cargarCatalogosFormulario, 
-    guardarProducto, toggleEstatus 
+    guardarProducto, toggleEstatus
   } = useProductos();
 
   const [mostrandoFormulario, setMostrandoFormulario] = useState(false);
   
-  // 1. ESTADO INICIAL ACTUALIZADO: Cambiamos sucursal_id por sucursales_ids (array)
+  // 1. ESTADO INICIAL: Mantenemos sucursales_ids (array)
   const estadoInicialFormulario = {
     id: null,
     nombre: '',
@@ -108,12 +108,33 @@ export default function Productos({ onVolver }) {
   };
 
   const procesarGuardado = async () => {
-    if (!formData.nombre || !formData.um_id) {
-      toast.error('El Nombre y la Unidad de Medida son obligatorios');
+    // Validaciones básicas de obligatoriedad en el frontend
+    if (!formData.nombre || formData.nombre.trim() === '') {
+      toast.error('El nombre del producto es obligatorio');
       return;
     }
 
-    // Limpieza de datos antes de enviar al backend
+    if (!formData.um_id) {
+      toast.error('La Unidad de Medida (UM) es obligatoria');
+      return;
+    }
+
+    // Validaciones numéricas para prevenir inconsistencias o valores negativos
+    if (formData.costo_actual !== '' && formData.costo_actual !== undefined && formData.costo_actual !== null) {
+      if (isNaN(Number(formData.costo_actual)) || Number(formData.costo_actual) < 0) {
+        toast.error('El costo del producto no puede ser un número negativo');
+        return;
+      }
+    }
+
+    if (formData.contenido !== '' && formData.contenido !== undefined && formData.contenido !== null) {
+      if (isNaN(Number(formData.contenido)) || Number(formData.contenido) <= 0) {
+        toast.error('El contenido debe ser un valor numérico mayor a 0');
+        return;
+      }
+    }
+
+    // Limpieza y sanitización de datos antes de enviar al backend
     const datosLimpios = {
       ...formData,
       contenido: formData.contenido === '' ? null : Number(formData.contenido),
@@ -126,7 +147,9 @@ export default function Productos({ onVolver }) {
     };
 
     const exito = await guardarProducto(datosLimpios);
-    if (exito) setMostrandoFormulario(false);
+    if (exito) {
+      setMostrandoFormulario(false);
+    }
   };
 
   return (
@@ -162,23 +185,23 @@ export default function Productos({ onVolver }) {
               
               <div>
                 <label className={styles.labelTop}>Nombre del Insumo *</label>
-                <input type="text" name="nombre" value={formData.nombre} onChange={handleInputChange} placeholder="Ej: Tomate Saladette" className={styles.inputEditorial} />
+                <input type="text" name="nombre" value={formData.nombre} onChange={handleInputChange} placeholder="Ej: Tomate Saladette" className={styles.inputEditorial} disabled={loading} />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
                   <label className={styles.labelTop}>Marca</label>
-                  <input type="text" name="marca" value={formData.marca} onChange={handleInputChange} className={styles.inputEditorial} />
+                  <input type="text" name="marca" value={formData.marca} onChange={handleInputChange} className={styles.inputEditorial} disabled={loading} />
                 </div>
                 <div>
                   <label className={styles.labelTop}>Modelo</label>
-                  <input type="text" name="modelo" value={formData.modelo} onChange={handleInputChange} className={styles.inputEditorial} />
+                  <input type="text" name="modelo" value={formData.modelo} onChange={handleInputChange} className={styles.inputEditorial} disabled={loading} />
                 </div>
               </div>
 
               <div>
                 <label className={styles.labelTop}>Categoría</label>
-                <select name="categoria_id" value={formData.categoria_id} onChange={handleInputChange} className={styles.selectEditorial}>
+                <select name="categoria_id" value={formData.categoria_id} onChange={handleInputChange} className={styles.selectEditorial} disabled={loading}>
                   <option value="">-- Sin Asignar --</option>
                   {catalogos.categorias && catalogos.categorias.map(c => (
                     <option key={c.id} value={c.id}>{c.nombre}</option>
@@ -193,17 +216,17 @@ export default function Productos({ onVolver }) {
               
               <div>
                 <label className={styles.labelTop}>Descripción Presentación</label>
-                <input type="text" name="presentacion" value={formData.presentacion} onChange={handleInputChange} placeholder="Ej: Caja de 10kg" className={styles.inputEditorial} />
+                <input type="text" name="presentacion" value={formData.presentacion} onChange={handleInputChange} placeholder="Ej: Caja de 10kg" className={styles.inputEditorial} disabled={loading} />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
                   <label className={styles.labelTop}>Contenido</label>
-                  <input type="number" name="contenido" value={formData.contenido} onChange={handleInputChange} placeholder="Ej: 10" className={styles.inputEditorial} />
+                  <input type="number" name="contenido" value={formData.contenido} onChange={handleInputChange} placeholder="Ej: 10" className={styles.inputEditorial} disabled={loading} />
                 </div>
                 <div>
                   <label className={styles.labelTop}>Unidad (UM) *</label>
-                  <select name="um_id" value={formData.um_id} onChange={handleInputChange} className={styles.selectEditorial}>
+                  <select name="um_id" value={formData.um_id} onChange={handleInputChange} className={styles.selectEditorial} disabled={loading}>
                     <option value="">-- Seleccionar --</option>
                     {catalogos.unidades.map(u => <option key={u.id} value={u.id}>{u.nombre} ({u.abreviatura})</option>)}
                   </select>
@@ -212,7 +235,7 @@ export default function Productos({ onVolver }) {
 
               <div>
                 <label className={styles.labelTop}>Costo Actual ($)</label>
-                <input type="number" name="costo_actual" value={formData.costo_actual} onChange={handleInputChange} placeholder="0.00" className={styles.inputEditorial} />
+                <input type="number" name="costo_actual" value={formData.costo_actual} onChange={handleInputChange} placeholder="0.00" className={styles.inputEditorial} disabled={loading} />
               </div>
             </div>
 
@@ -222,7 +245,7 @@ export default function Productos({ onVolver }) {
               
               <div>
                 <label className={styles.labelTop}>Proveedor Preferido</label>
-                <select name="proveedor_id" value={formData.proveedor_id} onChange={handleInputChange} className={styles.selectEditorial}>
+                <select name="proveedor_id" value={formData.proveedor_id} onChange={handleInputChange} className={styles.selectEditorial} disabled={loading}>
                   <option value="">-- Sin Asignar --</option>
                   {catalogos.proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
                 </select>
@@ -231,7 +254,7 @@ export default function Productos({ onVolver }) {
               {/* Selector de Proveedor Secundario */}
               <div>
                 <label className={styles.labelTop}>Proveedor Secundario</label>
-                <select name="proveedor_secundario_id" value={formData.proveedor_secundario_id} onChange={handleInputChange} className={styles.selectEditorial}>
+                <select name="proveedor_secundario_id" value={formData.proveedor_secundario_id} onChange={handleInputChange} className={styles.selectEditorial} disabled={loading}>
                   <option value="">-- Sin Asignar --</option>
                   {catalogos.proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
                 </select>
@@ -258,6 +281,7 @@ export default function Productos({ onVolver }) {
                       checked={todasSeleccionadas}
                       onChange={(e) => handleToggleTodasLasSucursales(e.target.checked)}
                       style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                      disabled={loading}
                     />
                     Todas las sucursales
                   </label>
@@ -270,6 +294,7 @@ export default function Productos({ onVolver }) {
                         checked={Array.isArray(formData.sucursales_ids) && formData.sucursales_ids.includes(suc.id)}
                         onChange={() => handleSucursalCheckboxChange(suc.id)}
                         style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                        disabled={loading}
                       />
                       {suc.nombre}
                     </label>
@@ -278,7 +303,7 @@ export default function Productos({ onVolver }) {
               </div>
 
               <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
-                <input type="checkbox" name="activo" checked={formData.activo} onChange={handleInputChange} style={{ width: '18px', height: '18px', cursor: 'pointer' }} />
+                <input type="checkbox" name="activo" checked={formData.activo} onChange={handleInputChange} style={{ width: '18px', height: '18px', cursor: 'pointer' }} disabled={loading} />
                 <label className={styles.labelTop} style={{ marginBottom: 0, cursor: 'pointer' }}>Producto Activo en Sistema</label>
               </div>
             </div>
@@ -297,15 +322,23 @@ export default function Productos({ onVolver }) {
            ========================================= */
         <>
           <section className={styles.cardLow} style={{ marginBottom: 'var(--space-md)', padding: '10px 14px' }}>
-             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: 0 }}>Catálogo: <b>{productos.length}</b> insumos.</p>
-                <button 
-                  onClick={abrirParaCrear} 
-                  className={`${styles.btnBase} ${styles.btnPrimary}`}
-                  style={{ height: '36px', padding: '0 12px', fontSize: '0.8rem' }}
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>add</span> Nuevo
-                </button>
+             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>
+                    Catálogo: <b>{productos.length}</b> insumos.
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button 
+                    onClick={abrirParaCrear} 
+                    className={`${styles.btnBase} ${styles.btnPrimary}`}
+                    style={{ height: '36px', padding: '0 12px', fontSize: '0.8rem' }}
+                    disabled={loading}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>add</span> Nuevo Insumo
+                  </button>
+                </div>
              </div>
           </section>
 
@@ -317,7 +350,7 @@ export default function Productos({ onVolver }) {
                 className={styles.card} 
                 style={{ 
                   opacity: prod.activo ? 1 : 0.65, 
-                  padding: '8px 12px',
+                  padding: '12px 16px',
                   display: 'flex',
                   flexDirection: 'row',
                   justifyContent: 'space-between',
@@ -333,10 +366,10 @@ export default function Productos({ onVolver }) {
                 }}
               >
                 {/* Bloque Izquierdo: Información Resumida */}
-                <div onClick={() => abrirParaEditar(prod)} style={{ cursor: 'pointer', flex: 1, display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap' }}>
+                <div onClick={() => abrirParaEditar(prod)} style={{ cursor: 'pointer', flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
                     <h2 className={styles.subtitle} style={{ 
-                      fontSize: '0.875rem', 
+                      fontSize: '0.925rem', 
                       margin: 0, 
                       fontWeight: 'bold', 
                       color: 'var(--text-main)', 
@@ -346,13 +379,13 @@ export default function Productos({ onVolver }) {
                     }}>
                       {prod.nombre}
                     </h2>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 'bold' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--color-primary)', fontWeight: 'bold' }}>
                       ${prod.costo_actual}
                     </span>
                   </div>
 
                   {/* Subtítulo: Marca • UM • Categoría */}
-                  <div style={{ display: 'flex', gap: '4px', fontSize: '0.65rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div style={{ display: 'flex', gap: '4px', fontSize: '0.725rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     <span>{prod.marca || 'S/M'}</span>
                     <span>•</span>
                     <span>{prod.unidad_medida?.abreviatura || 'N/A'}</span>
@@ -363,11 +396,11 @@ export default function Productos({ onVolver }) {
                   {/* --- BADGES DE SUCURSALES ASIGNADAS MINI --- */}
                   <div style={{ display: 'flex', flexWrap: 'nowrap', gap: '4px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {(!prod.sucursales_ids || prod.sucursales_ids.length === 0) ? (
-                      <span style={{ fontSize: '0.55rem', color: 'var(--text-light)', opacity: 0.8 }}>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-light)', opacity: 0.8 }}>
                         📍 Todas las sucursales
                       </span>
                     ) : (
-                      <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '2px' }}>
                         📍 <b>{prod.sucursales?.map(s => s.nombre).join(', ')}</b>
                       </span>
                     )}
@@ -389,6 +422,7 @@ export default function Productos({ onVolver }) {
                       borderRadius: '8px',
                       backgroundColor: 'var(--color-surface-low)'
                     }}
+                    disabled={loading}
                   >
                     <span className="material-symbols-outlined" style={{ fontSize: '1.05rem', color: 'var(--text-main)' }}>edit</span>
                   </button>
@@ -407,6 +441,7 @@ export default function Productos({ onVolver }) {
                       color: prod.activo ? '#ba1a1a' : 'var(--color-primary)',
                       backgroundColor: 'transparent'
                     }}
+                    disabled={loading}
                   >
                     <span className="material-symbols-outlined" style={{ fontSize: '1.05rem' }}>
                       {prod.activo ? 'block' : 'check_circle'}

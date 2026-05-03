@@ -51,20 +51,21 @@ export const ProductosService = {
   },
 
   // ==========================================
-  // CREACIÓN Y EDICIÓN (UPSERT)
+  // CREACIÓN Y EDICIÓN (INSERT / UPDATE EXPLÍCITO)
   // ==========================================
   async guardarProducto(productoData) {
     try {
       // 1. Clonamos para no mutar el estado original
       const dataLimpia = { ...productoData };
 
+      const esNuevo = !dataLimpia.id || dataLimpia.id === "" || dataLimpia.id === "null";
+
       // 2. ELIMINAR ID SI ES NUEVO: 
-      if (!dataLimpia.id || dataLimpia.id === "" || dataLimpia.id === "null") {
+      if (esNuevo) {
         delete dataLimpia.id;
       }
 
       // 3. LIMPIEZA DE LLAVES FORÁNEAS (UUIDs):
-      // Retiramos sucursal_id e introducimos sucursales_ids normalizado
       const camposRelacionales = ['proveedor_id', 'proveedor_secundario_id', 'um_id', 'categoria_id'];
       camposRelacionales.forEach(campo => {
         if (dataLimpia[campo] === "" || dataLimpia[campo] === undefined) {
@@ -72,25 +73,42 @@ export const ProductosService = {
         }
       });
 
-      // 4. LIMPIEZA DE NÚMEROS:
-      if (dataLimpia.costo_actual === "" || dataLimpia.costo_actual === undefined) dataLimpia.costo_actual = null;
-      if (dataLimpia.contenido === "" || dataLimpia.contenido === undefined) dataLimpia.contenido = null;
+      // 4. LIMPIEZA Y PARSEO NUMÉRICO SEGURO:
+      dataLimpia.costo_actual = (dataLimpia.costo_actual === "" || dataLimpia.costo_actual === undefined || isNaN(Number(dataLimpia.costo_actual))) 
+        ? null 
+        : Number(dataLimpia.costo_actual);
+
+      dataLimpia.contenido = (dataLimpia.contenido === "" || dataLimpia.contenido === undefined || isNaN(Number(dataLimpia.contenido))) 
+        ? null 
+        : Number(dataLimpia.contenido);
 
       // 5. NORMALIZACIÓN DE ARRAY DE SUCURSALES:
       if (!Array.isArray(dataLimpia.sucursales_ids)) {
         dataLimpia.sucursales_ids = [];
       }
 
-      // Eliminamos campos de apoyo visual para no enviarlos a la tabla de Supabase
+      // Eliminamos campos de apoyo visual
       delete dataLimpia.sucursales;
       delete dataLimpia.sucursal;
 
       // 6. EJECUCIÓN EN SUPABASE
-      const { data, error } = await supabase
-        .from('BD_Productos')
-        .upsert([dataLimpia])
-        .select()
-        .single();
+      let respuesta;
+      if (esNuevo) {
+        respuesta = await supabase
+          .from('BD_Productos')
+          .insert([dataLimpia])
+          .select()
+          .single();
+      } else {
+        respuesta = await supabase
+          .from('BD_Productos')
+          .update(dataLimpia)
+          .eq('id', dataLimpia.id)
+          .select()
+          .single();
+      }
+
+      const { data, error } = respuesta;
 
       if (error) {
         console.error("Error detallado de Supabase:", error);
@@ -114,7 +132,7 @@ export const ProductosService = {
   },
 
   // ==========================================
-  // BORRADO LÓGICO (Desactivar)
+  // BORRADO LÓGICO INDIVIDUAL (Desactivar)
   // ==========================================
   async toggleEstatusProducto(id, estatusActual) {
     const { data, error } = await supabase

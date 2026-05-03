@@ -174,6 +174,109 @@ export const useConfiguracion = () => {
     return true;
   };
 
+  // ==========================================
+  // MÉTODOS DE IMPORTACIÓN MASIVA
+  // ==========================================
+
+  const importarProveedores = useCallback(async (proveedoresExcel) => {
+    if (!Array.isArray(proveedoresExcel) || proveedoresExcel.length === 0) {
+      toast.error('No hay datos para importar.');
+      return false;
+    }
+
+    setLoading(true);
+    try {
+      const { data, error } = await ConfiguracionService.importarProveedoresMasivo(proveedoresExcel);
+      if (error) {
+        toast.error(`Error en importación masiva:\n${error.message || 'Error desconocido'}`);
+        return false;
+      }
+      toast.success(`¡Se han importado exitosamente ${data?.length || 0} proveedores!`);
+      await cargarProveedores();
+      return true;
+    } catch (err) {
+      console.error("Error inesperado en importarProveedores:", err);
+      toast.error("Error inesperado al procesar la importación masiva.");
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [cargarProveedores]);
+
+  const importarSucursales = useCallback(async (sucursalesExcel) => {
+    if (!Array.isArray(sucursalesExcel) || sucursalesExcel.length === 0) {
+      toast.error('No hay datos para importar.');
+      return false;
+    }
+
+    setLoading(true);
+    try {
+      const { data, error } = await ConfiguracionService.importarSucursalesMasivo(sucursalesExcel);
+      if (error) {
+        toast.error(`Error en importación masiva:\n${error.message || 'Error desconocido'}`);
+        return false;
+      }
+      toast.success(`¡Se han importado exitosamente ${data?.length || 0} sucursales!`);
+      await cargarSucursales();
+      return true;
+    } catch (err) {
+      console.error("Error inesperado en importarSucursales:", err);
+      toast.error("Error inesperado al procesar la importación masiva.");
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [cargarSucursales]);
+
+  const importarCategorias = useCallback(async (categoriasExcel) => {
+    if (!Array.isArray(categoriasExcel) || categoriasExcel.length === 0) {
+      toast.error('No hay datos para importar.');
+      return false;
+    }
+
+    setLoading(true);
+    try {
+      const { data, error } = await ConfiguracionService.importarCategoriasMasivo(categoriasExcel);
+      if (error) {
+        toast.error(`Error en importación masiva:\n${error.message || 'Error desconocido'}`);
+        return false;
+      }
+      toast.success(`¡Se han importado exitosamente ${data?.length || 0} categorías!`);
+      await cargarCategorias();
+      return true;
+    } catch (err) {
+      console.error("Error inesperado en importarCategorias:", err);
+      toast.error("Error inesperado al procesar la importación masiva.");
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [cargarCategorias]);
+
+  const importarProductos = useCallback(async (productosExcel) => {
+    if (!Array.isArray(productosExcel) || productosExcel.length === 0) {
+      toast.error('No hay datos para importar.');
+      return false;
+    }
+
+    setLoading(true);
+    try {
+      const { data, error } = await ConfiguracionService.importarProductosMasivo(productosExcel);
+      if (error) {
+        toast.error(`Error en importación masiva:\n${error.message || 'Error desconocido'}`);
+        return false;
+      }
+      toast.success(`¡Se han importado exitosamente ${data?.length || 0} productos!`);
+      return true;
+    } catch (err) {
+      console.error("Error inesperado en importarProductos:", err);
+      toast.error("Error inesperado al procesar la importación masiva.");
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   return {
     // Estados expuestos
     loading,
@@ -202,6 +305,12 @@ export const useConfiguracion = () => {
     guardarTrabajador,
     guardarRol, 
     guardarCategoria, // Expuesto para guardar categorías individuales
-    cambiarEstatus
+    cambiarEstatus,
+
+    // Nuevos métodos de carga masiva expuestos
+    importarProveedores,
+    importarSucursales,
+    importarCategorias,
+    importarProductos
   };
 };
