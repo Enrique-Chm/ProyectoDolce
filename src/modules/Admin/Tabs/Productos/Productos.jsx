@@ -132,18 +132,19 @@ export default function Productos({ onVolver }) {
   return (
     <div style={{ width: '100%', maxWidth: '100%' }}>
       {/* --- ENCABEZADO --- */}
-      <header style={{ marginBottom: 'var(--space-lg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <header style={{ marginBottom: 'var(--space-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
-          <span className={styles.labelTop} style={{ display: 'block', marginBottom: 'var(--space-xs)' }}>Catálogo Maestro</span>
-          <h1 className={styles.title} style={{ fontSize: '2.25rem' }}>
-            {mostrandoFormulario ? (formData.id ? 'Editar Producto' : 'Nuevo Producto') : 'Productos'}
+          <span className={styles.labelTop} style={{ display: 'block', marginBottom: '2px' }}>Catálogo Maestro</span>
+          <h1 className={styles.title} style={{ fontSize: '2rem', lineHeight: '1' }}>
+            {mostrandoFormulario ? (formData.id ? 'Editar\nProducto' : 'Nuevo\nProducto') : 'Productos'}
           </h1>
         </div>
         <button 
           onClick={mostrandoFormulario ? () => setMostrandoFormulario(false) : onVolver} 
           className={`${styles.btnBase} ${styles.btnSecondary}`}
+          style={{ height: '38px', padding: '0 12px', fontSize: '0.8rem' }}
         >
-          <span className="material-symbols-outlined" style={{ fontSize: '1.25rem' }}>arrow_back</span>
+          <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>arrow_back</span>
           Volver
         </button>
       </header>
@@ -152,7 +153,7 @@ export default function Productos({ onVolver }) {
         /* =========================================
            VISTA 1: FORMULARIO EXPANDIDO (GRID)
            ========================================= */
-        <section className={styles.card}>
+        <section className={styles.card} style={{ animation: 'slideUp 0.3s ease' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
             
             {/* BLOQUE 1: IDENTIDAD */}
@@ -295,55 +296,122 @@ export default function Productos({ onVolver }) {
            VISTA 2: LISTA DE PRODUCTOS (Resumen)
            ========================================= */
         <>
-          <section className={styles.cardLow} style={{ marginBottom: 'var(--space-md)' }}>
+          <section className={styles.cardLow} style={{ marginBottom: 'var(--space-md)', padding: '10px 14px' }}>
              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Catálogo: <b>{productos.length}</b> insumos.</p>
-                <button onClick={abrirParaCrear} className={`${styles.btnBase} ${styles.btnPrimary}`}>
-                  <span className="material-symbols-outlined">add</span> Nuevo Insumo
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: 0 }}>Catálogo: <b>{productos.length}</b> insumos.</p>
+                <button 
+                  onClick={abrirParaCrear} 
+                  className={`${styles.btnBase} ${styles.btnPrimary}`}
+                  style={{ height: '36px', padding: '0 12px', fontSize: '0.8rem' }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>add</span> Nuevo
                 </button>
              </div>
           </section>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {/* LISTA DE FILAS COMPACTAS PARA MÓVIL */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {productos.map(prod => (
-              <section key={prod.id} className={styles.card} style={{ opacity: prod.activo ? 1 : 0.6, padding: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div onClick={() => abrirParaEditar(prod)} style={{ cursor: 'pointer', flex: 1 }}>
-                    <h2 className={styles.subtitle} style={{ marginBottom: '4px' }}>{prod.nombre}</h2>
-                    <div style={{ display: 'flex', gap: '12px', fontSize: '0.75rem', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
-                      <span>{prod.marca || 'Sin marca'}</span>
-                      <span>•</span>
-                      <span>{prod.unidad_medida?.abreviatura}</span>
-                      <span>•</span>
-                      <span>{prod.categoria?.nombre || 'Sin categoría'}</span>
-                      <span>•</span>
-                      <span style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>${prod.costo_actual}</span>
-                    </div>
+              <section 
+                key={prod.id} 
+                className={styles.card} 
+                style={{ 
+                  opacity: prod.activo ? 1 : 0.65, 
+                  padding: '8px 12px',
+                  display: 'flex',
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  minHeight: '64px',
+                  borderRadius: '10px',
+                  borderLeft: prod.activo ? '4px solid var(--color-primary)' : '4px solid #999',
+                  borderTop: 'none',
+                  backgroundColor: 'white',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
+                  transition: 'all 0.15s ease',
+                  gap: '12px'
+                }}
+              >
+                {/* Bloque Izquierdo: Información Resumida */}
+                <div onClick={() => abrirParaEditar(prod)} style={{ cursor: 'pointer', flex: 1, display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap' }}>
+                    <h2 className={styles.subtitle} style={{ 
+                      fontSize: '0.875rem', 
+                      margin: 0, 
+                      fontWeight: 'bold', 
+                      color: 'var(--text-main)', 
+                      whiteSpace: 'nowrap', 
+                      overflow: 'hidden', 
+                      textOverflow: 'ellipsis' 
+                    }}>
+                      {prod.nombre}
+                    </h2>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 'bold' }}>
+                      ${prod.costo_actual}
+                    </span>
+                  </div>
 
-                    {/* --- BADGES DE SUCURSALES ASIGNADAS --- */}
-                    <div style={{ marginTop: '8px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                      {(!prod.sucursales_ids || prod.sucursales_ids.length === 0) ? (
-                        <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'var(--color-surface-low)', color: 'var(--text-light)', border: '1px solid var(--border-ghost)' }}>
-                          Todas las sucursales
-                        </span>
-                      ) : (
-                        prod.sucursales?.map(s => (
-                          <span key={s.id} style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'var(--color-surface-low)', color: 'var(--text-muted)', border: '1px solid var(--border-ghost)' }}>
-                            {s.nombre}
-                          </span>
-                        ))
-                      )}
-                    </div>
+                  {/* Subtítulo: Marca • UM • Categoría */}
+                  <div style={{ display: 'flex', gap: '4px', fontSize: '0.65rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <span>{prod.marca || 'S/M'}</span>
+                    <span>•</span>
+                    <span>{prod.unidad_medida?.abreviatura || 'N/A'}</span>
+                    <span>•</span>
+                    <span style={{ color: 'var(--text-light)' }}>{prod.categoria?.nombre || 'Sin cat'}</span>
                   </div>
-                  
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button onClick={() => abrirParaEditar(prod)} className={`${styles.btnBase} ${styles.btnSecondary}`} style={{ padding: '8px' }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: '1.25rem' }}>edit</span>
-                    </button>
-                    <button onClick={() => toggleEstatus(prod.id, prod.activo)} className={`${styles.btnBase} ${styles.btnOutlined}`} style={{ padding: '8px', color: prod.activo ? '#ba1a1a' : 'var(--color-primary)' }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: '1.25rem' }}>{prod.activo ? 'block' : 'check_circle'}</span>
-                    </button>
+
+                  {/* --- BADGES DE SUCURSALES ASIGNADAS MINI --- */}
+                  <div style={{ display: 'flex', flexWrap: 'nowrap', gap: '4px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {(!prod.sucursales_ids || prod.sucursales_ids.length === 0) ? (
+                      <span style={{ fontSize: '0.55rem', color: 'var(--text-light)', opacity: 0.8 }}>
+                        📍 Todas las sucursales
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                        📍 <b>{prod.sucursales?.map(s => s.nombre).join(', ')}</b>
+                      </span>
+                    )}
                   </div>
+                </div>
+                
+                {/* Bloque Derecho: Botones de Acción Mini */}
+                <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                  <button 
+                    onClick={() => abrirParaEditar(prod)} 
+                    className={`${styles.btnBase} ${styles.btnSecondary}`} 
+                    style={{ 
+                      padding: '0', 
+                      width: '34px', 
+                      height: '34px', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      borderRadius: '8px',
+                      backgroundColor: 'var(--color-surface-low)'
+                    }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '1.05rem', color: 'var(--text-main)' }}>edit</span>
+                  </button>
+                  <button 
+                    onClick={() => toggleEstatus(prod.id, prod.activo)} 
+                    className={`${styles.btnBase} ${styles.btnOutlined}`} 
+                    style={{ 
+                      padding: '0', 
+                      width: '34px', 
+                      height: '34px', 
+                      borderRadius: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderColor: prod.activo ? '#ba1a1a' : 'var(--color-primary)',
+                      color: prod.activo ? '#ba1a1a' : 'var(--color-primary)',
+                      backgroundColor: 'transparent'
+                    }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '1.05rem' }}>
+                      {prod.activo ? 'block' : 'check_circle'}
+                    </span>
+                  </button>
                 </div>
               </section>
             ))}

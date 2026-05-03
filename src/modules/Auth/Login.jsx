@@ -159,7 +159,7 @@ export default function Login({ onLoginSuccess }) {
               </>
             ) : (
               <>
-                <span>ENTRAR AL SISTEMA</span>
+                <span>Bienvenido</span>
                 <span className="material-symbols-outlined" style={{ fontSize: '1.25rem' }}>login</span>
               </>
             )}

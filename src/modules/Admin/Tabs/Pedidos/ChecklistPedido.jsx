@@ -343,7 +343,7 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
         }}>
           <button 
             onClick={handleFinalizarCompra}
-            className={styles.btnPrimary} 
+            className={`${styles.btnBase} ${styles.btnPrimary}`} 
             style={{ 
               width: '100%', 
               maxWidth: '600px',
@@ -354,7 +354,7 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
               fontWeight: 'bold'
             }}
           >
-            <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>task_alt</span>
+            <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}></span>
             FINALIZAR COMPRA
           </button>
         </footer>

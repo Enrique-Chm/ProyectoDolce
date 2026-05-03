@@ -57,7 +57,7 @@ export default function Proveedores({ onVolver }) {
       nombre: prov.nombre || '',
       direccion: prov.direccion || '',
       numero_contacto: prov.numero_contacto || '',
-      dias_abierto: prov.dias_abierto || [],
+      dias_abierto: Array.isArray(prov.dias_abierto) ? prov.dias_abierto : [],
       estatus: prov.estatus || 'Activo'
     });
     setMostrandoFormulario(true);
@@ -82,24 +82,27 @@ export default function Proveedores({ onVolver }) {
   };
 
   return (
-    <div className={styles.fadeIN}>
-      <header style={{ marginBottom: 'var(--space-lg)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+    <div className={styles.fadeIN} style={{ width: '100%', maxWidth: '100%' }}>
+      {/* --- ENCABEZADO --- */}
+      <header style={{ marginBottom: 'var(--space-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
-          <span className={styles.labelTop} style={{ display: 'block', marginBottom: '4px' }}>GESTIÓN DE SOCIOS</span>
-          <h1 className={styles.title} style={{ fontSize: '2.5rem', lineHeight: '1' }}>
+          <span className={styles.labelTop} style={{ display: 'block', marginBottom: '2px' }}>GESTIÓN DE SOCIOS</span>
+          <h1 className={styles.title} style={{ fontSize: '2rem', lineHeight: '1' }}>
             {mostrandoFormulario ? 'Datos del\nProveedor' : 'Proveedores'}
           </h1>
         </div>
         <button 
           onClick={mostrandoFormulario ? () => setMostrandoFormulario(false) : onVolver} 
           className={`${styles.btnBase} ${styles.btnSecondary}`}
+          style={{ height: '38px', padding: '0 12px', fontSize: '0.8rem' }}
         >
-          <span className="material-symbols-outlined">arrow_back</span>
+          <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>arrow_back</span>
           Volver
         </button>
       </header>
 
       {mostrandoFormulario ? (
+        /* --- VISTA: FORMULARIO --- */
         <section className={styles.card} style={{ animation: 'slideUp 0.3s ease' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             
@@ -139,15 +142,16 @@ export default function Proveedores({ onVolver }) {
                       type="button"
                       onClick={() => toggleDia(dia)}
                       style={{
-                        padding: '8px 12px',
+                        padding: '8px 14px',
                         borderRadius: '20px',
                         border: seleccionado ? 'none' : '1px solid var(--border-ghost)',
-                        backgroundColor: seleccionado ? 'var(--color-primary)' : 'white',
+                        backgroundColor: seleccionado ? 'var(--color-primary)' : 'var(--color-surface-lowest)',
                         color: seleccionado ? 'white' : 'var(--text-main)',
                         fontSize: '0.8rem',
                         fontWeight: 'bold',
                         cursor: 'pointer',
-                        transition: 'all 0.2s'
+                        transition: 'all 0.2s ease',
+                        outline: 'none'
                       }}
                     >
                       {dia}
@@ -169,64 +173,152 @@ export default function Proveedores({ onVolver }) {
           </div>
         </section>
       ) : (
+        /* --- VISTA: LISTADO --- */
         <>
           <button 
             onClick={abrirCrear} 
             className={`${styles.btnBase} ${styles.btnPrimary}`} 
-            style={{ width: '100%', marginBottom: 'var(--space-md)' }}
+            style={{ width: '100%', marginBottom: 'var(--space-md)', padding: '0.8rem', fontSize: '0.875rem', height: '44px' }}
           >
-            <span className="material-symbols-outlined">add</span>
+            <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>add</span>
             AGREGAR PROVEEDOR
           </button>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {proveedores.map((prov) => (
-              <div 
-                key={prov.id} 
-                className={styles.card} 
-                style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center',
-                  opacity: prov.estatus === 'Activo' ? 1 : 0.6,
-                  borderLeft: prov.estatus === 'Activo' ? '4px solid var(--color-primary)' : '4px solid var(--text-muted)'
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  <h4 className={styles.subtitle} style={{ marginBottom: '4px' }}>{prov.nombre}</h4>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: '0.9rem', verticalAlign: 'middle', marginRight: '4px' }}>call</span>
-                    {prov.numero_contacto || 'Sin teléfono'}
-                  </p>
-                  
-                  {/* Visualización de Días */}
-                  {prov.dias_abierto && prov.dias_abierto.length > 0 && (
-                    <div style={{ display: 'flex', gap: '4px', marginTop: '6px' }}>
-                      {prov.dias_abierto.map(d => (
-                        <span key={d} style={{ fontSize: '0.65rem', padding: '2px 6px', background: '#f0f0f0', borderRadius: '4px', fontWeight: 'bold' }}>
-                          {d}
-                        </span>
-                      ))}
+          {proveedores.length === 0 && !loading && (
+            <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No hay proveedores registrados.</p>
+          )}
+
+          {/* LISTA DE FILAS COMPACTAS PARA MÓVIL */}
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column',
+            gap: '8px',
+            width: '100%'
+          }}>
+            {proveedores.map((prov) => {
+              const esActivo = prov.estatus === 'Activo';
+              return (
+                <div 
+                  key={prov.id} 
+                  className={styles.card} 
+                  style={{ 
+                    display: 'flex', 
+                    flexDirection: 'row',
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    opacity: esActivo ? 1 : 0.65,
+                    borderLeft: esActivo ? '4px solid var(--color-primary)' : '4px solid #999',
+                    borderTop: 'none',
+                    padding: '8px 12px',
+                    borderRadius: '10px',
+                    backgroundColor: 'white',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
+                    transition: 'all 0.15s ease',
+                    minHeight: '64px',
+                    gap: '12px'
+                  }}
+                >
+                  {/* Bloque Izquierdo: Información Resumida */}
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap' }}>
+                      <h4 className={styles.subtitle} style={{ 
+                        fontSize: '0.875rem', 
+                        margin: 0, 
+                        fontWeight: 'bold', 
+                        color: 'var(--text-main)', 
+                        whiteSpace: 'nowrap', 
+                        overflow: 'hidden', 
+                        textOverflow: 'ellipsis' 
+                      }}>
+                        {prov.nombre}
+                      </h4>
+                      <span style={{ 
+                        fontSize: '0.55rem', 
+                        background: esActivo ? 'var(--color-primary-fixed)' : 'var(--color-surface-high)', 
+                        color: esActivo ? 'var(--color-on-primary-fixed)' : 'var(--text-muted)', 
+                        padding: '1px 6px', 
+                        borderRadius: '4px', 
+                        fontWeight: 'bold',
+                        textTransform: 'uppercase',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {esActivo ? 'Activo' : 'Baja'}
+                      </span>
                     </div>
-                  )}
+
+                    {/* Teléfono y Dirección en una sola línea */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '0.85rem', flexShrink: 0 }}>call</span>
+                      <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {prov.numero_contacto || 'Sin teléfono'}
+                      </span>
+                      {prov.direccion && (
+                        <>
+                          <span>•</span>
+                          <span className="material-symbols-outlined" style={{ fontSize: '0.85rem', flexShrink: 0 }}>location_on</span>
+                          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {prov.direccion}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    
+                    {/* Visualización de Días Mini */}
+                    {prov.dias_abierto && Array.isArray(prov.dias_abierto) && prov.dias_abierto.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'nowrap', gap: '3px', overflow: 'hidden' }}>
+                        {prov.dias_abierto.map(d => (
+                          <span key={d} style={{ fontSize: '0.55rem', padding: '1px 5px', background: 'var(--color-surface-low)', color: 'var(--text-muted)', borderRadius: '3px', border: '1px solid var(--border-ghost)', fontWeight: 'bold' }}>
+                            {d}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Bloque Derecho: Botones de Acción Mini */}
+                  <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                    <button 
+                      onClick={() => abrirEditar(prov)} 
+                      className={styles.btnSecondary} 
+                      style={{ 
+                        padding: '0', 
+                        width: '34px', 
+                        height: '34px', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        borderRadius: '8px',
+                        backgroundColor: 'var(--color-surface-low)'
+                      }} 
+                      title="Editar Proveedor"
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: '1.05rem', color: 'var(--text-main)' }}>edit</span>
+                    </button>
+                    <button 
+                      onClick={() => cambiarEstatus('Cat_Proveedores', prov.id, prov.estatus, cargarProveedores)} 
+                      className={styles.btnOutlined} 
+                      style={{ 
+                        padding: '0', 
+                        width: '34px', 
+                        height: '34px', 
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderColor: esActivo ? '#ba1a1a' : 'var(--color-primary)',
+                        color: esActivo ? '#ba1a1a' : 'var(--color-primary)',
+                        backgroundColor: 'transparent'
+                      }}
+                      title={esActivo ? 'Desactivar Proveedor' : 'Activar Proveedor'}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: '1.05rem' }}>
+                        {esActivo ? 'visibility_off' : 'visibility'}
+                      </span>
+                    </button>
+                  </div>
                 </div>
-                
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={() => abrirEditar(prov)} className={styles.btnSecondary} style={{ padding: '8px' }}>
-                    <span className="material-symbols-outlined">edit</span>
-                  </button>
-                  <button 
-                    onClick={() => cambiarEstatus('Cat_Proveedores', prov.id, prov.estatus, cargarProveedores)} 
-                    className={styles.btnOutlined} 
-                    style={{ padding: '8px', color: prov.estatus === 'Activo' ? '#ba1a1a' : 'var(--color-primary)' }}
-                  >
-                    <span className="material-symbols-outlined">
-                      {prov.estatus === 'Activo' ? 'block' : 'check_circle'}
-                    </span>
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}
