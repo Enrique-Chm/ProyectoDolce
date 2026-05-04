@@ -18,7 +18,6 @@ export default function Roles({ onVolver }) {
   const [todasCategorias, setTodasCategorias] = useState([]);
 
   // --- ESTRUCTURA INICIAL DE PERMISOS ---
-  // Incluye el arreglo vacío para las categorías permitidas por rol
   const permisosIniciales = {
     productos: { leer: false, crear: false, editar: false, borrar: false },
     pedidos: { leer: false, crear: false, editar: false, borrar: false },
@@ -42,10 +41,11 @@ export default function Roles({ onVolver }) {
     cargarRoles();
     
     const cargarCategorias = async () => {
+      // Usamos .ilike() para evitar problemas con mayúsculas/minúsculas ('Activo' o 'activo')
       const { data, error } = await supabase
         .from('Cat_Categorias')
         .select('id, nombre')
-        .eq('estatus', 'activo')
+        .ilike('estatus', 'activo')
         .order('nombre');
         
       if (error) {
@@ -71,7 +71,7 @@ export default function Roles({ onVolver }) {
         ...prev.permisos,
         [modulo]: {
           ...prev.permisos[modulo],
-          [accion]: !prev.permisos[modulo][accion]
+          [accion]: !prev.permisos[modulo]?.[accion]
         }
       }
     }));
@@ -122,7 +122,7 @@ export default function Roles({ onVolver }) {
       nombre: rol.nombre || '',
       descripcion: rol.descripcion || '',
       estatus: rol.estatus || 'Activo',
-      // Si el rol ya tiene permisos definidos, usamos un merge para mantener la compatibilidad
+      // Merge seguro de permisos anteriores
       permisos: {
         ...permisosIniciales,
         ...(rol.permisos || {}),
@@ -133,7 +133,9 @@ export default function Roles({ onVolver }) {
   };
 
   const procesarGuardado = async () => {
-    if (!formData.nombre.trim()) return toast.error('El nombre del rol es obligatorio');
+    if (!formData.nombre || !formData.nombre.trim()) {
+      return toast.error('El nombre del rol es obligatorio');
+    }
 
     const exito = await guardarRol(formData);
     if (exito) {
@@ -189,7 +191,7 @@ export default function Roles({ onVolver }) {
               <input 
                 type="text" 
                 name="nombre" 
-                value={formData.nombre} 
+                value={formData.nombre || ''} 
                 onChange={handleInputChange} 
                 className={styles.inputEditorial} 
                 placeholder="Ej: Administrador, Cajero..." 
@@ -201,7 +203,7 @@ export default function Roles({ onVolver }) {
               <input 
                 type="text" 
                 name="descripcion" 
-                value={formData.descripcion} 
+                value={formData.descripcion || ''} 
                 onChange={handleInputChange} 
                 className={styles.inputEditorial} 
                 placeholder="¿Qué funciones realiza este rol?" 
@@ -268,37 +270,43 @@ export default function Roles({ onVolver }) {
                 maxHeight: '160px',
                 overflowY: 'auto'
               }}>
-                {todasCategorias.map((cat) => {
-                  const estaMarcada = formData.permisos.categorias_permitidas?.includes(cat.id);
-                  return (
-                    <div 
-                      key={cat.id} 
-                      onClick={() => handleCategoryToggle(cat.id)}
-                      style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '8px', 
-                        cursor: 'pointer',
-                        backgroundColor: estaMarcada ? 'var(--color-surface-low)' : 'white',
-                        padding: '6px 10px',
-                        borderRadius: '8px',
-                        border: '1px solid',
-                        borderColor: estaMarcada ? 'var(--color-primary)' : 'var(--border-ghost)',
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      <input 
-                        type="checkbox" 
-                        checked={estaMarcada || false} 
-                        readOnly 
-                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                      />
-                      <span style={{ fontSize: '0.75rem', fontWeight: estaMarcada ? 'bold' : 'normal', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {cat.nombre}
-                      </span>
-                    </div>
-                  );
-                })}
+                {todasCategorias.length === 0 ? (
+                  <p style={{ gridColumn: '1 / -1', fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', margin: '8px 0' }}>
+                    No hay categorías activas registradas.
+                  </p>
+                ) : (
+                  todasCategorias.map((cat) => {
+                    const estaMarcada = formData.permisos.categorias_permitidas?.includes(cat.id);
+                    return (
+                      <div 
+                        key={cat.id} 
+                        onClick={() => handleCategoryToggle(cat.id)}
+                        style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '8px', 
+                          cursor: 'pointer',
+                          backgroundColor: estaMarcada ? 'var(--color-surface-low)' : 'white',
+                          padding: '6px 10px',
+                          borderRadius: '8px',
+                          border: '1px solid',
+                          borderColor: estaMarcada ? 'var(--color-primary)' : 'var(--border-ghost)',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <input 
+                          type="checkbox" 
+                          checked={estaMarcada || false} 
+                          readOnly 
+                          style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                        />
+                        <span style={{ fontSize: '0.75rem', fontWeight: estaMarcada ? 'bold' : 'normal', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {cat.nombre}
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
 
@@ -337,7 +345,7 @@ export default function Roles({ onVolver }) {
             width: '100%'
           }}>
             {roles.map((rol) => {
-              const esActivo = rol.estatus === 'Activo';
+              const esActivo = rol.estatus === 'Activo' || rol.estatus === 'activo';
               return (
                 <div 
                   key={rol.id} 

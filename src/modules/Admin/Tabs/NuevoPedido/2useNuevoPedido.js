@@ -1,6 +1,6 @@
-// src/modules/Admin/Tabs/NuevoPedido/useNuevoPedido.js
+// src/modules/Admin/Tabs/NuevoPedido/2useNuevoPedido.js
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { PedidosService } from '../Pedidos/1Pedidos.Service';
+import { NuevoPedidoService } from './1NuevoPedido.Service'; // Ajusta la ruta a tu supabaseClient / service
 import { AuthService } from '../../../Auth/Auth.service';
 import toast from 'react-hot-toast';
 
@@ -10,7 +10,7 @@ export const useNuevoPedido = (onVolver) => {
   // Obtenemos la sesión para automatizar solicitante y sucursal
   const sesion = AuthService.getSesion();
 
-  // --- ESTADOS DE CATÁLOGOS ---
+  // --- ESTADOS DE DATOS ---
   const [productosDisponibles, setProductosDisponibles] = useState([]);
   const [catalogos, setCatalogos] = useState({
     proveedores: [] 
@@ -45,15 +45,11 @@ export const useNuevoPedido = (onVolver) => {
   const cargarDatos = useCallback(async () => {
     setLoading(true);
     try {
-      const [resProds, resCats] = await Promise.all([
-        PedidosService.getProductosParaOrden(),
-        PedidosService.getCatalogosParaOrden()
-      ]);
+      const { data, error } = await NuevoPedidoService.getProductosDisponibles();
 
-      if (resProds.error) throw resProds.error;
-      if (resCats.error) throw resCats.error;
+      if (error) throw error;
 
-      const todosLosProductos = resProds.data || [];
+      const todosLosProductos = data || [];
       const categoriasPermitidas = JSON.parse(categoriasPermitidasStr);
 
       let productosFiltrados = todosLosProductos;
@@ -65,11 +61,20 @@ export const useNuevoPedido = (onVolver) => {
       }
 
       setProductosDisponibles(productosFiltrados);
+
+      // Mapeamos los proveedores únicos basados en los productos que están activos
+      const mapProveedores = {};
+      todosLosProductos.forEach(p => {
+        if (p.proveedor && p.proveedor.id) {
+          mapProveedores[p.proveedor.id] = { id: p.proveedor.id, nombre: p.proveedor.nombre };
+        }
+      });
+
       setCatalogos({
-        proveedores: resCats.proveedores
+        proveedores: Object.values(mapProveedores)
       });
     } catch (err) {
-      toast.error('Error al sincronizar catálogos');
+      toast.error('Error al sincronizar catálogos de insumos');
       console.error(err);
     } finally {
       setLoading(false);
@@ -103,10 +108,11 @@ export const useNuevoPedido = (onVolver) => {
       }
     }
 
+    // Si el insumo ya existe en el carrito, reemplazamos su cantidad (modo edición directa)
     if (existe) {
       setCarrito(carrito.map(item => 
         item.producto_id === producto_id 
-          ? { ...item, cantidad: Number(item.cantidad) + Number(cantidad) }
+          ? { ...item, cantidad: Number(cantidad) }
           : item
       ));
     } else {
@@ -125,7 +131,6 @@ export const useNuevoPedido = (onVolver) => {
     }
 
     setSeleccion({ producto_id: '', cantidad: 1 });
-    toast.success('Agregado al carrito');
   };
 
   const eliminarDelCarrito = (id) => {
@@ -180,7 +185,7 @@ export const useNuevoPedido = (onVolver) => {
           notes: header.observaciones // El service normaliza 'notes' y 'notas'
         };
 
-        const { error } = await PedidosService.crearNuevaOrden(ordenCabecera, itemsProveedor);
+        const { error } = await NuevoPedidoService.guardarOrdenCompleta(ordenCabecera, itemsProveedor);
         
         if (error) throw error;
       }

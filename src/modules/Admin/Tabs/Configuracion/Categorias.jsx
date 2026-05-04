@@ -50,7 +50,7 @@ export default function Categorias({ onVolver }) {
 
   // Función para enviar a la base de datos
   const procesarGuardado = async () => {
-    if (!formData.nombre.trim()) {
+    if (!formData.nombre || !formData.nombre.trim()) {
       return toast.error('El nombre de la categoría es obligatorio');
     }
     
@@ -92,7 +92,7 @@ export default function Categorias({ onVolver }) {
               <input 
                 type="text" 
                 name="nombre" 
-                value={formData.nombre} 
+                value={formData.nombre || ''} 
                 onChange={handleInputChange}
                 className={styles.inputEditorial} 
                 placeholder="Ej: Perecederos" 
@@ -105,7 +105,7 @@ export default function Categorias({ onVolver }) {
               <input 
                 type="text" 
                 name="descripcion" 
-                value={formData.descripcion} 
+                value={formData.descripcion || ''} 
                 onChange={handleInputChange}
                 className={styles.inputEditorial} 
                 placeholder="Ej: Alimentos y productos con fecha de caducidad corta" 

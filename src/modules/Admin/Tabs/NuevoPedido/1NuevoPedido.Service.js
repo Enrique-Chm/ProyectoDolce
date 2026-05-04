@@ -1,15 +1,24 @@
 // src/services/NuevoPedido.Service.js
-import { supabase } from '../../../../lib/supabaseClient'; // Ajusta la ruta a tu supabaseClient
+import { supabase } from '../../../../lib/supabaseClient';
 
 export const NuevoPedidoService = {
-  // 1. Traer solo lo necesario para armar el carrito
+  // 1. Traer solo los productos necesarios para armar el carrito
   async getProductosDisponibles() {
     const { data, error } = await supabase
       .from('BD_Productos')
       .select(`
-        id, nombre, costo_actual, activo,
-        unidad_medida:Cat_UM(nombre, abreviatura),
-        proveedor:Cat_Proveedores(id, nombre)
+        id, 
+        nombre, 
+        marca, 
+        presentacion, 
+        contenido, 
+        costo_actual, 
+        activo,
+        categoria_id,
+        proveedor_id,
+        um:Cat_UM(id, nombre, abreviatura),
+        categoria:Cat_Categorias(id, nombre),
+        proveedor:Cat_Proveedores!proveedor_id(id, nombre)
       `)
       .eq('activo', true)
       .order('nombre', { ascending: true });
@@ -17,7 +26,7 @@ export const NuevoPedidoService = {
     return { data, error };
   },
 
-  // 2. Guardar la orden (Cabecera + Detalles)
+  // 2. Guardar la orden (Cabecera + Detalles) dividida por proveedor
   async guardarOrdenCompleta(ordenCabecera, listaProductos) {
     // Insertamos la cabecera
     const { data: nuevaOrden, error: errorCabecera } = await supabase

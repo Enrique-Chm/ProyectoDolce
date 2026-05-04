@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import styles from '../../../../assets/styles/EstilosGenerales.module.css';
 import { useNuevoPedido } from './2useNuevoPedido';
 import { AuthService } from '../../../Auth/Auth.service';
+import toast from 'react-hot-toast';
 
 export default function NuevoPedido({ onVolver }) {
   const { 
@@ -11,121 +12,147 @@ export default function NuevoPedido({ onVolver }) {
     header, setHeader,
     carrito, 
     seleccion, setSeleccion,
-    totalEstimado, 
     agregarAlCarrito, eliminarDelCarrito, procesarOrden 
   } = useNuevoPedido(onVolver);
 
-  // Recuperamos la sesión para mostrar la "firma" del pedido
   const sesion = AuthService.getSesion();
 
-  // Estados locales para controlar el buscador searchable de productos
+  // --- NUEVOS ESTADOS DE CONTROL DE FLUJO ---
+  const [pasoActual, setPasoActual] = useState(1); // 1: Surtir Insumos, 2: Validar y Enviar
+  const [categoriaActiva, setCategoriaActiva] = useState('Todos');
   const [filtroBusqueda, setFiltroBusqueda] = useState('');
-  const [dropdownAbierto, setDropdownAbierto] = useState(false);
+  const [cantidadesLocales, setCantidadesLocales] = useState({});
+  const [dispararAgregar, setDispararAgregar] = useState(false);
 
-  // Manejador para cambios en campos restantes (Prioridad y Observaciones)
+  // Manejador para cambios en campos de cabecera
   const handleHeaderChange = (e) => {
     const { name, value } = e.target;
     setHeader(prev => ({ ...prev, [name]: value }));
   };
 
-  // Buscamos el producto seleccionado actualmente para los cálculos visuales
-  const productoSeleccionado = productosDisponibles.find(p => p.id === seleccion.producto_id);
-
-  // Sincronizamos el buscador de texto cuando la selección cambia o se vacía
-  useEffect(() => {
-    if (!seleccion.producto_id) {
-      setFiltroBusqueda('');
-    } else if (productoSeleccionado) {
-      setFiltroBusqueda(`${productoSeleccionado.nombre} ${productoSeleccionado.marca ? `(${productoSeleccionado.marca})` : ''} — ${productoSeleccionado.proveedor?.nombre || 'S/P'}`);
-    }
-  }, [seleccion.producto_id, productoSeleccionado]);
-
-  // Filtramos la lista de productos disponibles en base al texto digitado
-  const productosFiltradosPorBusqueda = useMemo(() => {
-    if (!filtroBusqueda || (productoSeleccionado && filtroBusqueda === `${productoSeleccionado.nombre} ${productoSeleccionado.marca ? `(${productoSeleccionado.marca})` : ''} — ${productoSeleccionado.proveedor?.nombre || 'S/P'}`)) {
-      return productosDisponibles;
-    }
-    const search = filtroBusqueda.toLowerCase().trim();
-    return productosDisponibles.filter(prod => {
-      const matchNombre = prod.nombre?.toLowerCase().includes(search);
-      const matchMarca = prod.marca?.toLowerCase().includes(search);
-      const matchProveedor = prod.proveedor?.nombre?.toLowerCase().includes(search);
-      return matchNombre || matchMarca || matchProveedor;
+  // Extraer categorías de forma dinámica
+  const categorias = useMemo(() => {
+    const distinct = new Set();
+    productosDisponibles.forEach(p => {
+      const catNombre = p.categoria?.nombre || p.categoria || 'General';
+      distinct.add(catNombre);
     });
-  }, [productosDisponibles, filtroBusqueda, productoSeleccionado]);
+    return ['Todos', ...Array.from(distinct)];
+  }, [productosDisponibles]);
+
+  // Filtrar productos por Categoría y Buscador
+  const productosFiltrados = useMemo(() => {
+    return productosDisponibles.filter(prod => {
+      const catNombre = prod.categoria?.nombre || prod.categoria || 'General';
+      const matchCat = (categoriaActiva === 'Todos' || catNombre === categoriaActiva);
+
+      const search = filtroBusqueda.toLowerCase().trim();
+      const matchText = !search || 
+        prod.nombre?.toLowerCase().includes(search) ||
+        prod.marca?.toLowerCase().includes(search);
+
+      return matchCat && matchText;
+    });
+  }, [productosDisponibles, categoriaActiva, filtroBusqueda]);
+
+  // Sincronizar el hook de agregar al carrito cuando cambie la selección
+  useEffect(() => {
+    if (dispararAgregar && seleccion.producto_id && seleccion.cantidad) {
+      agregarAlCarrito();
+      setDispararAgregar(false);
+    }
+  }, [dispararAgregar, seleccion, agregarAlCarrito]);
+
+  // Manejador para agregar un insumo al carrito de forma rápida
+  const handleAgregarRapido = (id, nombre) => {
+    const cant = cantidadesLocales[id];
+    if (!cant || isNaN(cant) || Number(cant) <= 0) {
+      return toast.error(`Ingresa una cantidad válida para ${nombre}`);
+    }
+
+    setSeleccion({ producto_id: id, cantidad: Number(cant) });
+    setDispararAgregar(true);
+    
+    // Limpiamos el input después de agregar exitosamente
+    setCantidadesLocales(prev => ({ ...prev, [id]: '' }));
+    toast.success(`Se agregaron ${cant} empaques de ${nombre}`);
+  };
+
+  // Manejador de teclas para facilitar la carga con "Enter"
+  const handleKeyDown = (e, id, nombre) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAgregarRapido(id, nombre);
+    }
+  };
 
   return (
-    <div className={styles.fadeIN} style={{ width: '100%', maxWidth: '100%', padding: '0 8px' }}>
+    <div className={styles.fadeIN} style={{ width: '100%', maxWidth: '100%', padding: '0 4px' }}>
       {/* --- ENCABEZADO --- */}
-      <header style={{ marginBottom: 'var(--space-lg)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', width: '100%' }}>
+      <header style={{ marginBottom: 'var(--space-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', width: '100%' }}>
         <div>
-          <span className={styles.labelTop} style={{ display: 'block', marginBottom: '4px' }}>OPERACIONES</span>
-          <h1 className={styles.title} style={{ fontSize: '2.5rem', lineHeight: '1' }}>Nueva<br/>Requisición</h1>
+          <span className={styles.labelTop} style={{ display: 'block', marginBottom: '4px' }}>OPERACIONES DE COCINA</span>
+          <h1 className={styles.title} style={{ fontSize: '2.25rem', lineHeight: '1' }}>
+            {pasoActual === 1 ? 'Nueva\nRequisición' : 'Validar\nInsumos'}
+          </h1>
         </div>
-        <button onClick={onVolver} className={`${styles.btnBase} ${styles.btnSecondary}`}>
-          <span className="material-symbols-outlined">arrow_back</span>
-          Volver
+        <button 
+          onClick={pasoActual === 1 ? onVolver : () => setPasoActual(1)} 
+          className={`${styles.btnBase} ${styles.btnSecondary}`}
+          style={{ height: '40px', padding: '0 14px', gap: '6px' }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>arrow_back</span>
+          {pasoActual === 1 ? 'Volver' : 'Atrás'}
         </button>
       </header>
 
-      {/* --- GRID ADAPTADO A PANTALLA COMPLETA --- */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', 
-        gap: '20px', 
-        paddingBottom: '40px',
-        width: '100%'
-      }}>
-        
-        {/* =========================================================
-              PASO 1: DATOS AUTOMÁTICOS (INFO DE ENVÍO)
-            ========================================================= */}
-        <section className={styles.card} style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
-          <h3 className={styles.labelTop} style={{ color: 'var(--color-primary)', borderBottom: '1px solid var(--border-ghost)', paddingBottom: '8px' }}>
-            1. DATOS DE ORIGEN Y DESTINO
-          </h3>
+      {pasoActual === 1 ? (
+        /* ====================================================================
+           PASO 1: SURTIR INSUMOS (ALTA DENSIDAD PARA CHEF)
+           ==================================================================== */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
-          {/* Ficha Informativa de Sesión */}
-          <div style={{ 
-            backgroundColor: 'var(--color-surface-lowest)', 
-            padding: '16px', 
-            borderRadius: '12px', 
-            border: '1px solid var(--border-ghost)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '10px'
-          }}>
+          {/* PANEL DE CONFIGURACIÓN RÁPIDA */}
+          <section className={styles.card} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px', padding: '16px' }}>
             <div>
-              <label className={styles.labelTop} style={{ fontSize: '0.65rem', opacity: 0.7 }}>SUCURSAL DE DESTINO</label>
-              <p style={{ margin: 0, fontWeight: 'bold', fontSize: '1rem' }}>{sesion?.sucursal_nombre}</p>
+              <label className={styles.labelTop} style={{ opacity: 0.7 }}>SUCURSAL / DESTINO</label>
+              <p style={{ margin: 0, fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--text-main)' }}>
+                {sesion?.sucursal_nombre || 'Sucursal Principal'}
+              </p>
             </div>
-          </div>
 
-          <div>
-            <label className={styles.labelTop}>PRIORIDAD DEL PEDIDO</label>
-            <select 
-              name="prioridad" 
-              value={header.prioridad} 
-              onChange={handleHeaderChange} 
-              className={styles.selectEditorial}
-              style={{ width: '100%' }}
-            >
-              <option value="Normal">Normal</option>
-              <option value="Urgente">Urgente</option>
-            </select>
-          </div>
-        </section>
+            <div>
+              <label className={styles.labelTop}>PRIORIDAD DEL PEDIDO</label>
+              <select 
+                name="prioridad" 
+                value={header.prioridad} 
+                onChange={handleHeaderChange} 
+                className={styles.selectEditorial}
+                style={{ width: '100%', height: '42px' }}
+              >
+                <option value="Normal">Normal</option>
+                <option value="Urgente">Urgente</option>
+              </select>
+            </div>
 
-        {/* =========================================================
-              PASO 2: SELECCIÓN DE PRODUCTOS (SEARCHABLE)
-            ========================================================= */}
-        <section className={styles.card} style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
-          <h3 className={styles.labelTop} style={{ color: 'var(--color-primary)', borderBottom: '1px solid var(--border-ghost)', paddingBottom: '8px' }}>
-            2. AGREGAR AL CARRITO
-          </h3>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label className={styles.labelTop}>OBSERVACIONES O NOTAS ADICIONALES</label>
+              <input 
+                type="text"
+                name="observaciones" 
+                value={header.observaciones} 
+                onChange={handleHeaderChange}
+                placeholder="Ej: Surtir solo si hay existencia de la marca seleccionada..."
+                className={styles.inputEditorial}
+                style={{ width: '100%', height: '42px' }}
+              />
+            </div>
+          </section>
 
-          <div style={{ position: 'relative' }}>
-            <label className={styles.labelTop}>BUSCAR PRODUCTO</label>
+          {/* FILTRADO Y BUSCADOR */}
+          <section className={styles.card} style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '16px' }}>
+            
+            {/* Buscador de insumos */}
             <div style={{ position: 'relative', width: '100%' }}>
               <span className="material-symbols-outlined" style={{
                 position: 'absolute',
@@ -140,191 +167,239 @@ export default function NuevoPedido({ onVolver }) {
               </span>
               <input 
                 type="text"
-                placeholder="Escribe el nombre, marca o proveedor..."
+                placeholder="Escribe el nombre o marca del insumo..."
                 value={filtroBusqueda}
-                onChange={(e) => {
-                  setFiltroBusqueda(e.target.value);
-                  setDropdownAbierto(true);
-                  if (e.target.value === '') {
-                    setSeleccion({ ...seleccion, producto_id: '' });
-                  }
-                }}
-                onFocus={() => setDropdownAbierto(true)}
-                onBlur={() => setTimeout(() => setDropdownAbierto(false), 200)}
+                onChange={(e) => setFiltroBusqueda(e.target.value)}
                 className={styles.inputEditorial}
-                style={{ width: '100%', paddingLeft: '40px', fontSize: '0.95rem' }}
+                style={{ width: '100%', paddingLeft: '38px', height: '44px', fontSize: '0.95rem' }}
               />
-              {/* Dropdown flotante searchable */}
-              {dropdownAbierto && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  right: 0,
-                  zIndex: 1000,
-                  backgroundColor: 'white',
-                  border: '1px solid var(--border-ghost)',
-                  borderRadius: '12px',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                  maxHeight: '220px',
-                  overflowY: 'auto',
-                  marginTop: '4px'
-                }}>
-                  {productosFiltradosPorBusqueda.length === 0 ? (
-                    <div style={{ padding: '12px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No se encontraron insumos</div>
-                  ) : (
-                    productosFiltradosPorBusqueda.map(prod => (
-                      <div
-                        key={prod.id}
-                        onClick={() => {
-                          setSeleccion({ ...seleccion, producto_id: prod.id });
-                          setFiltroBusqueda(`${prod.nombre} ${prod.marca ? `(${prod.marca})` : ''} — ${prod.proveedor?.nombre || 'S/P'}`);
-                          setDropdownAbierto(false);
-                        }}
-                        style={{
-                          padding: '10px 14px',
-                          cursor: 'pointer',
-                          fontSize: '0.9rem',
-                          borderBottom: '1px solid var(--border-ghost)',
-                          backgroundColor: seleccion.producto_id === prod.id ? 'var(--color-surface-lowest)' : 'transparent',
-                          transition: 'background-color 0.15s ease'
-                        }}
-                      >
-                        <div style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>
-                          {prod.nombre} {prod.marca ? `(${prod.marca})` : ''}
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                          Proveedor: {prod.proveedor?.nombre || 'S/P'}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
             </div>
-          </div>
 
-          <div>
-            <label className={styles.labelTop}>EMPAQUES A COMPRAR</label>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <input 
-                type="number" step="0.1" value={seleccion.cantidad} 
-                onChange={(e) => setSeleccion({ ...seleccion, cantidad: e.target.value })}
-                className={styles.inputEditorial} style={{ flex: 1 }}
-                placeholder="0.0"
-              />
-              <button 
-                onClick={agregarAlCarrito} 
-                className={`${styles.btnBase} ${styles.btnPrimary}`} 
-                style={{ flex: 1, height: '48px' }}
-              >
-                Añadir
-              </button>
-            </div>
-          </div>
-
-          {/* VISUALIZADOR DE ESTIMACIÓN PARA EL CHEF */}
-          {productoSeleccionado && (
+            {/* Barra de pestañas de categorías */}
             <div style={{ 
-              backgroundColor: 'var(--color-surface-lowest)', 
-              padding: '12px', 
-              borderRadius: '12px', 
-              border: '1px solid var(--border-ghost)',
-              fontSize: '0.825rem',
-              color: 'var(--text-main)',
-              marginTop: '4px',
-              animation: 'slideUp 0.2s ease'
+              display: 'flex', 
+              gap: '8px', 
+              overflowX: 'auto', 
+              paddingBottom: '4px',
+              whiteSpace: 'nowrap'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                <span className="material-symbols-outlined" style={{ fontSize: '1.1rem', color: 'var(--color-primary)' }}>info</span>
-                <span style={{ fontWeight: 'bold' }}>Detalle de Surtido</span>
-              </div>
-              <p style={{ margin: '0 0 4px 0', color: 'var(--text-muted)' }}>
-                Presentación Comercial: <b style={{ color: 'var(--text-main)' }}>{productoSeleccionado.presentacion || 'Unitaria / No especificada'}</b>
-              </p>
-              {productoSeleccionado.contenido && (
-                <p style={{ margin: 0, color: 'var(--text-muted)' }}>
-                  Total que recibirás: <b style={{ color: 'var(--color-primary)' }}>{(Number(seleccion.cantidad || 0) * Number(productoSeleccionado.contenido)).toFixed(1)} {productoSeleccionado.um?.abreviatura || 'pz'}</b>
-                </p>
-              )}
+              {categorias.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setCategoriaActiva(cat)}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '20px',
+                    fontSize: '0.825rem',
+                    fontWeight: 'bold',
+                    border: '1px solid var(--border-ghost)',
+                    backgroundColor: categoriaActiva === cat ? 'var(--color-primary)' : 'white',
+                    color: categoriaActiva === cat ? 'white' : 'var(--text-main)',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  {cat.toUpperCase()}
+                </button>
+              ))}
             </div>
-          )}
+          </section>
 
-          <div style={{ marginTop: '10px' }}>
-            <label className={styles.labelTop}>NOTAS O COMENTARIOS</label>
-            <textarea 
-              name="observaciones" value={header.observaciones} onChange={handleHeaderChange}
-              placeholder="Ej: Solo si hay existencias de la marca solicitada..."
-              className={styles.inputEditorial} style={{ minHeight: '80px', resize: 'none', width: '100%' }}
-            />
-          </div>
-        </section>
-
-        {/* =========================================================
-              PASO 3: RESUMEN Y ENVÍO
-            ========================================================= */}
-        <section className={styles.card} style={{ display: 'flex', flexDirection: 'column', borderTop: '4px solid var(--color-primary)', width: '100%' }}>
-          <h3 className={styles.labelTop} style={{ marginBottom: '20px' }}>RESUMEN DE COMPRA</h3>
-          
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto', maxHeight: '350px' }}>
-            {carrito.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 0', opacity: 0.3 }}>
-                <span className="material-symbols-outlined" style={{ fontSize: '3rem' }}>shopping_basket</span>
-                <p>No hay artículos</p>
-              </div>
+          {/* LISTA COMPACTA DE ARTÍCULOS */}
+          <section style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', 
+            gap: '12px',
+            minHeight: '200px'
+          }}>
+            {productosFiltrados.length === 0 ? (
+              <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--text-muted)', padding: '40px 0' }}>
+                No se encontraron artículos en esta sección.
+              </p>
             ) : (
-              carrito.map(item => {
-                const prov = productosDisponibles.find(p => p.id === item.producto_id)?.proveedor?.nombre || 'S/P';
-                
+              productosFiltrados.map(prod => {
+                const enCarrito = carrito.find(item => item.producto_id === prod.id);
+
                 return (
-                  <div key={item.producto_id} style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '10px', borderBottom: '1px solid var(--border-ghost)', width: '100%' }}>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ fontWeight: 'bold', fontSize: '0.9rem', margin: 0 }}>{item.nombre}</p>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '2px 0' }}>
-                        {item.cantidad} {item.empaque || item.abreviatura_um}
-                        {item.contenido && ` (Total: ${(item.cantidad * item.contenido).toFixed(1)} ${item.abreviatura_um})`}
-                        {` x $${item.costo_unitario}`}
+                  <div 
+                    key={prod.id} 
+                    className={styles.card}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      padding: '12px 14px',
+                      gap: '8px',
+                      backgroundColor: 'white',
+                      borderLeft: enCarrito ? '4px solid var(--color-primary)' : '1px solid var(--border-ghost)',
+                      boxShadow: '0 2px 5px rgba(0,0,0,0.02)',
+                      borderRadius: '10px'
+                    }}
+                  >
+                    {/* Información Básica del Insumo */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <h4 style={{ margin: 0, fontSize: '0.925rem', fontWeight: 'bold', color: 'var(--text-main)', lineHeight: '1.2' }}>
+                        {prod.nombre}
+                      </h4>
+                      <p style={{ margin: 0, fontSize: '0.725rem', color: 'var(--text-muted)' }}>
+                        {prod.marca ? `${prod.marca} • ` : ''}{prod.presentacion || 'Empaque unitario'} 
+                        {prod.contenido ? ` (${prod.contenido} ${prod.um?.abreviatura || 'pz'})` : ''}
                       </p>
-                      <span style={{ fontSize: '0.65rem', backgroundColor: 'var(--color-surface-lowest)', padding: '2px 6px', borderRadius: '4px', color: 'var(--color-primary)', fontWeight: 'bold', border: '1px solid var(--border-ghost)' }}>
-                        PROVEEDOR: {prov}
-                      </span>
                     </div>
-                    <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span style={{ fontWeight: 'bold', color: 'var(--color-primary)' }}>
-                        ${(item.cantidad * item.costo_unitario).toFixed(2)}
-                      </span>
+
+                    {/* Acciones de Entrada (Cantidad) */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px', borderTop: '1px solid var(--color-surface-low)', paddingTop: '8px', gap: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <input 
+                          type="number"
+                          step="0.1"
+                          placeholder={enCarrito ? `${enCarrito.cantidad}` : '0.0'}
+                          value={cantidadesLocales[prod.id] || ''}
+                          onChange={(e) => setCantidadesLocales(prev => ({ ...prev, [prod.id]: e.target.value }))}
+                          onKeyDown={(e) => handleKeyDown(e, prod.id, prod.nombre)}
+                          className={styles.inputEditorial}
+                          style={{ 
+                            width: '68px', 
+                            height: '36px', 
+                            padding: '0 6px', 
+                            fontSize: '0.925rem', 
+                            textAlign: 'center',
+                            borderColor: enCarrito ? 'var(--color-primary)' : 'var(--border-ghost)'
+                          }}
+                        />
+                        <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>
+                          {prod.um?.abreviatura || 'pz'}
+                        </span>
+                      </div>
+
                       <button 
-                        onClick={() => eliminarDelCarrito(item.producto_id)} 
-                        style={{ color: '#ba1a1a', background: 'none', border: 'none', cursor: 'pointer', display: 'flex' }}
+                        onClick={() => handleAgregarRapido(prod.id, prod.nombre)}
+                        className={`${styles.btnBase} ${styles.btnPrimary}`}
+                        style={{ height: '36px', padding: '0 12px', fontSize: '0.825rem', borderRadius: '8px' }}
                       >
-                        <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>close</span>
+                        <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>
+                          {enCarrito ? 'edit' : 'add'}
+                        </span>
+                        {enCarrito ? 'Editar' : 'Pedir'}
                       </button>
                     </div>
                   </div>
                 );
               })
             )}
-          </div>
+          </section>
 
-          <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '2px dashed var(--border-ghost)', width: '100%' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <span className={styles.labelTop}>TOTAL ESTIMADO</span>
-              <span className={styles.title} style={{ fontSize: '2.25rem' }}>${totalEstimado.toLocaleString('es-MX')}</span>
-            </div>
-
-            <button 
-              onClick={procesarOrden} 
-              disabled={loading || carrito.length === 0}
-              className={`${styles.btnBase} ${styles.btnPrimary}`} 
-              style={{ width: '100%', padding: '1rem', fontSize: '1rem' }}
+          {/* BOTÓN FLOTANTE O FOOTER PARA AVANZAR AL RESUMEN */}
+          <div style={{ 
+            position: 'sticky', 
+            bottom: '16px', 
+            width: '100%', 
+            zIndex: 100, 
+            display: 'flex', 
+            justifyContent: 'center' 
+          }}>
+            <button
+              onClick={() => setPasoActual(2)}
+              disabled={carrito.length === 0}
+              className={`${styles.btnBase} ${styles.btnPrimary}`}
+              style={{ 
+                width: '100%', 
+                maxWidth: '480px', 
+                padding: '12px 20px', 
+                fontSize: '1.05rem', 
+                borderRadius: '24px', 
+                boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
             >
-              <span className="material-symbols-outlined">{loading ? 'hourglass_empty' : 'send_and_archive'}</span>
-              {loading ? 'ENVIANDO...' : 'ENVIAR REQUISICIÓN'}
+              <span className="material-symbols-outlined">shopping_cart_checkout</span>
+              VALIDAR PEDIDO ({carrito.length} {carrito.length === 1 ? 'artículo' : 'artículos'})
             </button>
           </div>
-        </section>
 
-      </div>
+        </div>
+      ) : (
+        /* ====================================================================
+           PASO 2: VALIDACIÓN FINAL ANTES DEL ENVÍO
+           ==================================================================== */
+        <section className={styles.card} style={{ display: 'flex', flexDirection: 'column', borderTop: '4px solid var(--color-primary)', width: '100%', padding: '20px', gap: '20px' }}>
+          
+          <div style={{ borderBottom: '1px solid var(--border-ghost)', paddingBottom: '12px' }}>
+            <h3 className={styles.labelTop} style={{ marginBottom: '4px', color: 'var(--color-primary)' }}>RESUMEN DE REQUISICIÓN</h3>
+            <p style={{ margin: 0, fontSize: '0.825rem', color: 'var(--text-muted)' }}>
+              Revisa que las cantidades de insumos solicitadas sean correctas.
+            </p>
+          </div>
+
+          {/* Listado en el Paso 2 */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', maxHeight: '420px', minHeight: '180px' }}>
+            {carrito.map(item => {
+              return (
+                <div 
+                  key={item.producto_id} 
+                  style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    padding: '12px 14px', 
+                    borderBottom: '1px solid var(--border-ghost)', 
+                    backgroundColor: 'var(--color-surface-lowest)', 
+                    borderRadius: '8px' 
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontWeight: 'bold', fontSize: '0.975rem', margin: '0 0 2px 0', color: 'var(--text-main)' }}>
+                      {item.nombre}
+                    </p>
+                    <p style={{ fontSize: '0.775rem', color: 'var(--text-muted)', margin: 0 }}>
+                      Empaque de Compra: <b style={{ color: 'var(--text-main)' }}>{item.cantidad} {item.empaque || item.abreviatura_um || 'pz'}</b>
+                      {item.contenido && ` (Equivale a: ${(item.cantidad * item.contenido).toFixed(1)} ${item.abreviatura_um || 'pz'})`}
+                    </p>
+                  </div>
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <button 
+                      onClick={() => eliminarDelCarrito(item.producto_id)} 
+                      style={{ color: '#ba1a1a', background: 'none', border: 'none', cursor: 'pointer', display: 'flex' }}
+                      title="Quitar insumo del carrito"
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: '1.4rem' }}>delete_forever</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Acciones de envío */}
+          <div style={{ marginTop: '12px', paddingTop: '16px', borderTop: '2px dashed var(--border-ghost)', width: '100%', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button 
+                onClick={() => setPasoActual(1)} 
+                disabled={loading}
+                className={`${styles.btnBase} ${styles.btnSecondary}`} 
+                style={{ flex: 1, padding: '12px', fontSize: '0.95rem', justifyContent: 'center' }}
+              >
+                <span className="material-symbols-outlined">edit_note</span>
+                CORREGIR INSUMOS
+              </button>
+
+              <button 
+                onClick={procesarOrden} 
+                disabled={loading || carrito.length === 0}
+                className={`${styles.btnBase} ${styles.btnPrimary}`} 
+                style={{ flex: 1, padding: '12px', fontSize: '1rem', justifyContent: 'center' }}
+              >
+                <span className="material-symbols-outlined">{loading ? 'hourglass_empty' : 'send_and_archive'}</span>
+                {loading ? 'ENVIANDO...' : 'CONFIRMAR Y ENVIAR'}
+              </button>
+            </div>
+          </div>
+
+        </section>
+      )}
     </div>
   );
 }
