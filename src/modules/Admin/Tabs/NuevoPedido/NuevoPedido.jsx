@@ -17,7 +17,7 @@ export default function NuevoPedido({ onVolver }) {
 
   const sesion = AuthService.getSesion();
 
-  // --- NUEVOS ESTADOS DE CONTROL DE FLUJO ---
+  // --- ESTADOS DE CONTROL DE FLUJO Y FILTRADO ---
   const [pasoActual, setPasoActual] = useState(1); // 1: Surtir Insumos, 2: Validar y Enviar
   const [categoriaActiva, setCategoriaActiva] = useState('Todos');
   const [filtroBusqueda, setFiltroBusqueda] = useState('');
@@ -30,22 +30,30 @@ export default function NuevoPedido({ onVolver }) {
     setHeader(prev => ({ ...prev, [name]: value }));
   };
 
-  // Extraer categorías de forma dinámica
+  /**
+   * 1. EXTRAER CATEGORÍAS
+   * Usamos 'categoria_nombre' que viene ya normalizado (aplanado) desde el Hook.
+   */
   const categorias = useMemo(() => {
     const distinct = new Set();
     productosDisponibles.forEach(p => {
-      const catNombre = p.categoria?.nombre || p.categoria || 'General';
-      distinct.add(catNombre);
+      // Usamos la propiedad que el hook garantiza que es un string
+      distinct.add(p.categoria_nombre || 'General');
     });
-    return ['Todos', ...Array.from(distinct)];
+    // Convertimos a array, ordenamos alfabéticamente y añadimos "Todos" al inicio
+    return ['Todos', ...Array.from(distinct).sort()];
   }, [productosDisponibles]);
 
-  // Filtrar productos por Categoría y Buscador
+  /**
+   * 2. FILTRAR PRODUCTOS
+   * Filtro combinado por pestaña de categoría y buscador de texto (Nombre o Marca).
+   */
   const productosFiltrados = useMemo(() => {
     return productosDisponibles.filter(prod => {
-      const catNombre = prod.categoria?.nombre || prod.categoria || 'General';
-      const matchCat = (categoriaActiva === 'Todos' || catNombre === categoriaActiva);
+      // Filtro por Categoría: Coincidencia exacta con la pestaña activa
+      const matchCat = (categoriaActiva === 'Todos' || prod.categoria_nombre === categoriaActiva);
 
+      // Filtro por Buscador: Verifica nombre o marca
       const search = filtroBusqueda.toLowerCase().trim();
       const matchText = !search || 
         prod.nombre?.toLowerCase().includes(search) ||
@@ -55,7 +63,7 @@ export default function NuevoPedido({ onVolver }) {
     });
   }, [productosDisponibles, categoriaActiva, filtroBusqueda]);
 
-  // Sincronizar el hook de agregar al carrito cuando cambie la selección
+  // Sincronizar el hook de agregar al carrito cuando cambie la selección local
   useEffect(() => {
     if (dispararAgregar && seleccion.producto_id && seleccion.cantidad) {
       agregarAlCarrito();
@@ -73,9 +81,9 @@ export default function NuevoPedido({ onVolver }) {
     setSeleccion({ producto_id: id, cantidad: Number(cant) });
     setDispararAgregar(true);
     
-    // Limpiamos el input después de agregar exitosamente
+    // Limpiamos el input local después de disparar la acción
     setCantidadesLocales(prev => ({ ...prev, [id]: '' }));
-    toast.success(`Se agregaron ${cant} empaques de ${nombre}`);
+    toast.success(`Se agregaron ${cant} de ${nombre}`);
   };
 
   // Manejador de teclas para facilitar la carga con "Enter"
@@ -88,7 +96,7 @@ export default function NuevoPedido({ onVolver }) {
 
   return (
     <div className={styles.fadeIN} style={{ width: '100%', maxWidth: '100%', padding: '0 4px' }}>
-      {/* --- ENCABEZADO --- */}
+      {/* --- ENCABEZADO DINÁMICO --- */}
       <header style={{ marginBottom: 'var(--space-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', width: '100%' }}>
         <div>
           <span className={styles.labelTop} style={{ display: 'block', marginBottom: '4px' }}>OPERACIONES DE COCINA</span>
@@ -108,7 +116,7 @@ export default function NuevoPedido({ onVolver }) {
 
       {pasoActual === 1 ? (
         /* ====================================================================
-           PASO 1: SURTIR INSUMOS (ALTA DENSIDAD PARA CHEF)
+           PASO 1: SURTIR INSUMOS (ALTA DENSIDAD)
            ==================================================================== */
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
@@ -180,8 +188,9 @@ export default function NuevoPedido({ onVolver }) {
               display: 'flex', 
               gap: '8px', 
               overflowX: 'auto', 
-              paddingBottom: '4px',
-              whiteSpace: 'nowrap'
+              paddingBottom: '8px',
+              whiteSpace: 'nowrap',
+              scrollbarWidth: 'none'
             }}>
               {categorias.map(cat => (
                 <button
@@ -196,16 +205,17 @@ export default function NuevoPedido({ onVolver }) {
                     backgroundColor: categoriaActiva === cat ? 'var(--color-primary)' : 'white',
                     color: categoriaActiva === cat ? 'white' : 'var(--text-main)',
                     cursor: 'pointer',
-                    transition: 'all 0.15s ease'
+                    transition: 'all 0.15s ease',
+                    textTransform: 'uppercase'
                   }}
                 >
-                  {cat.toUpperCase()}
+                  {cat}
                 </button>
               ))}
             </div>
           </section>
 
-          {/* LISTA COMPACTA DE ARTÍCULOS */}
+          {/* LISTA DE ARTÍCULOS FILTRADOS */}
           <section style={{ 
             display: 'grid', 
             gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', 
@@ -214,7 +224,7 @@ export default function NuevoPedido({ onVolver }) {
           }}>
             {productosFiltrados.length === 0 ? (
               <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--text-muted)', padding: '40px 0' }}>
-                No se encontraron artículos en esta sección.
+                No se encontraron artículos que coincidan con los filtros.
               </p>
             ) : (
               productosFiltrados.map(prod => {
@@ -236,18 +246,16 @@ export default function NuevoPedido({ onVolver }) {
                       borderRadius: '10px'
                     }}
                   >
-                    {/* Información Básica del Insumo */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                       <h4 style={{ margin: 0, fontSize: '0.925rem', fontWeight: 'bold', color: 'var(--text-main)', lineHeight: '1.2' }}>
                         {prod.nombre}
                       </h4>
                       <p style={{ margin: 0, fontSize: '0.725rem', color: 'var(--text-muted)' }}>
-                        {prod.marca ? `${prod.marca} • ` : ''}{prod.presentacion || 'Empaque unitario'} 
-                        {prod.contenido ? ` (${prod.contenido} ${prod.um?.abreviatura || 'pz'})` : ''}
+                        {prod.marca ? `${prod.marca} • ` : ''}{prod.presentacion || 'Unidad'} 
+                        {prod.contenido ? ` (${prod.contenido} ${prod.um_abreviatura || 'pz'})` : ''}
                       </p>
                     </div>
 
-                    {/* Acciones de Entrada (Cantidad) */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px', borderTop: '1px solid var(--color-surface-low)', paddingTop: '8px', gap: '10px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <input 
@@ -268,7 +276,7 @@ export default function NuevoPedido({ onVolver }) {
                           }}
                         />
                         <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>
-                          {prod.um?.abreviatura || 'pz'}
+                          {prod.um_abreviatura || 'pz'}
                         </span>
                       </div>
 
@@ -289,7 +297,7 @@ export default function NuevoPedido({ onVolver }) {
             )}
           </section>
 
-          {/* BOTÓN FLOTANTE O FOOTER PARA AVANZAR AL RESUMEN */}
+          {/* BOTÓN STICKY PARA PASAR AL RESUMEN */}
           <div style={{ 
             position: 'sticky', 
             bottom: '16px', 
@@ -321,60 +329,51 @@ export default function NuevoPedido({ onVolver }) {
         </div>
       ) : (
         /* ====================================================================
-           PASO 2: VALIDACIÓN FINAL ANTES DEL ENVÍO
+           PASO 2: VALIDACIÓN FINAL ANTES DE ENVIAR
            ==================================================================== */
         <section className={styles.card} style={{ display: 'flex', flexDirection: 'column', borderTop: '4px solid var(--color-primary)', width: '100%', padding: '20px', gap: '20px' }}>
           
           <div style={{ borderBottom: '1px solid var(--border-ghost)', paddingBottom: '12px' }}>
             <h3 className={styles.labelTop} style={{ marginBottom: '4px', color: 'var(--color-primary)' }}>RESUMEN DE REQUISICIÓN</h3>
             <p style={{ margin: 0, fontSize: '0.825rem', color: 'var(--text-muted)' }}>
-              Revisa que las cantidades de insumos solicitadas sean correctas.
+              Revisa que las cantidades solicitadas sean las correctas antes de confirmar el envío.
             </p>
           </div>
 
-          {/* Listado en el Paso 2 */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', maxHeight: '420px', minHeight: '180px' }}>
-            {carrito.map(item => {
-              return (
-                <div 
-                  key={item.producto_id} 
-                  style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center', 
-                    padding: '12px 14px', 
-                    borderBottom: '1px solid var(--border-ghost)', 
-                    backgroundColor: 'var(--color-surface-lowest)', 
-                    borderRadius: '8px' 
-                  }}
-                >
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontWeight: 'bold', fontSize: '0.975rem', margin: '0 0 2px 0', color: 'var(--text-main)' }}>
-                      {item.nombre}
-                    </p>
-                    <p style={{ fontSize: '0.775rem', color: 'var(--text-muted)', margin: 0 }}>
-                      Empaque de Compra: <b style={{ color: 'var(--text-main)' }}>{item.cantidad} {item.empaque || item.abreviatura_um || 'pz'}</b>
-                      {item.contenido && ` (Equivale a: ${(item.cantidad * item.contenido).toFixed(1)} ${item.abreviatura_um || 'pz'})`}
-                    </p>
-                  </div>
-                  
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <button 
-                      onClick={() => eliminarDelCarrito(item.producto_id)} 
-                      style={{ color: '#ba1a1a', background: 'none', border: 'none', cursor: 'pointer', display: 'flex' }}
-                      title="Quitar insumo del carrito"
-                    >
-                      <span className="material-symbols-outlined" style={{ fontSize: '1.4rem' }}>delete_forever</span>
-                    </button>
-                  </div>
+            {carrito.map(item => (
+              <div 
+                key={item.producto_id} 
+                style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center', 
+                  padding: '12px 14px', 
+                  borderBottom: '1px solid var(--border-ghost)', 
+                  backgroundColor: 'var(--color-surface-lowest)', 
+                  borderRadius: '8px' 
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontWeight: 'bold', fontSize: '0.975rem', margin: '0 0 2px 0', color: 'var(--text-main)' }}>
+                    {item.nombre}
+                  </p>
+                  <p style={{ fontSize: '0.775rem', color: 'var(--text-muted)', margin: 0 }}>
+                    Cantidad: <b style={{ color: 'var(--text-main)' }}>{item.cantidad} {item.abreviatura_um || 'pz'}</b>
+                  </p>
                 </div>
-              );
-            })}
+                
+                <button 
+                  onClick={() => eliminarDelCarrito(item.producto_id)} 
+                  style={{ color: '#ba1a1a', background: 'none', border: 'none', cursor: 'pointer', display: 'flex' }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '1.4rem' }}>delete_forever</span>
+                </button>
+              </div>
+            ))}
           </div>
 
-          {/* Acciones de envío */}
           <div style={{ marginTop: '12px', paddingTop: '16px', borderTop: '2px dashed var(--border-ghost)', width: '100%', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            
             <div style={{ display: 'flex', gap: '12px' }}>
               <button 
                 onClick={() => setPasoActual(1)} 
@@ -397,7 +396,6 @@ export default function NuevoPedido({ onVolver }) {
               </button>
             </div>
           </div>
-
         </section>
       )}
     </div>

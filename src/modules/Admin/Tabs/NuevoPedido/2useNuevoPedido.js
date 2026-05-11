@@ -1,6 +1,6 @@
 // src/modules/Admin/Tabs/NuevoPedido/2useNuevoPedido.js
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { NuevoPedidoService } from './1NuevoPedido.Service'; // Ajusta la ruta a tu supabaseClient / service
+import { NuevoPedidoService } from './1NuevoPedido.Service';
 import { AuthService } from '../../../Auth/Auth.service';
 import toast from 'react-hot-toast';
 
@@ -20,7 +20,6 @@ export const useNuevoPedido = (onVolver) => {
   const [header, setHeader] = useState({
     solicitante_id: sesion?.id || '',          // Automático de sesión
     sucursal_id: sesion?.sucursal_id || '',    // Automático de sesión
-    proveedor_id: '',                          // Se manejará dinámicamente al procesar
     prioridad: 'Normal',
     observaciones: ''
   });
@@ -34,13 +33,13 @@ export const useNuevoPedido = (onVolver) => {
 
   /**
    * ESTABILIZACIÓN DE DEPENDENCIAS:
-   * Convertimos las categorías permitidas en texto para evitar que el cambio de 
-   * referencia del objeto 'sesion.permisos' dispare bucles infinitos en el useEffect.
+   * Evitamos bucles infinitos con los permisos de la sesión transformando
+   * el array de permisos en un string para el array de dependencias.
    */
   const categoriasPermitidasStr = JSON.stringify(sesion?.permisos?.categorias_permitidas || []);
 
   // ==========================================
-  // CARGA DE DATOS INICIALES (OPTIMIZADA)
+  // CARGA DE DATOS INICIALES (NORMALIZADA)
   // ==========================================
   const cargarDatos = useCallback(async () => {
     setLoading(true);
@@ -52,17 +51,31 @@ export const useNuevoPedido = (onVolver) => {
       const todosLosProductos = data || [];
       const categoriasPermitidas = JSON.parse(categoriasPermitidasStr);
 
-      let productosFiltrados = todosLosProductos;
+      /**
+       * --- PASO DE NORMALIZACIÓN ---
+       * Aplanamos las relaciones (categoria y um) para que el filtrado 
+       * en el componente visual (JSX) sea directo e infalible.
+       */
+      const productosNormalizados = todosLosProductos.map(prod => ({
+        ...prod,
+        // Si categoria es objeto extraemos nombre, si no, lo marcamos como 'General'
+        categoria_nombre: prod.categoria?.nombre || 'General',
+        // Si UM es objeto extraemos abreviatura
+        um_abreviatura: prod.um?.abreviatura || 'pz'
+      }));
 
+      let productosFiltrados = productosNormalizados;
+
+      // Aplicar filtro de seguridad por permisos del usuario (si existen)
       if (categoriasPermitidas && Array.isArray(categoriasPermitidas) && categoriasPermitidas.length > 0) {
-        productosFiltrados = todosLosProductos.filter(prod => 
+        productosFiltrados = productosNormalizados.filter(prod => 
           categoriasPermitidas.includes(prod.categoria_id)
         );
       }
 
       setProductosDisponibles(productosFiltrados);
 
-      // Mapeamos los proveedores únicos basados en los productos que están activos
+      // Mapeamos los proveedores únicos basados en los productos cargados
       const mapProveedores = {};
       todosLosProductos.forEach(p => {
         if (p.proveedor && p.proveedor.id) {
@@ -89,53 +102,56 @@ export const useNuevoPedido = (onVolver) => {
   // LÓGICA DEL CARRITO
   // ==========================================
   
-  const agregarAlCarrito = () => {
+  const agregarAlCarrito = useCallback(() => {
     const { producto_id, cantidad } = seleccion;
 
-    if (!producto_id || cantidad <= 0) {
-      return toast.error('Selecciona un producto y cantidad válida');
-    }
+    if (!producto_id || cantidad <= 0) return;
 
     const productoInfo = productosDisponibles.find(p => p.id === producto_id);
+    if (!productoInfo) return;
+
     const existe = carrito.find(item => item.producto_id === producto_id);
     
-    // Extracción inteligente del empaque/presentación
-    let empaqueSugerido = productoInfo.um?.abreviatura || 'pz';
+    // Extracción inteligente del empaque/presentación para visualización en el resumen
+    let empaqueSugerido = productoInfo.um_abreviatura;
     if (productoInfo.presentacion) {
       const primeraPalabra = productoInfo.presentacion.trim().split(' ')[0];
+      // Si la primera palabra no es un número (ej: "Saco de 20kg"), la usamos como empaque
       if (isNaN(primeraPalabra) && primeraPalabra.length > 0) {
         empaqueSugerido = primeraPalabra;
       }
     }
 
-    // Si el insumo ya existe en el carrito, reemplazamos su cantidad (modo edición directa)
     if (existe) {
-      setCarrito(carrito.map(item => 
+      // Si ya existe, reemplazamos la cantidad (comportamiento de edición directa)
+      setCarrito(prev => prev.map(item => 
         item.producto_id === producto_id 
           ? { ...item, cantidad: Number(cantidad) }
           : item
       ));
     } else {
-      setCarrito([...carrito, {
+      // Si es nuevo, lo agregamos con toda su metadata normalizada
+      setCarrito(prev => [...prev, {
         producto_id: productoInfo.id,
         nombre: productoInfo.nombre,
         marca: productoInfo.marca,
         presentacion: productoInfo.presentacion,
         contenido: productoInfo.contenido,
-        abreviatura_um: productoInfo.um?.abreviatura || 'pz',
+        abreviatura_um: productoInfo.um_abreviatura,
         empaque: empaqueSugerido,
         costo_unitario: productoInfo.costo_actual || 0,
         cantidad: Number(cantidad),
-        proveedor_id: productoInfo.proveedor_id // Guardamos referencia por item
+        proveedor_id: productoInfo.proveedor_id,
+        categoria_nombre: productoInfo.categoria_nombre
       }]);
     }
 
+    // Resetear el estado de selección
     setSeleccion({ producto_id: '', cantidad: 1 });
-  };
+  }, [seleccion, productosDisponibles, carrito]);
 
   const eliminarDelCarrito = (id) => {
-    const nuevoCarrito = carrito.filter(item => item.producto_id !== id);
-    setCarrito(nuevoCarrito);
+    setCarrito(prev => prev.filter(item => item.producto_id !== id));
   };
 
   const totalEstimado = useMemo(() => {
@@ -148,16 +164,16 @@ export const useNuevoPedido = (onVolver) => {
   
   const procesarOrden = async () => {
     if (carrito.length === 0) return toast.error('El carrito está vacío');
-    if (loading) return; // Evitamos ejecuciones duplicadas
+    if (loading) return; 
     
     if (!header.solicitante_id || !header.sucursal_id) {
-      return toast.error('Error de identidad: Tu usuario no tiene una sucursal asignada.');
+      return toast.error('Error: No se encontró sucursal o solicitante en tu sesión.');
     }
 
     setLoading(true);
 
     try {
-      // 1. Agrupar los productos del carrito por proveedor_id
+      // 1. Agrupar los ítems del carrito por proveedor para crear órdenes separadas
       const itemsPorProveedor = carrito.reduce((acc, item) => {
         const provId = item.proveedor_id || 'sin-proveedor';
         if (!acc[provId]) acc[provId] = [];
@@ -167,12 +183,14 @@ export const useNuevoPedido = (onVolver) => {
 
       const proveedoresUnicos = Object.keys(itemsPorProveedor);
 
-      // 2. Iterar sobre cada proveedor y crear una orden individual
+      // 2. Generar y guardar una orden por cada proveedor involucrado
       for (const provId of proveedoresUnicos) {
         const itemsProveedor = itemsPorProveedor[provId];
         const totalProv = itemsProveedor.reduce((acc, item) => acc + (item.cantidad * item.costo_unitario), 0);
         
-        const folio = `OC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+        const año = new Date().getFullYear();
+        const random = Math.floor(1000 + Math.random() * 9000);
+        const folio = `OC-${año}-${random}`;
 
         const ordenCabecera = {
           folio,
@@ -182,23 +200,22 @@ export const useNuevoPedido = (onVolver) => {
           prioridad: header.prioridad,
           total_estimado: totalProv,
           estatus: 'Pendiente',
-          notes: header.observaciones // El service normaliza 'notes' y 'notas'
+          notas: header.observaciones 
         };
 
         const { error } = await NuevoPedidoService.guardarOrdenCompleta(ordenCabecera, itemsProveedor);
-        
         if (error) throw error;
       }
 
-      toast.success(`Se generaron ${proveedoresUnicos.length} requisiciones con éxito`);
-      setCarrito([]);
-      setLoading(false);
+      toast.success(`Se enviaron ${proveedoresUnicos.length} requisiciones correctamente`);
+      setCarrito([]); // Limpiar carrito tras éxito
       
       if (onVolver) onVolver();
 
     } catch (err) {
       console.error(err);
       toast.error('Error al guardar las órdenes de compra');
+    } finally {
       setLoading(false);
     }
   };
