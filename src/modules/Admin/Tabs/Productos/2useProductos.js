@@ -15,7 +15,7 @@ export const useProductos = () => {
   });
 
   // ==========================================
-  // OBTENER DATOS
+  // OBTENER DATOS (LISTADO)
   // ==========================================
   const cargarProductos = useCallback(async () => {
     setLoading(true);
@@ -25,6 +25,7 @@ export const useProductos = () => {
         toast.error(`Error de carga: ${error.message || 'No se pudo obtener la lista'}`);
         return;
       }
+      // El service ya devuelve la data enriquecida con sucursales_info y relaciones
       setProductos(data || []);
     } catch (err) {
       console.error("Error inesperado al cargar productos:", err);
@@ -34,14 +35,19 @@ export const useProductos = () => {
     }
   }, []);
 
+  // ==========================================
+  // CARGAR OPCIONES PARA SELECTS (UI)
+  // ==========================================
   const cargarCatalogosFormulario = useCallback(async () => {
     setLoading(true);
     try {
       const data = await ProductosService.getCatalogosFormulario();
-      if (data.errores) {
-        console.error("Errores al sincronizar catálogos:", data.errores);
-        toast.error('Error al sincronizar algunos catálogos de apoyo');
+      
+      if (data.error) {
+        console.error("Errores al sincronizar catálogos:", data.error);
+        toast.error('Aviso: Algunos catálogos de apoyo no se cargaron correctamente.');
       }
+
       setCatalogos({
         proveedores: data.proveedores || [],
         sucursales: data.sucursales || [],
@@ -57,60 +63,48 @@ export const useProductos = () => {
   }, []);
 
   // ==========================================
-  // GUARDAR DATOS (Crear o Editar)
+  // GUARDAR DATOS (CREAR O EDITAR)
   // ==========================================
   const guardarProducto = useCallback(async (productoData) => {
-    // --- VALIDACIONES DE NEGOCIO EN EL FRONTEND ---
+    // --- VALIDACIONES DE NEGOCIO (FRONTEND) ---
     if (!productoData.nombre || productoData.nombre.trim() === '') {
       toast.error('El nombre del producto es obligatorio.');
       return false;
     }
 
-    if (productoData.costo_actual !== undefined && productoData.costo_actual !== null && productoData.costo_actual !== '') {
-      if (isNaN(Number(productoData.costo_actual)) || Number(productoData.costo_actual) < 0) {
-        toast.error('El costo del producto no puede ser un valor negativo.');
-        return false;
-      }
+    // Validación de categorías y unidades (Obligatorias según tu lógica de BD)
+    if (!productoData.categoria_id) {
+      toast.error('Debes seleccionar una categoría.');
+      return false;
     }
 
-    if (productoData.contenido !== undefined && productoData.contenido !== null && productoData.contenido !== '') {
-      if (isNaN(Number(productoData.contenido)) || Number(productoData.contenido) <= 0) {
-        toast.error('El contenido debe ser un número válido mayor a 0.');
-        return false;
-      }
+    if (!productoData.um_id) {
+      toast.error('Debes seleccionar una unidad de medida.');
+      return false;
     }
 
     setLoading(true);
     try {
-      // Nos aseguramos de que sucursales_ids sea siempre un arreglo válido antes de enviar
-      const payload = {
-        ...productoData,
-        sucursales_ids: Array.isArray(productoData.sucursales_ids) ? productoData.sucursales_ids : []
-      };
-
-      const { data, error } = await ProductosService.guardarProducto(payload);
+      const { data, error } = await ProductosService.guardarProducto(productoData);
 
       if (error) {
-        // --- TRATAMIENTO DETALLADO DEL ERROR ---
+        // Tratamiento detallado del error de la base de datos
         const mensajePrincipal = error.message || 'Error desconocido';
         const pista = error.hint ? `\nSugerencia: ${error.hint}` : '';
         
-        // Mostramos un toast persistente para que el usuario alcance a leer el error técnico
         toast.error(
           `No se pudo guardar:\n${mensajePrincipal}${pista}`,
-          { duration: 6000, style: { minWidth: '300px' } }
+          { duration: 6000 }
         );
-        
-        console.error("Error técnico completo:", error);
         return false;
       }
 
       toast.success('¡Producto guardado exitosamente!');
-      await cargarProductos(); 
+      await cargarProductos(); // Refrescamos la lista principal
       return true;
     } catch (err) {
       console.error("Error inesperado en guardarProducto:", err);
-      toast.error("Error inesperado al guardar el producto.");
+      toast.error("Error inesperado al procesar la solicitud.");
       return false;
     } finally {
       setLoading(false);
@@ -118,7 +112,7 @@ export const useProductos = () => {
   }, [cargarProductos]);
 
   // ==========================================
-  // CAMBIAR ESTATUS (Activar/Desactivar)
+  // CAMBIAR ESTATUS (ACTIVAR/DESACTIVAR)
   // ==========================================
   const toggleEstatus = useCallback(async (id, estatusActual) => {
     try {
@@ -129,7 +123,7 @@ export const useProductos = () => {
         return false;
       }
 
-      // Uso de actualizador funcional para evitar closures obsoletos de React
+      // Actualizamos el estado local inmediatamente para una UI reactiva
       setProductos(prevProductos => 
         prevProductos.map(prod => 
           prod.id === id ? { ...prod, activo: !estatusActual } : prod
@@ -140,7 +134,7 @@ export const useProductos = () => {
       return true;
     } catch (err) {
       console.error("Error inesperado en toggleEstatus:", err);
-      toast.error("Error inesperado al cambiar el estatus del producto.");
+      toast.error("Error crítico al cambiar el estatus.");
       return false;
     }
   }, []);

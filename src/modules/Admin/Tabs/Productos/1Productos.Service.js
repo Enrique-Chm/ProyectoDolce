@@ -3,10 +3,10 @@ import { supabase } from '../../../../lib/supabaseClient';
 
 export const ProductosService = {
   // ==========================================
-  // LECTURA DE PRODUCTOS
+  // LECTURA DE PRODUCTOS (CON RELACIONES)
   // ==========================================
   async getProductos() {
-    // 1. Cargamos todos los productos
+    // 1. Cargamos todos los productos con sus nombres de catálogos
     const { data: productos, error } = await supabase
       .from('BD_Productos')
       .select(`
@@ -23,17 +23,17 @@ export const ProductosService = {
       return { data: null, error };
     }
 
-    // 2. Cargamos las sucursales para mapear los nombres a sus respectivos IDs
+    // 2. Cargamos las sucursales para mapear los nombres del array sucursales_ids
     const { data: sucursales, error: errSucs } = await supabase
       .from('Cat_sucursales')
       .select('id, nombre');
 
     if (errSucs) {
-      console.error("Error al obtener sucursales para el catálogo:", errSucs.message);
-      return { data: productos, error: null }; // Retorno preventivo si falla la relación
+      console.error("Error al obtener sucursales:", errSucs.message);
+      return { data: productos, error: null }; 
     }
 
-    // 3. Mapeamos las sucursales vinculadas a cada producto
+    // 3. Mapeo para transformar IDs de sucursales en objetos legibles para la UI
     const sucursalesMap = (sucursales || []).reduce((acc, s) => {
       acc[s.id] = s.nombre;
       return acc;
@@ -43,7 +43,8 @@ export const ProductosService = {
       const ids = p.sucursales_ids || [];
       return {
         ...p,
-        sucursales: ids.map(id => ({ id, nombre: sucursalesMap[id] || 'Sucursal eliminada' }))
+        // Creamos una propiedad virtual para que el frontend muestre los nombres fácilmente
+        sucursales_info: ids.map(id => ({ id, nombre: sucursalesMap[id] || 'Desconocida' }))
       };
     });
 
@@ -51,88 +52,63 @@ export const ProductosService = {
   },
 
   // ==========================================
-  // CREACIÓN Y EDICIÓN (INSERT / UPDATE EXPLÍCITO)
+  // GUARDAR (INSERT / UPDATE)
   // ==========================================
   async guardarProducto(productoData) {
     try {
-      // 1. Clonamos para no mutar el estado original
-      const dataLimpia = { ...productoData };
+      // 1. Clonamos el objeto para limpiar datos antes de enviar a BD
+      const rawData = { ...productoData };
 
-      const esNuevo = !dataLimpia.id || dataLimpia.id === "" || dataLimpia.id === "null";
+      // 2. Identificar si es nuevo (id nulo o inexistente)
+      const esNuevo = !rawData.id || rawData.id === "" || rawData.id === "null";
 
-      // 2. ELIMINAR ID SI ES NUEVO: 
+      // 3. Objeto limpio que respeta estrictamente las columnas de la tabla
+      const dataParaBD = {
+        nombre: rawData.nombre,
+        marca: rawData.marca || null,
+        presentacion: rawData.presentacion || null,
+        contenido: (rawData.contenido === "" || rawData.contenido === undefined) ? null : Number(rawData.contenido),
+        costo_actual: (rawData.costo_actual === "" || rawData.costo_actual === undefined) ? 0 : Number(rawData.costo_actual),
+        
+        // Relaciones UUID (Si vienen vacíos, deben ser null para no romper el Foreign Key)
+        um_id: rawData.um_id || null,
+        categoria_id: rawData.categoria_id || null,
+        proveedor_id: rawData.proveedor_id || null,
+        proveedor_secundario_id: rawData.proveedor_secundario_id || null,
+        
+        // Control y Arrays
+        activo: rawData.activo ?? true,
+        sucursales_ids: Array.isArray(rawData.sucursales_ids) ? rawData.sucursales_ids : []
+      };
+
+      let query;
+
       if (esNuevo) {
-        delete dataLimpia.id;
-      }
-
-      // 3. LIMPIEZA DE LLAVES FORÁNEAS (UUIDs):
-      const camposRelacionales = ['proveedor_id', 'proveedor_secundario_id', 'um_id', 'categoria_id'];
-      camposRelacionales.forEach(campo => {
-        if (dataLimpia[campo] === "" || dataLimpia[campo] === undefined) {
-          dataLimpia[campo] = null;
-        }
-      });
-
-      // 4. LIMPIEZA Y PARSEO NUMÉRICO SEGURO:
-      dataLimpia.costo_actual = (dataLimpia.costo_actual === "" || dataLimpia.costo_actual === undefined || isNaN(Number(dataLimpia.costo_actual))) 
-        ? null 
-        : Number(dataLimpia.costo_actual);
-
-      dataLimpia.contenido = (dataLimpia.contenido === "" || dataLimpia.contenido === undefined || isNaN(Number(dataLimpia.contenido))) 
-        ? null 
-        : Number(dataLimpia.contenido);
-
-      // 5. NORMALIZACIÓN DE ARRAY DE SUCURSALES:
-      if (!Array.isArray(dataLimpia.sucursales_ids)) {
-        dataLimpia.sucursales_ids = [];
-      }
-
-      // Eliminamos campos de apoyo visual
-      delete dataLimpia.sucursales;
-      delete dataLimpia.sucursal;
-
-      // 6. EJECUCIÓN EN SUPABASE
-      let respuesta;
-      if (esNuevo) {
-        respuesta = await supabase
+        // Inserción de registro nuevo
+        query = supabase
           .from('BD_Productos')
-          .insert([dataLimpia])
-          .select()
-          .single();
+          .insert([dataParaBD]);
       } else {
-        respuesta = await supabase
+        // Actualización de registro existente
+        query = supabase
           .from('BD_Productos')
-          .update(dataLimpia)
-          .eq('id', dataLimpia.id)
-          .select()
-          .single();
+          .update(dataParaBD)
+          .eq('id', rawData.id);
       }
 
-      const { data, error } = respuesta;
+      const { data, error } = await query.select().single();
 
-      if (error) {
-        console.error("Error detallado de Supabase:", error);
-        return { 
-          data: null, 
-          error: {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code
-          } 
-        };
-      }
-
+      if (error) throw error;
       return { data, error: null };
 
     } catch (err) {
-      console.error("Error inesperado en el Service:", err);
-      return { data: null, error: { message: "Error de conexión o de red" } };
+      console.error("Error en guardarProducto:", err);
+      return { data: null, error: err };
     }
   },
 
   // ==========================================
-  // BORRADO LÓGICO INDIVIDUAL (Desactivar)
+  // CAMBIO DE ESTATUS (ACTIVAR/DESACTIVAR)
   // ==========================================
   async toggleEstatusProducto(id, estatusActual) {
     const { data, error } = await supabase
@@ -145,13 +121,14 @@ export const ProductosService = {
   },
 
   // ==========================================
-  // DEPENDENCIAS PARA EL FORMULARIO
+  // CATÁLOGOS PARA SELECTS DEL FORMULARIO
   // ==========================================
   async getCatalogosFormulario() {
     try {
+      // Cargamos todo en paralelo para máxima velocidad
       const [proveedores, sucursales, unidades, categorias] = await Promise.all([
-        supabase.from('Cat_Proveedores').select('id, nombre').order('nombre'),
-        supabase.from('Cat_sucursales').select('id, nombre').order('nombre'),
+        supabase.from('Cat_Proveedores').select('id, nombre').eq('estatus', 'Activo').order('nombre'),
+        supabase.from('Cat_sucursales').select('id, nombre').eq('estatus', 'Activo').order('nombre'),
         supabase.from('Cat_UM').select('id, nombre, abreviatura').eq('estatus', 'Activo').order('nombre'),
         supabase.from('Cat_Categorias').select('id, nombre').eq('estatus', 'activo').order('nombre')
       ]);
@@ -161,10 +138,11 @@ export const ProductosService = {
         sucursales: sucursales.data || [],
         unidades: unidades.data || [],
         categorias: categorias.data || [],
-        errores: proveedores.error || sucursales.error || unidades.error || categorias.error
+        error: proveedores.error || sucursales.error || unidades.error || categorias.error
       };
     } catch (err) {
-      return { proveedores: [], sucursales: [], unidades: [], categorias: [], errores: err };
+      console.error("Error al cargar catálogos:", err);
+      return { proveedores: [], sucursales: [], unidades: [], categorias: [], error: err };
     }
   }
 };

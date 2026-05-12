@@ -13,25 +13,25 @@ export default function Productos({ onVolver }) {
 
   const [mostrandoFormulario, setMostrandoFormulario] = useState(false);
   
-  // 1. ESTADO INICIAL: Mantenemos sucursales_ids (array)
+  // 1. ESTADO INICIAL: Sincronizado con las columnas de la tabla BD_Productos
   const estadoInicialFormulario = {
     id: null,
     nombre: '',
     marca: '',
-    modelo: '',
-    categoria_id: '',
+    categoria_id: '', // Relación UUID
     presentacion: '',
     contenido: '',
     costo_actual: '',
-    proveedor_id: '',
-    proveedor_secundario_id: '',
-    sucursales_ids: [], // Array de sucursales seleccionadas
-    um_id: '',
+    proveedor_id: '', // Relación UUID
+    proveedor_secundario_id: '', // Relación UUID
+    um_id: '', // Relación UUID
+    sucursales_ids: [], 
     activo: true
   };
   
   const [formData, setFormData] = useState(estadoInicialFormulario);
 
+  // Carga inicial de datos y catálogos
   useEffect(() => {
     cargarProductos();
     cargarCatalogosFormulario();
@@ -45,7 +45,7 @@ export default function Productos({ onVolver }) {
     });
   };
 
-  // --- MANEJADORES PARA SELECCIÓN MÚLTIPLE DE SUCURSALES ---
+  // --- LÓGICA DE SUCURSALES (ARRAY DE UUIDs) ---
   const handleSucursalCheckboxChange = (id) => {
     const idsActuales = Array.isArray(formData.sucursales_ids) ? formData.sucursales_ids : [];
     if (idsActuales.includes(id)) {
@@ -64,25 +64,19 @@ export default function Productos({ onVolver }) {
   const handleToggleTodasLasSucursales = (checked) => {
     if (checked) {
       const todosLosIds = catalogos.sucursales.map(s => s.id);
-      setFormData({
-        ...formData,
-        sucursales_ids: todosLosIds
-      });
+      setFormData({ ...formData, sucursales_ids: todosLosIds });
     } else {
-      setFormData({
-        ...formData,
-        sucursales_ids: []
-      });
+      setFormData({ ...formData, sucursales_ids: [] });
     }
   };
 
-  // Validación visual para saber si todas están seleccionadas
   const todasSeleccionadas = useMemo(() => {
     if (!catalogos.sucursales || catalogos.sucursales.length === 0) return false;
     const idsActuales = Array.isArray(formData.sucursales_ids) ? formData.sucursales_ids : [];
     return catalogos.sucursales.every(s => idsActuales.includes(s.id));
   }, [catalogos.sucursales, formData.sucursales_ids]);
 
+  // --- MANEJO DE MODAL/VISTA ---
   const abrirParaCrear = () => {
     setFormData(estadoInicialFormulario);
     setMostrandoFormulario(true);
@@ -93,60 +87,23 @@ export default function Productos({ onVolver }) {
       id: producto.id,
       nombre: producto.nombre || '',
       marca: producto.marca || '',
-      modelo: producto.modelo || '',
       categoria_id: producto.categoria_id || '',
       presentacion: producto.presentacion || '',
       contenido: producto.contenido || '',
       costo_actual: producto.costo_actual || '',
       proveedor_id: producto.proveedor_id || '',
       proveedor_secundario_id: producto.proveedor_secundario_id || '',
-      sucursales_ids: Array.isArray(producto.sucursales_ids) ? producto.sucursales_ids : [],
       um_id: producto.um_id || '',
+      sucursales_ids: Array.isArray(producto.sucursales_ids) ? producto.sucursales_ids : [],
       activo: producto.activo
     });
     setMostrandoFormulario(true);
   };
 
   const procesarGuardado = async () => {
-    // Validaciones básicas de obligatoriedad en el frontend
-    if (!formData.nombre || formData.nombre.trim() === '') {
-      toast.error('El nombre del producto es obligatorio');
-      return;
-    }
-
-    if (!formData.um_id) {
-      toast.error('La Unidad de Medida (UM) es obligatoria');
-      return;
-    }
-
-    // Validaciones numéricas para prevenir inconsistencias o valores negativos
-    if (formData.costo_actual !== '' && formData.costo_actual !== undefined && formData.costo_actual !== null) {
-      if (isNaN(Number(formData.costo_actual)) || Number(formData.costo_actual) < 0) {
-        toast.error('El costo del producto no puede ser un número negativo');
-        return;
-      }
-    }
-
-    if (formData.contenido !== '' && formData.contenido !== undefined && formData.contenido !== null) {
-      if (isNaN(Number(formData.contenido)) || Number(formData.contenido) <= 0) {
-        toast.error('El contenido debe ser un valor numérico mayor a 0');
-        return;
-      }
-    }
-
-    // Limpieza y sanitización de datos antes de enviar al backend
-    const datosLimpios = {
-      ...formData,
-      contenido: formData.contenido === '' ? null : Number(formData.contenido),
-      costo_actual: formData.costo_actual === '' ? null : Number(formData.costo_actual),
-      proveedor_id: formData.proveedor_id || null,
-      proveedor_secundario_id: formData.proveedor_secundario_id || null,
-      sucursales_ids: Array.isArray(formData.sucursales_ids) ? formData.sucursales_ids : [],
-      um_id: formData.um_id || null,
-      categoria_id: formData.categoria_id || null
-    };
-
-    const exito = await guardarProducto(datosLimpios);
+    // El servicio y el hook ya manejan la limpieza de datos,
+    // aquí solo validamos que lo mínimo necesario esté presente.
+    const exito = await guardarProducto(formData);
     if (exito) {
       setMostrandoFormulario(false);
     }
@@ -157,7 +114,7 @@ export default function Productos({ onVolver }) {
       {/* --- ENCABEZADO --- */}
       <header style={{ marginBottom: 'var(--space-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
-          <span className={styles.labelTop} style={{ display: 'block', marginBottom: '2px' }}>Catálogo Maestro</span>
+          <span className={styles.labelTop} style={{ display: 'block', marginBottom: '2px' }}>Gestión de Inventario</span>
           <h1 className={styles.title} style={{ fontSize: '2rem', lineHeight: '1' }}>
             {mostrandoFormulario ? (formData.id ? 'Editar\nProducto' : 'Nuevo\nProducto') : 'Productos'}
           </h1>
@@ -174,95 +131,89 @@ export default function Productos({ onVolver }) {
 
       {mostrandoFormulario ? (
         /* =========================================
-           VISTA 1: FORMULARIO EXPANDIDO (GRID)
+           VISTA: FORMULARIO DE ALTA / EDICIÓN
            ========================================= */
         <section className={styles.card} style={{ animation: 'slideUp 0.3s ease' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
             
             {/* BLOQUE 1: IDENTIDAD */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <h3 className={styles.labelTop} style={{ color: 'var(--color-primary)', borderBottom: '1px solid var(--border-ghost)', paddingBottom: '8px' }}>Información General</h3>
+              <h3 className={styles.labelTop} style={{ color: 'var(--color-primary)', borderBottom: '1px solid var(--border-ghost)', paddingBottom: '8px' }}>Información Básica</h3>
               
               <div>
-                <label className={styles.labelTop}>Nombre del Insumo *</label>
-                <input type="text" name="nombre" value={formData.nombre} onChange={handleInputChange} placeholder="Ej: Tomate Saladette" className={styles.inputEditorial} disabled={loading} />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label className={styles.labelTop}>Marca</label>
-                  <input type="text" name="marca" value={formData.marca} onChange={handleInputChange} className={styles.inputEditorial} disabled={loading} />
-                </div>
-                <div>
-                  <label className={styles.labelTop}>Modelo</label>
-                  <input type="text" name="modelo" value={formData.modelo} onChange={handleInputChange} className={styles.inputEditorial} disabled={loading} />
-                </div>
+                <label className={styles.labelTop}>Nombre del Producto *</label>
+                <input type="text" name="nombre" value={formData.nombre} onChange={handleInputChange} placeholder="Ej: Aceite de Oliva 1L" className={styles.inputEditorial} disabled={loading} />
               </div>
 
               <div>
-                <label className={styles.labelTop}>Categoría</label>
+                <label className={styles.labelTop}>Marca</label>
+                <input type="text" name="marca" value={formData.marca} onChange={handleInputChange} className={styles.inputEditorial} disabled={loading} />
+              </div>
+
+              <div>
+                <label className={styles.labelTop}>Categoría de Producto *</label>
                 <select name="categoria_id" value={formData.categoria_id} onChange={handleInputChange} className={styles.selectEditorial} disabled={loading}>
-                  <option value="">-- Sin Asignar --</option>
-                  {catalogos.categorias && catalogos.categorias.map(c => (
+                  <option value="">-- Seleccionar Categoría --</option>
+                  {catalogos.categorias.map(c => (
                     <option key={c.id} value={c.id}>{c.nombre}</option>
                   ))}
                 </select>
               </div>
             </div>
 
-            {/* BLOQUE 2: PRESENTACIÓN Y COSTO */}
+            {/* BLOQUE 2: ESPECIFICACIONES */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <h3 className={styles.labelTop} style={{ color: 'var(--color-primary)', borderBottom: '1px solid var(--border-ghost)', paddingBottom: '8px' }}>Presentación y Costos</h3>
+              <h3 className={styles.labelTop} style={{ color: 'var(--color-primary)', borderBottom: '1px solid var(--border-ghost)', paddingBottom: '8px' }}>Especificaciones y Costo</h3>
               
               <div>
-                <label className={styles.labelTop}>Descripción Presentación</label>
-                <input type="text" name="presentacion" value={formData.presentacion} onChange={handleInputChange} placeholder="Ej: Caja de 10kg" className={styles.inputEditorial} disabled={loading} />
+                <label className={styles.labelTop}>Presentación</label>
+                <input type="text" name="presentacion" value={formData.presentacion} onChange={handleInputChange} placeholder="Ej: Botella de vidrio" className={styles.inputEditorial} disabled={loading} />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
                   <label className={styles.labelTop}>Contenido</label>
-                  <input type="number" name="contenido" value={formData.contenido} onChange={handleInputChange} placeholder="Ej: 10" className={styles.inputEditorial} disabled={loading} />
+                  <input type="number" name="contenido" value={formData.contenido} onChange={handleInputChange} placeholder="Ej: 1" className={styles.inputEditorial} disabled={loading} />
                 </div>
                 <div>
                   <label className={styles.labelTop}>Unidad (UM) *</label>
                   <select name="um_id" value={formData.um_id} onChange={handleInputChange} className={styles.selectEditorial} disabled={loading}>
-                    <option value="">-- Seleccionar --</option>
-                    {catalogos.unidades.map(u => <option key={u.id} value={u.id}>{u.nombre} ({u.abreviatura})</option>)}
+                    <option value="">-- UM --</option>
+                    {catalogos.unidades.map(u => (
+                      <option key={u.id} value={u.id}>{u.abreviatura} - {u.nombre}</option>
+                    ))}
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className={styles.labelTop}>Costo Actual ($)</label>
+                <label className={styles.labelTop}>Costo de Compra Actual ($)</label>
                 <input type="number" name="costo_actual" value={formData.costo_actual} onChange={handleInputChange} placeholder="0.00" className={styles.inputEditorial} disabled={loading} />
               </div>
             </div>
 
-            {/* BLOQUE 3: LOGÍSTICA Y SUCURSALES MÚLTIPLES */}
+            {/* BLOQUE 3: LOGÍSTICA */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <h3 className={styles.labelTop} style={{ color: 'var(--color-primary)', borderBottom: '1px solid var(--border-ghost)', paddingBottom: '8px' }}>Logística y Estatus</h3>
+              <h3 className={styles.labelTop} style={{ color: 'var(--color-primary)', borderBottom: '1px solid var(--border-ghost)', paddingBottom: '8px' }}>Proveedores y Sucursales</h3>
               
               <div>
-                <label className={styles.labelTop}>Proveedor Preferido</label>
+                <label className={styles.labelTop}>Proveedor Principal</label>
                 <select name="proveedor_id" value={formData.proveedor_id} onChange={handleInputChange} className={styles.selectEditorial} disabled={loading}>
-                  <option value="">-- Sin Asignar --</option>
+                  <option value="">-- Seleccionar --</option>
                   {catalogos.proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
                 </select>
               </div>
 
-              {/* Selector de Proveedor Secundario */}
               <div>
-                <label className={styles.labelTop}>Proveedor Secundario</label>
+                <label className={styles.labelTop}>Proveedor Secundario (Opcional)</label>
                 <select name="proveedor_secundario_id" value={formData.proveedor_secundario_id} onChange={handleInputChange} className={styles.selectEditorial} disabled={loading}>
-                  <option value="">-- Sin Asignar --</option>
+                  <option value="">-- Seleccionar --</option>
                   {catalogos.proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
                 </select>
               </div>
 
-              {/* --- PANEL DE CHECKBOXES DE SUCURSAL MÚLTIPLE --- */}
               <div>
-                <label className={styles.labelTop} style={{ display: 'block', marginBottom: '8px' }}>Disponibilidad por Sucursal</label>
+                <label className={styles.labelTop} style={{ display: 'block', marginBottom: '8px' }}>Disponibilidad en Sucursales</label>
                 <div style={{
                   backgroundColor: 'var(--color-surface-lowest)',
                   border: '1px solid var(--border-ghost)',
@@ -271,180 +222,112 @@ export default function Productos({ onVolver }) {
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '8px',
-                  maxHeight: '160px',
+                  maxHeight: '140px',
                   overflowY: 'auto'
                 }}>
-                  {/* Opción global para todas */}
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-main)', borderBottom: '1px solid var(--border-ghost)', paddingBottom: '6px' }}>
-                    <input 
-                      type="checkbox" 
-                      checked={todasSeleccionadas}
-                      onChange={(e) => handleToggleTodasLasSucursales(e.target.checked)}
-                      style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                      disabled={loading}
-                    />
-                    Todas las sucursales
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold', borderBottom: '1px solid var(--border-ghost)', paddingBottom: '6px' }}>
+                    <input type="checkbox" checked={todasSeleccionadas} onChange={(e) => handleToggleTodasLasSucursales(e.target.checked)} disabled={loading} />
+                    Seleccionar todas
                   </label>
 
-                  {/* Listado individual de checkboxes */}
                   {catalogos.sucursales.map(suc => (
-                    <label key={suc.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.825rem', color: 'var(--text-muted)' }}>
+                    <label key={suc.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.825rem' }}>
                       <input 
                         type="checkbox" 
-                        checked={Array.isArray(formData.sucursales_ids) && formData.sucursales_ids.includes(suc.id)}
-                        onChange={() => handleSucursalCheckboxChange(suc.id)}
-                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                        disabled={loading}
+                        checked={formData.sucursales_ids.includes(suc.id)} 
+                        onChange={() => handleSucursalCheckboxChange(suc.id)} 
+                        disabled={loading} 
                       />
                       {suc.nombre}
                     </label>
                   ))}
                 </div>
               </div>
-
-              <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
-                <input type="checkbox" name="activo" checked={formData.activo} onChange={handleInputChange} style={{ width: '18px', height: '18px', cursor: 'pointer' }} disabled={loading} />
-                <label className={styles.labelTop} style={{ marginBottom: 0, cursor: 'pointer' }}>Producto Activo en Sistema</label>
-              </div>
             </div>
-
           </div>
 
           <button onClick={procesarGuardado} disabled={loading} className={`${styles.btnBase} ${styles.btnPrimary}`} style={{ width: '100%', marginTop: '32px' }}>
             <span className="material-symbols-outlined">{loading ? 'sync' : 'save'}</span>
-            {loading ? 'Sincronizando...' : 'Guardar Producto Completo'}
+            {loading ? 'Procesando...' : 'Finalizar y Guardar'}
           </button>
         </section>
 
       ) : (
         /* =========================================
-           VISTA 2: LISTA DE PRODUCTOS (Resumen)
+           VISTA: LISTADO DE PRODUCTOS
            ========================================= */
         <>
           <section className={styles.cardLow} style={{ marginBottom: 'var(--space-md)', padding: '10px 14px' }}>
-             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>
-                    Catálogo: <b>{productos.length}</b> insumos.
-                  </p>
-                </div>
-
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button 
-                    onClick={abrirParaCrear} 
-                    className={`${styles.btnBase} ${styles.btnPrimary}`}
-                    style={{ height: '36px', padding: '0 12px', fontSize: '0.8rem' }}
-                    disabled={loading}
-                  >
-                    <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>add</span> Nuevo Insumo
-                  </button>
-                </div>
+             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>
+                  Mostrando <b>{productos.length}</b> productos en catálogo.
+                </p>
+                <button onClick={abrirParaCrear} className={`${styles.btnBase} ${styles.btnPrimary}`} style={{ height: '36px', padding: '0 12px', fontSize: '0.8rem' }} disabled={loading}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>add</span> Nuevo Insumo
+                </button>
              </div>
           </section>
 
-          {/* LISTA DE FILAS COMPACTAS PARA MÓVIL */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {productos.map(prod => (
               <section 
                 key={prod.id} 
                 className={styles.card} 
                 style={{ 
-                  opacity: prod.activo ? 1 : 0.65, 
-                  padding: '12px 16px',
+                  opacity: prod.activo ? 1 : 0.6, 
+                  padding: '14px 18px',
                   display: 'flex',
-                  flexDirection: 'row',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  minHeight: '64px',
-                  borderRadius: '10px',
-                  borderLeft: prod.activo ? '4px solid var(--color-primary)' : '4px solid #999',
-                  borderTop: 'none',
-                  backgroundColor: 'white',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
-                  transition: 'all 0.15s ease',
-                  gap: '12px'
+                  borderLeft: prod.activo ? '5px solid var(--color-primary)' : '5px solid #ccc',
+                  backgroundColor: 'white'
                 }}
               >
-                {/* Bloque Izquierdo: Información Resumida */}
-                <div onClick={() => abrirParaEditar(prod)} style={{ cursor: 'pointer', flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
-                    <h2 className={styles.subtitle} style={{ 
-                      fontSize: '0.925rem', 
-                      margin: 0, 
-                      fontWeight: 'bold', 
-                      color: 'var(--text-main)', 
-                      whiteSpace: 'nowrap', 
-                      overflow: 'hidden', 
-                      textOverflow: 'ellipsis' 
-                    }}>
+                {/* Info Principal */}
+                <div onClick={() => abrirParaEditar(prod)} style={{ cursor: 'pointer', flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <h2 style={{ fontSize: '1rem', margin: 0, fontWeight: '700', color: 'var(--text-main)' }}>
                       {prod.nombre}
                     </h2>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--color-primary)', fontWeight: 'bold' }}>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--color-primary)', fontWeight: 'bold', backgroundColor: 'var(--color-surface-low)', padding: '2px 8px', borderRadius: '6px' }}>
                       ${prod.costo_actual}
                     </span>
                   </div>
 
-                  {/* Subtítulo: Marca • UM • Categoría */}
-                  <div style={{ display: 'flex', gap: '4px', fontSize: '0.725rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    <span>{prod.marca || 'S/M'}</span>
+                  <div style={{ display: 'flex', gap: '6px', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', alignItems: 'center' }}>
+                    <span style={{ fontWeight: '600' }}>{prod.marca || 'Genérico'}</span>
                     <span>•</span>
-                    <span>{prod.unidad_medida?.abreviatura || 'N/A'}</span>
+                    <span>{prod.unidad_medida?.abreviatura || 'S/UM'}</span>
                     <span>•</span>
-                    <span style={{ color: 'var(--text-light)' }}>{prod.categoria?.nombre || 'Sin cat'}</span>
+                    <span style={{ color: 'var(--color-primary)', opacity: 0.8 }}>{prod.categoria?.nombre || 'Sin Categoría'}</span>
                   </div>
 
-                  {/* --- BADGES DE SUCURSALES ASIGNADAS MINI --- */}
-                  <div style={{ display: 'flex', flexWrap: 'nowrap', gap: '4px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {(!prod.sucursales_ids || prod.sucursales_ids.length === 0) ? (
-                      <span style={{ fontSize: '0.65rem', color: 'var(--text-light)', opacity: 0.8 }}>
-                        📍 Todas las sucursales
-                      </span>
-                    ) : (
-                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '2px' }}>
-                        📍 <b>{prod.sucursales?.map(s => s.nombre).join(', ')}</b>
-                      </span>
-                    )}
+                  {/* Sucursales Badge Mini */}
+                  <div style={{ marginTop: '6px' }}>
+                    <span style={{ fontSize: '0.65rem', color: 'var(--text-light)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '0.9rem' }}>location_on</span>
+                      {prod.sucursales_ids?.length === 0 ? 'Disponible en todas' : `${prod.sucursales_ids?.length} sucursales`}
+                    </span>
                   </div>
                 </div>
                 
-                {/* Bloque Derecho: Botones de Acción Mini */}
-                <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                  <button 
-                    onClick={() => abrirParaEditar(prod)} 
-                    className={`${styles.btnBase} ${styles.btnSecondary}`} 
-                    style={{ 
-                      padding: '0', 
-                      width: '34px', 
-                      height: '34px', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center', 
-                      borderRadius: '8px',
-                      backgroundColor: 'var(--color-surface-low)'
-                    }}
-                    disabled={loading}
-                  >
-                    <span className="material-symbols-outlined" style={{ fontSize: '1.05rem', color: 'var(--text-main)' }}>edit</span>
+                {/* Acciones Rápidas */}
+                <div style={{ display: 'flex', gap: '8px', marginLeft: '16px' }}>
+                  <button onClick={() => abrirParaEditar(prod)} className={`${styles.btnBase} ${styles.btnSecondary}`} style={{ width: '36px', height: '36px', padding: 0, borderRadius: '10px' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>edit</span>
                   </button>
                   <button 
                     onClick={() => toggleEstatus(prod.id, prod.activo)} 
-                    className={`${styles.btnBase} ${styles.btnOutlined}`} 
+                    className={styles.btnBase} 
                     style={{ 
-                      padding: '0', 
-                      width: '34px', 
-                      height: '34px', 
-                      borderRadius: '8px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderColor: prod.activo ? '#ba1a1a' : 'var(--color-primary)',
-                      color: prod.activo ? '#ba1a1a' : 'var(--color-primary)',
-                      backgroundColor: 'transparent'
+                      width: '36px', height: '36px', padding: 0, borderRadius: '10px',
+                      backgroundColor: 'transparent',
+                      border: `1px solid ${prod.activo ? '#ff4d4d' : '#4CAF50'}`,
+                      color: prod.activo ? '#ff4d4d' : '#4CAF50'
                     }}
-                    disabled={loading}
                   >
-                    <span className="material-symbols-outlined" style={{ fontSize: '1.05rem' }}>
-                      {prod.activo ? 'block' : 'check_circle'}
+                    <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>
+                      {prod.activo ? 'visibility_off' : 'visibility'}
                     </span>
                   </button>
                 </div>

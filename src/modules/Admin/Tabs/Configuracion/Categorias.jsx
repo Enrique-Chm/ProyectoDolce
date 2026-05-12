@@ -15,40 +15,35 @@ export default function Categorias({ onVolver }) {
 
   const [mostrandoFormulario, setMostrandoFormulario] = useState(false);
 
-  // --- ESTADO INICIAL SINCRONIZADO CON EL ESQUEMA SQL ---
+  // --- ESTADO INICIAL SINCRONIZADO CON SQL ---
   const estadoInicial = {
     id: null,
     nombre: '',
     descripcion: '',
-    estatus: 'activo'
+    estatus: 'activo' // Siempre en minúsculas según el default del SQL
   };
   
   const [formData, setFormData] = useState(estadoInicial);
 
-  // Cargamos los datos al entrar
   useEffect(() => {
     cargarCategorias();
   }, [cargarCategorias]);
 
-  // Manejador de cambios en inputs
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
 
-  // Preparar formulario para nueva categoría
   const abrirCrear = () => {
     setFormData(estadoInicial);
     setMostrandoFormulario(true);
   };
 
-  // Preparar formulario para editar existente
   const abrirEditar = (cat) => {
     setFormData({ ...cat });
     setMostrandoFormulario(true);
   };
 
-  // Función para enviar a la base de datos
   const procesarGuardado = async () => {
     if (!formData.nombre || !formData.nombre.trim()) {
       return toast.error('El nombre de la categoría es obligatorio');
@@ -58,6 +53,7 @@ export default function Categorias({ onVolver }) {
     if (exito) {
       setMostrandoFormulario(false);
       setFormData(estadoInicial);
+      cargarCategorias(); // Refrescamos lista tras guardar
     }
   };
 
@@ -66,7 +62,7 @@ export default function Categorias({ onVolver }) {
       {/* --- ENCABEZADO --- */}
       <header style={{ marginBottom: 'var(--space-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
-          <span className={styles.labelTop} style={{ display: 'block', marginBottom: '2px' }}>CATÁLOGO DE INSUMOS</span>
+          <span className={styles.labelTop} style={{ display: 'block', marginBottom: '2px' }}>CONFIGURACIÓN</span>
           <h1 className={styles.title} style={{ fontSize: '2rem', lineHeight: '1' }}>
             {mostrandoFormulario ? 'Datos de\nCategoría' : 'Categorías'}
           </h1>
@@ -86,7 +82,6 @@ export default function Categorias({ onVolver }) {
         <section className={styles.card} style={{ animation: 'slideUp 0.3s ease' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             
-            {/* Campo: Nombre */}
             <div>
               <label className={styles.labelTop}>NOMBRE DE LA CATEGORÍA *</label>
               <input 
@@ -99,7 +94,6 @@ export default function Categorias({ onVolver }) {
               />
             </div>
             
-            {/* Campo: Descripción */}
             <div>
               <label className={styles.labelTop}>DESCRIPCIÓN</label>
               <input 
@@ -108,7 +102,7 @@ export default function Categorias({ onVolver }) {
                 value={formData.descripcion || ''} 
                 onChange={handleInputChange}
                 className={styles.inputEditorial} 
-                placeholder="Ej: Alimentos y productos con fecha de caducidad corta" 
+                placeholder="Ej: Alimentos con caducidad corta" 
               />
             </div>
 
@@ -131,118 +125,54 @@ export default function Categorias({ onVolver }) {
           <button 
             onClick={abrirCrear} 
             className={`${styles.btnBase} ${styles.btnPrimary}`} 
-            style={{ width: '100%', marginBottom: 'var(--space-md)', padding: '0.8rem', fontSize: '0.875rem', height: '44px' }}
+            style={{ width: '100%', marginBottom: 'var(--space-md)', height: '44px' }}
           >
-            <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>category</span>
-            REGISTRAR CATEGORÍA
+            <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>add</span>
+            NUEVA CATEGORÍA
           </button>
 
-          {categorias.length === 0 && !loading && (
-            <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No hay categorías registradas aún.</p>
-          )}
-
-          {/* LISTA DE FILAS COMPACTAS PARA MÓVIL */}
-          <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column',
-            gap: '8px',
-            width: '100%'
-          }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {categorias.map((cat) => {
-              const esActivo = cat.estatus === 'Activo' || cat.estatus === 'activo';
+              const esActivo = cat.estatus === 'activo';
               return (
                 <div 
                   key={cat.id} 
                   className={styles.card} 
                   style={{ 
                     display: 'flex', 
-                    flexDirection: 'row',
                     justifyContent: 'space-between', 
                     alignItems: 'center',
-                    opacity: esActivo ? 1 : 0.65,
-                    borderLeft: esActivo ? '4px solid var(--color-primary)' : '4px solid #999',
-                    borderTop: 'none',
+                    opacity: esActivo ? 1 : 0.6,
+                    borderLeft: esActivo ? '4px solid var(--color-primary)' : '4px solid #ccc',
                     padding: '12px 16px',
-                    borderRadius: '10px',
-                    backgroundColor: 'white',
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
-                    transition: 'all 0.15s ease',
-                    minHeight: '64px',
-                    gap: '12px'
+                    backgroundColor: 'white'
                   }}
                 >
-                  {/* Bloque Izquierdo: Información Resumida */}
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
-                      <h4 className={styles.subtitle} style={{ 
-                        fontSize: '0.925rem', 
-                        margin: 0, 
-                        fontWeight: 'bold', 
-                        color: 'var(--text-main)', 
-                        whiteSpace: 'nowrap', 
-                        overflow: 'hidden', 
-                        textOverflow: 'ellipsis' 
-                      }}>
-                        {cat.nombre}
-                      </h4>
-                      <span style={{ 
-                        fontSize: '0.65rem', 
-                        background: esActivo ? 'var(--color-primary-fixed)' : 'var(--color-surface-high)', 
-                        color: esActivo ? 'var(--color-on-primary-fixed)' : 'var(--text-muted)', 
-                        padding: '2px 8px', 
-                        borderRadius: '4px', 
-                        fontWeight: 'bold',
-                        textTransform: 'uppercase',
-                        whiteSpace: 'nowrap'
-                      }}>
-                        {esActivo ? 'Activa' : 'Baja'}
-                      </span>
-                    </div>
-
-                    {/* Descripción Corta */}
-                    <p style={{ margin: 0, fontSize: '0.725rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: '0.95rem' }}>description</span>
-                      {cat.descripcion || 'Sin descripción registrada'}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 'bold' }}>{cat.nombre}</h4>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {cat.descripcion || 'Sin descripción'}
                     </p>
                   </div>
                   
-                  {/* Bloque Derecho: Botones de Acción */}
-                  <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', gap: '8px' }}>
                     <button 
                       onClick={() => abrirEditar(cat)} 
                       className={styles.btnSecondary} 
-                      style={{ 
-                        padding: '0', 
-                        width: '34px', 
-                        height: '34px', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        borderRadius: '8px',
-                        backgroundColor: 'var(--color-surface-low)'
-                      }} 
-                      title="Editar Categoría"
+                      style={{ padding: '0', width: '34px', height: '34px', borderRadius: '8px' }}
                     >
-                      <span className="material-symbols-outlined" style={{ fontSize: '1.05rem', color: 'var(--text-main)' }}>edit</span>
+                      <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>edit</span>
                     </button>
                     <button 
                       onClick={() => cambiarEstatus('Cat_Categorias', cat.id, cat.estatus, cargarCategorias)} 
                       className={styles.btnOutlined} 
                       style={{ 
-                        padding: '0', 
-                        width: '34px', 
-                        height: '34px', 
-                        borderRadius: '8px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderColor: esActivo ? '#ba1a1a' : 'var(--color-primary)',
+                        padding: '0', width: '34px', height: '34px', borderRadius: '8px',
                         color: esActivo ? '#ba1a1a' : 'var(--color-primary)',
-                        backgroundColor: 'transparent'
+                        borderColor: esActivo ? '#ba1a1a' : 'var(--color-primary)'
                       }}
-                      title={esActivo ? 'Desactivar Categoría' : 'Activar Categoría'}
                     >
-                      <span className="material-symbols-outlined" style={{ fontSize: '1.05rem' }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>
                         {esActivo ? 'visibility_off' : 'visibility'}
                       </span>
                     </button>

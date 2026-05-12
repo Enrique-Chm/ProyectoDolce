@@ -3,11 +3,10 @@ import { supabase } from '../../../../lib/supabaseClient';
 
 export const NuevoPedidoService = {
   /**
-   * 1. Traer productos con sus relaciones para el carrito y filtrado
-   * Esta consulta obtiene la información de los productos activos y
-   * realiza los joins necesarios con UM, Categorías y Proveedores.
-   * * Es CRÍTICO que el campo 'categoria' traiga 'nombre' para que el 
-   * filtrado por pestañas en la UI funcione correctamente.
+   * 1. OBTENER PRODUCTOS DISPONIBLES
+   * Recupera los insumos activos vinculando sus catálogos (UM, Categoría, Proveedor).
+   * Es fundamental traer 'sucursales_ids' para que el Hook filtre lo que el
+   * trabajador puede ver según su ubicación.
    */
   async getProductosDisponibles() {
     const { data, error } = await supabase
@@ -22,6 +21,7 @@ export const NuevoPedidoService = {
         activo,
         categoria_id,
         proveedor_id,
+        sucursales_ids,
         um:Cat_UM(id, nombre, abreviatura),
         categoria:Cat_Categorias(id, nombre),
         proveedor:Cat_Proveedores!proveedor_id(id, nombre)
@@ -29,68 +29,83 @@ export const NuevoPedidoService = {
       .eq('activo', true)
       .order('nombre', { ascending: true });
       
+    if (error) {
+      console.error("Error técnico al recuperar catálogo:", error.message);
+    }
+
     return { data, error };
   },
 
   /**
-   * 2. Guardar la orden (Cabecera + Detalles)
-   * Este método maneja la creación de la orden principal en 'BD_Ordenes_Compra'
-   * y luego inserta las partidas en 'BD_Ordenes_Detalle'.
+   * 2. GUARDAR ORDEN COMPLETA (Cabecera + Detalles)
+   * Este método realiza dos inserciones. Primero crea el registro en 'BD_Ordenes_Compra'
+   * y usa ese ID generado para insertar todas las partidas en 'BD_Ordenes_Detalle'.
    */
   async guardarOrdenCompleta(ordenCabecera, listaProductos) {
-    /**
-     * NORMALIZACIÓN DE CAMPOS: 
-     * Aseguramos compatibilidad entre el estado de React (notes/observaciones)
-     * y la columna real en PostgreSQL (notas).
-     */
-    const payloadCabecera = {
-      folio: ordenCabecera.folio,
-      solicitante_id: ordenCabecera.solicitante_id,
-      sucursal_id: ordenCabecera.sucursal_id,
-      proveedor_id: ordenCabecera.proveedor_id,
-      prioridad: ordenCabecera.prioridad,
-      total_estimado: ordenCabecera.total_estimado,
-      estatus: ordenCabecera.estatus || 'Pendiente',
-      // Mapeo múltiple para evitar valores vacíos si cambia el nombre en el frontend
-      notas: ordenCabecera.notas || ordenCabecera.notes || ordenCabecera.observaciones || ''
-    };
-
-    // 1. Insertamos la cabecera de la Orden de Compra
-    const { data: nuevaOrden, error: errorCabecera } = await supabase
-      .from('BD_Ordenes_Compra')
-      .insert([payloadCabecera])
-      .select()
-      .single();
-
-    if (errorCabecera) {
-      console.error("Error al insertar cabecera:", errorCabecera);
-      return { data: null, error: errorCabecera };
-    }
-
-    // 2. Preparamos los detalles vinculándolos al UUID de la orden recién creada
-    const detallesFormateados = listaProductos.map(prod => ({
-      orden_id: nuevaOrden.id,
-      producto_id: prod.producto_id,
-      cantidad: prod.cantidad,
-      costo_unitario: prod.costo_unitario
-    }));
-
-    // 3. Insertamos todas las partidas (detalles) de la orden en bloque
-    const { data: detalles, error: errorDetalles } = await supabase
-      .from('BD_Ordenes_Detalle')
-      .insert(detallesFormateados)
-      .select();
-
-    if (errorDetalles) {
-      console.error("Error al insertar detalles:", errorDetalles);
+    try {
       /**
-       * Nota técnica: Si los detalles fallan, la cabecera ya existe en la DB.
-       * En un entorno de producción ideal, se usaría un RPC (Stored Procedure)
-       * para asegurar que se guarden ambos o ninguno (Atomicidad).
+       * A. PREPARAR CABECERA
+       * Limpieza y formateo de datos para BD_Ordenes_Compra.
        */
-      return { data: null, error: errorDetalles };
-    }
+      const payloadCabecera = {
+        folio: ordenCabecera.folio,
+        solicitante_id: ordenCabecera.solicitante_id,
+        sucursal_id: ordenCabecera.sucursal_id,
+        proveedor_id: ordenCabecera.proveedor_id || null, // UUID o null si es multi-proveedor
+        prioridad: ordenCabecera.prioridad || 'Media',
+        total_estimado: Number(ordenCabecera.total_estimado) || 0,
+        estatus: ordenCabecera.estatus || 'Pendiente',
+        notas: ordenCabecera.notas || ''
+      };
 
-    return { data: { orden: nuevaOrden, detalles }, error: null };
+      // 1. Insertamos la cabecera y recuperamos el ID generado
+      const { data: nuevaOrden, error: errorCabecera } = await supabase
+        .from('BD_Ordenes_Compra')
+        .insert([payloadCabecera])
+        .select()
+        .single();
+
+      if (errorCabecera) throw errorCabecera;
+
+      /**
+       * B. PREPARAR DETALLES
+       * Mapeamos los productos del carrito a las columnas de BD_Ordenes_Detalle.
+       */
+      const detallesFormateados = listaProductos.map(item => ({
+        orden_id: nuevaOrden.id, // Vínculo con la cabecera
+        producto_id: item.producto_id,
+        cantidad: Number(item.cantidad),
+        costo_unitario: Number(item.costo_unitario) || 0,
+        estatus: 'Pendiente' 
+      }));
+
+      // 2. Inserción masiva (Bulk Insert) de todas las partidas de la orden
+      const { data: detalles, error: errorDetalles } = await supabase
+        .from('BD_Ordenes_Detalle')
+        .insert(detallesFormateados)
+        .select();
+
+      if (errorDetalles) {
+        // Si fallan los detalles, lanzamos error para avisar al usuario
+        console.error("Fallo al insertar partidas del pedido:", errorDetalles);
+        throw errorDetalles;
+      }
+
+      return { 
+        data: { orden: nuevaOrden, detalles }, 
+        error: null 
+      };
+
+    } catch (err) {
+      console.error("Error en flujo guardarOrdenCompleta:", err);
+      return { 
+        data: null, 
+        error: {
+          message: err.message,
+          code: err.code,
+          details: err.details
+        } 
+      };
+    }
   }
 };

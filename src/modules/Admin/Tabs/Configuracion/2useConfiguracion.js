@@ -13,16 +13,16 @@ export const useConfiguracion = () => {
   const [unidadesMedida, setUnidadesMedida] = useState([]);
   const [areasUso, setAreasUso] = useState([]);
   const [roles, setRoles] = useState([]); 
-  const [categorias, setCategorias] = useState([]); // Agregado para el manejo de categorías
+  const [categorias, setCategorias] = useState([]);
 
-  // Estado para selectores en formularios (unificado para Productos/Trabajadores)
+  // Estado unificado para formularios (Selects)
   const [catalogosSelectores, setCatalogosSelectores] = useState({
     unidades: [],
     areas: [],
     sucursales: [],
     proveedores: [],
     roles: [],
-    categorias: [] // Agregado para el manejo de categorías
+    categorias: []
   });
 
   // ==========================================
@@ -85,19 +85,20 @@ export const useConfiguracion = () => {
     setCategorias(data || []);
   }, []);
 
-  // Carga masiva para dropdowns (optimiza peticiones en formularios)
+  // Carga paralela para selectores
   const cargarCatalogosParaFormularios = useCallback(async () => {
     setLoading(true);
     const res = await ConfiguracionService.getCatalogosParaSelectores();
     setLoading(false);
     if (res.error) toast.error('Error al sincronizar catálogos auxiliares');
+    
     setCatalogosSelectores({
-      unidades: res.unidades,
-      areas: res.areas,
-      sucursales: res.sucursales,
-      proveedores: res.proveedores,
-      roles: res.roles,
-      categorias: res.categorias // Asignamos las categorías obtenidas del servicio
+      unidades: res.unidades || [],
+      areas: res.areas || [],
+      sucursales: res.sucursales || [],
+      proveedores: res.proveedores || [],
+      roles: res.roles || [],
+      categorias: res.categorias || []
     });
   }, []);
 
@@ -105,9 +106,6 @@ export const useConfiguracion = () => {
   // MÉTODOS DE GUARDADO (CREATE / UPDATE)
   // ==========================================
 
-  /**
-   * Procesa el guardado de cualquier catálogo
-   */
   const guardarDatoGenerico = async (metodo, payload, callbackCarga) => {
     if (loading) return false;
 
@@ -118,167 +116,82 @@ export const useConfiguracion = () => {
     if (error) {
       let mensajeAmigable = 'No se pudo guardar la información.';
       
-      // Manejo de errores específicos de PostgreSQL / Supabase
-      if (error.code === '23505') mensajeAmigable = 'Error: Ya existe un registro con esos datos (duplicado).';
-      if (error.code === '23503') mensajeAmigable = 'Error: Referencia inválida (el rol o sucursal no existe).';
-      if (error.code === '23502') mensajeAmigable = 'Error: Faltan campos obligatorios.';
-      if (error.code === '42703') mensajeAmigable = `Error Técnico: Columna no encontrada.`;
+      // Mapeo de códigos de error de Postgres (Supabase)
+      if (error.code === '23505') mensajeAmigable = 'Error: Ya existe un registro con ese nombre o identificador único.';
+      if (error.code === '23503') mensajeAmigable = 'Error: No se puede eliminar o modificar porque este registro está siendo usado en otra tabla.';
+      if (error.code === '23502') mensajeAmigable = 'Error: Faltan campos obligatorios para completar el registro.';
       
-      toast.error(`${mensajeAmigable}\nDetalle: ${error.message}`, {
-        duration: 6000,
-        style: { borderLeft: '5px solid #ba1a1a' }
-      });
-      
-      console.error("Error completo de guardado:", error);
+      toast.error(`${mensajeAmigable}\nDetalle: ${error.message}`, { duration: 5000 });
       return false;
     }
 
-    toast.success('¡Registro guardado exitosamente!');
+    toast.success('¡Registro actualizado exitosamente!');
     if (callbackCarga) await callbackCarga(); 
     return true;
   };
 
-  // Alias para uso simplificado en los componentes .jsx
-  const guardarSucursal = (data) => 
-    guardarDatoGenerico(ConfiguracionService.guardarSucursal, data, cargarSucursales);
-    
-  const guardarProveedor = (data) => 
-    guardarDatoGenerico(ConfiguracionService.guardarProveedor, data, cargarProveedores);
-    
-  const guardarTrabajador = (data) => 
-    guardarDatoGenerico(ConfiguracionService.guardarTrabajador, data, cargarTrabajadores);
-
-  const guardarRol = (data) => 
-    guardarDatoGenerico(ConfiguracionService.guardarRol, data, cargarRoles);
-
-  const guardarCategoria = (data) => 
-    guardarDatoGenerico(ConfiguracionService.guardarCategoria, data, cargarCategorias);
+  // Alias para componentes
+  const guardarSucursal = (data) => guardarDatoGenerico(ConfiguracionService.guardarSucursal, data, cargarSucursales);
+  const guardarProveedor = (data) => guardarDatoGenerico(ConfiguracionService.guardarProveedor, data, cargarProveedores);
+  const guardarTrabajador = (data) => guardarDatoGenerico(ConfiguracionService.guardarTrabajador, data, cargarTrabajadores);
+  const guardarRol = (data) => guardarDatoGenerico(ConfiguracionService.guardarRol, data, cargarRoles);
+  const guardarCategoria = (data) => guardarDatoGenerico(ConfiguracionService.guardarCategoria, data, cargarCategorias);
 
   // ==========================================
-  // MÉTODOS DE ESTATUS (TOGGLE ACTIVO/INACTIVO)
+  // ESTATUS Y BORRADO LÓGICO
   // ==========================================
 
   const cambiarEstatus = async (tabla, id, estatusActual, callbackCarga) => {
     setLoading(true);
+    // Normalizamos el estatus a minúsculas para coincidir con el trigger SQL
+    const nuevoEstatus = (estatusActual === 'activo') ? 'inactivo' : 'activo';
+    
     const { error } = await ConfiguracionService.toggleEstatusGenerico(tabla, id, estatusActual);
     setLoading(false);
 
     if (error) {
-      toast.error('No se pudo actualizar el estatus');
-      console.error(`Error en toggleEstatus (${tabla}):`, error);
+      toast.error('Error al cambiar el estatus en el servidor.');
       return false;
     }
     
-    toast.success('Estatus actualizado correctamente');
+    toast.success(`Estatus cambiado a: ${nuevoEstatus}`);
     if (callbackCarga) await callbackCarga();
     return true;
   };
 
   // ==========================================
-  // MÉTODOS DE IMPORTACIÓN MASIVA
+  // IMPORTACIÓN MASIVA (EXCEL)
   // ==========================================
 
-  const importarProveedores = useCallback(async (proveedoresExcel) => {
-    if (!Array.isArray(proveedoresExcel) || proveedoresExcel.length === 0) {
-      toast.error('No hay datos para importar.');
+  const importarMasivoGenerico = async (metodo, datos, callbackCarga, nombreEntidad) => {
+    if (!Array.isArray(datos) || datos.length === 0) {
+      toast.error('El archivo no contiene datos válidos.');
       return false;
     }
 
     setLoading(true);
     try {
-      const { data, error } = await ConfiguracionService.importarProveedoresMasivo(proveedoresExcel);
-      if (error) {
-        toast.error(`Error en importación masiva:\n${error.message || 'Error desconocido'}`);
-        return false;
-      }
-      toast.success(`¡Se han importado exitosamente ${data?.length || 0} proveedores!`);
-      await cargarProveedores();
+      const { data, error } = await metodo(datos);
+      if (error) throw error;
+
+      toast.success(`¡Sincronización exitosa! Se procesaron ${data?.length || 0} ${nombreEntidad}.`);
+      if (callbackCarga) await callbackCarga();
       return true;
     } catch (err) {
-      console.error("Error inesperado en importarProveedores:", err);
-      toast.error("Error inesperado al procesar la importación masiva.");
+      console.error(`Error importando ${nombreEntidad}:`, err);
+      toast.error(`Error en la importación: ${err.message}`);
       return false;
     } finally {
       setLoading(false);
     }
-  }, [cargarProveedores]);
+  };
 
-  const importarSucursales = useCallback(async (sucursalesExcel) => {
-    if (!Array.isArray(sucursalesExcel) || sucursalesExcel.length === 0) {
-      toast.error('No hay datos para importar.');
-      return false;
-    }
-
-    setLoading(true);
-    try {
-      const { data, error } = await ConfiguracionService.importarSucursalesMasivo(sucursalesExcel);
-      if (error) {
-        toast.error(`Error en importación masiva:\n${error.message || 'Error desconocido'}`);
-        return false;
-      }
-      toast.success(`¡Se han importado exitosamente ${data?.length || 0} sucursales!`);
-      await cargarSucursales();
-      return true;
-    } catch (err) {
-      console.error("Error inesperado en importarSucursales:", err);
-      toast.error("Error inesperado al procesar la importación masiva.");
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, [cargarSucursales]);
-
-  const importarCategorias = useCallback(async (categoriasExcel) => {
-    if (!Array.isArray(categoriasExcel) || categoriasExcel.length === 0) {
-      toast.error('No hay datos para importar.');
-      return false;
-    }
-
-    setLoading(true);
-    try {
-      const { data, error } = await ConfiguracionService.importarCategoriasMasivo(categoriasExcel);
-      if (error) {
-        toast.error(`Error en importación masiva:\n${error.message || 'Error desconocido'}`);
-        return false;
-      }
-      toast.success(`¡Se han importado exitosamente ${data?.length || 0} categorías!`);
-      await cargarCategorias();
-      return true;
-    } catch (err) {
-      console.error("Error inesperado en importarCategorias:", err);
-      toast.error("Error inesperado al procesar la importación masiva.");
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, [cargarCategorias]);
-
-  const importarProductos = useCallback(async (productosExcel) => {
-    if (!Array.isArray(productosExcel) || productosExcel.length === 0) {
-      toast.error('No hay datos para importar.');
-      return false;
-    }
-
-    setLoading(true);
-    try {
-      const { data, error } = await ConfiguracionService.importarProductosMasivo(productosExcel);
-      if (error) {
-        toast.error(`Error en importación masiva:\n${error.message || 'Error desconocido'}`);
-        return false;
-      }
-      toast.success(`¡Se han importado exitosamente ${data?.length || 0} productos!`);
-      return true;
-    } catch (err) {
-      console.error("Error inesperado en importarProductos:", err);
-      toast.error("Error inesperado al procesar la importación masiva.");
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const importarProveedores = (datos) => importarMasivoGenerico(ConfiguracionService.importarProveedoresMasivo, datos, cargarProveedores, 'proveedores');
+  const importarSucursales = (datos) => importarMasivoGenerico(ConfiguracionService.importarSucursalesMasivo, datos, cargarSucursales, 'sucursales');
+  const importarCategorias = (datos) => importarMasivoGenerico(ConfiguracionService.importarCategoriasMasivo, datos, cargarCategorias, 'categorías');
+  const importarProductos = (datos) => importarMasivoGenerico(ConfiguracionService.importarProductosMasivo, datos, null, 'productos');
 
   return {
-    // Estados expuestos
     loading,
     sucursales,
     proveedores,
@@ -286,28 +199,25 @@ export const useConfiguracion = () => {
     unidadesMedida,
     areasUso,
     roles, 
-    categorias, // Expuesto para componentes consumidores
+    categorias,
     catalogosSelectores,
 
-    // Métodos de carga expuestos
     cargarSucursales,
     cargarProveedores,
     cargarTrabajadores,
     cargarUnidadesMedida,
     cargarAreasUso,
     cargarRoles, 
-    cargarCategorias, // Expuesto para cargar categorías individuales
+    cargarCategorias,
     cargarCatalogosParaFormularios,
 
-    // Métodos de acción expuestos
     guardarSucursal,
     guardarProveedor,
     guardarTrabajador,
     guardarRol, 
-    guardarCategoria, // Expuesto para guardar categorías individuales
+    guardarCategoria,
     cambiarEstatus,
 
-    // Nuevos métodos de carga masiva expuestos
     importarProveedores,
     importarSucursales,
     importarCategorias,
