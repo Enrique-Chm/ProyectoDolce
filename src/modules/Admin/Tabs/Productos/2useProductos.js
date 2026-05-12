@@ -17,6 +17,9 @@ export const useProductos = () => {
   // ==========================================
   // OBTENER DATOS (LISTADO)
   // ==========================================
+  /**
+   * Carga la lista de productos enriquecida desde el servicio.
+   */
   const cargarProductos = useCallback(async () => {
     setLoading(true);
     try {
@@ -25,7 +28,6 @@ export const useProductos = () => {
         toast.error(`Error de carga: ${error.message || 'No se pudo obtener la lista'}`);
         return;
       }
-      // El service ya devuelve la data enriquecida con sucursales_info y relaciones
       setProductos(data || []);
     } catch (err) {
       console.error("Error inesperado al cargar productos:", err);
@@ -38,6 +40,10 @@ export const useProductos = () => {
   // ==========================================
   // CARGAR OPCIONES PARA SELECTS (UI)
   // ==========================================
+  /**
+   * Sincroniza los catálogos necesarios para los formularios de creación/edición.
+   * Recupera proveedores, sucursales, unidades y categorías en una sola carga.
+   */
   const cargarCatalogosFormulario = useCallback(async () => {
     setLoading(true);
     try {
@@ -65,6 +71,10 @@ export const useProductos = () => {
   // ==========================================
   // GUARDAR DATOS (CREAR O EDITAR)
   // ==========================================
+  /**
+   * Procesa el guardado de un producto. 
+   * Valida los campos obligatorios definidos en el esquema SQL (Not Null).
+   */
   const guardarProducto = useCallback(async (productoData) => {
     // --- VALIDACIONES DE NEGOCIO (FRONTEND) ---
     if (!productoData.nombre || productoData.nombre.trim() === '') {
@@ -72,7 +82,6 @@ export const useProductos = () => {
       return false;
     }
 
-    // Validación de categorías y unidades (Obligatorias según tu lógica de BD)
     if (!productoData.categoria_id) {
       toast.error('Debes seleccionar una categoría.');
       return false;
@@ -85,10 +94,9 @@ export const useProductos = () => {
 
     setLoading(true);
     try {
-      const { data, error } = await ProductosService.guardarProducto(productoData);
+      const { error } = await ProductosService.guardarProducto(productoData);
 
       if (error) {
-        // Tratamiento detallado del error de la base de datos
         const mensajePrincipal = error.message || 'Error desconocido';
         const pista = error.hint ? `\nSugerencia: ${error.hint}` : '';
         
@@ -100,7 +108,7 @@ export const useProductos = () => {
       }
 
       toast.success('¡Producto guardado exitosamente!');
-      await cargarProductos(); // Refrescamos la lista principal
+      await cargarProductos(); // Refrescamos la lista local para reflejar cambios
       return true;
     } catch (err) {
       console.error("Error inesperado en guardarProducto:", err);
@@ -114,6 +122,9 @@ export const useProductos = () => {
   // ==========================================
   // CAMBIAR ESTATUS (ACTIVAR/DESACTIVAR)
   // ==========================================
+  /**
+   * Alterna el estado de visibilidad del producto (Columna 'activo').
+   */
   const toggleEstatus = useCallback(async (id, estatusActual) => {
     try {
       const { error } = await ProductosService.toggleEstatusProducto(id, estatusActual);
@@ -123,7 +134,7 @@ export const useProductos = () => {
         return false;
       }
 
-      // Actualizamos el estado local inmediatamente para una UI reactiva
+      // Actualización optimista: Refleja el cambio visual de inmediato
       setProductos(prevProductos => 
         prevProductos.map(prod => 
           prod.id === id ? { ...prod, activo: !estatusActual } : prod

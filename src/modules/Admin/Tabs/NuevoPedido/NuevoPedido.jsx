@@ -11,7 +11,6 @@ export default function NuevoPedido({ onVolver }) {
     header,
     setHeader,
     carrito,
-    totalEstimado,
     agregarAlCarrito,
     eliminarDelCarrito,
     procesarOrden
@@ -278,13 +277,7 @@ export default function NuevoPedido({ onVolver }) {
               />
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px', paddingBottom: 0, borderTop: '2px dashed var(--border-ghost)' }}>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>COSTO ESTIMADO</span>
-                <span style={{ fontSize: '1.5rem', fontWeight: '900', color: 'var(--color-primary)', lineHeight: 1 }}>
-                  ${totalEstimado.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                </span>
-              </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', paddingTop: '16px', paddingBottom: 0, borderTop: '2px dashed var(--border-ghost)' }}>
               <button 
                 onClick={procesarOrden} 
                 disabled={loading || carrito.length === 0} 

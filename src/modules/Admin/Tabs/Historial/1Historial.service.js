@@ -9,12 +9,18 @@ export const HistorialService = {
   /**
    * Trae las órdenes con estatus Completado o Cancelado.
    * Incluye la información del solicitante, sucursal y proveedor.
+   * Se eliminó cualquier referencia a campos de costo o totales.
    */
   async getHistorial() {
     const { data, error } = await supabase
       .from('BD_Ordenes_Compra')
       .select(`
-        *,
+        id,
+        folio,
+        estatus,
+        prioridad,
+        notas,
+        created_at,
         proveedor:Cat_Proveedores(nombre),
         solicitante:Cat_Trabajadores(nombre_completo),
         sucursal:Cat_sucursales(nombre)
@@ -41,12 +47,17 @@ export const HistorialService = {
     const { data, error } = await supabase
       .from('BD_Ordenes_Compra')
       .select(`
-        *,
+        id,
+        folio,
+        estatus,
+        prioridad,
+        notas,
+        created_at,
         proveedor:Cat_Proveedores(nombre),
         solicitante:Cat_Trabajadores(nombre_completo),
         sucursal:Cat_sucursales(nombre)
       `)
-      .ilike('folio', `%${termino}%`) // Búsqueda flexible (no importa mayúsculas/minúsculas)
+      .ilike('folio', `%${termino}%`) // Búsqueda flexible
       .in('estatus', ['Completado', 'Cancelado'])
       .order('created_at', { ascending: false });
 
@@ -72,7 +83,12 @@ export const HistorialService = {
     const { data, error } = await supabase
       .from('BD_Ordenes_Compra')
       .select(`
-        *,
+        id,
+        folio,
+        estatus,
+        prioridad,
+        notas,
+        created_at,
         proveedor:Cat_Proveedores(nombre),
         solicitante:Cat_Trabajadores(nombre_completo),
         sucursal:Cat_sucursales(nombre)

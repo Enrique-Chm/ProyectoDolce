@@ -85,10 +85,6 @@ export const ConfiguracionService = {
   // 4. TRABAJADORES (Recursos Humanos)
   // ==========================================
   async getTrabajadores() {
-    /** * CORRECCIÓN: Eliminamos el join automático 'sucursal:Cat_sucursales' 
-     * ya que la columna sucursal_id ya no existe. 
-     * El cruce de nombres de sucursales se hará en el Hook mediante el array sucursales_ids.
-     */
     const { data, error } = await supabase
       .from('Cat_Trabajadores')
       .select(`
@@ -97,7 +93,6 @@ export const ConfiguracionService = {
       `)
       .order('nombre_completo', { ascending: true });
 
-    // Solo procesamos el nombre del rol, las sucursales las procesa el Hook
     const dataProcesada = data?.map(t => ({
       ...t,
       rol_nombre: t.rol?.nombre || 'N/A'
@@ -109,23 +104,17 @@ export const ConfiguracionService = {
   async guardarTrabajador(trabajadorData) {
     const dataLimpia = { ...trabajadorData };
     
-    // Si es nuevo, eliminamos el ID para que Postgres genere el UUID
     if (!dataLimpia.id || dataLimpia.id === "" || String(dataLimpia.id) === "null") {
       delete dataLimpia.id;
     }
 
-    // Seguridad: Password
     if (dataLimpia.id && (!dataLimpia.password || dataLimpia.password.trim() === "")) {
       delete dataLimpia.password;
     }
 
-    /**
-     * LIMPIEZA CRÍTICA: Eliminamos explícitamente cualquier referencia a la columna vieja.
-     * Si el objeto del formulario aún tiene 'sucursal_id', Supabase lanzará el error 42703.
-     */
     delete dataLimpia.sucursal_id;
     delete dataLimpia.sucursal_nombre;
-    delete dataLimpia.rol_nombre; // Eliminamos metadata de la UI que no es columna de tabla
+    delete dataLimpia.rol_nombre; 
 
     const { data, error } = await supabase
       .from('Cat_Trabajadores')
@@ -205,7 +194,7 @@ export const ConfiguracionService = {
   },
 
   // ==========================================
-  // 7. IMPORTACIÓN MASIVA (PRODUCTOS)
+  // 7. IMPORTACIÓN MASIVA (PRODUCTOS OPERATIVOS)
   // ==========================================
   async importarProductosMasivo(productosExcel) {
     if (!Array.isArray(productosExcel) || productosExcel.length === 0) {
@@ -233,6 +222,7 @@ export const ConfiguracionService = {
       const productosListos = productosExcel.map(row => {
         let sucsIds = [];
         const sucsTexto = normalizar(row.sucursales);
+        
         if (sucsTexto === 'todas' || sucsTexto === 'todaslassucursales') {
           sucsIds = (sucursales.data || []).map(s => s.id);
         } else if (row.sucursales) {
@@ -246,7 +236,7 @@ export const ConfiguracionService = {
           um_id: mapUms[normalizar(row.unidad_medida)] || null,
           presentacion: row.presentacion || null,
           contenido: Number(row.contenido) || null,
-          costo_actual: Number(row.costo_actual) || 0,
+          // LIMPIEZA: Se eliminó costo_actual para coincidir con la nueva tabla
           proveedor_id: mapProv[normalizar(row.proveedor)] || null,
           proveedor_secundario_id: mapProv[normalizar(row.proveedor_secundario)] || null,
           sucursales_ids: sucsIds,

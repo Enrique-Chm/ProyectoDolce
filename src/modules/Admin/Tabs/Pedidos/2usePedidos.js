@@ -7,23 +7,18 @@ import toast from 'react-hot-toast';
 export const usePedidos = () => {
   const [loading, setLoading] = useState(false);
   
-  // Recuperamos la sesión actual
+  // Recuperamos la sesión actual para validaciones de seguridad
   const sesion = AuthService.getSesion();
   
-  // Estado para el Dashboard (Solo lo que está en curso)
+  // Estado para el Dashboard (Pedidos en curso)
   const [ordenesActivas, setOrdenesActivas] = useState([]);
-
-  // Estado para el Historial (Órdenes Completadas / Canceladas en rango de fechas)
-  const [ordenesHistorial, setOrdenesHistorial] = useState([]);
   
-  // Estado para el Checklist (Operación en tiempo real)
+  // Estado para el Checklist (Datos de la orden seleccionada para surtir)
   const [detalleOrdenActual, setDetalleOrdenActual] = useState(null);
 
   /**
    * EXTRAER VALORES PRIMITIVOS PARA DEPENDENCIAS
-   * Esto es vital para evitar el bucle infinito. Usamos el ID y el permiso (boolean)
-   * en lugar del objeto 'sesion' completo, ya que los objetos cambian de referencia 
-   * en cada renderizado.
+   * Evita bucles infinitos en el useEffect al usar IDs en lugar del objeto sesión completo.
    */
   const sucursalId = sesion?.sucursal_id;
   const tieneAccesoGlobal = sesion?.permisos?.configuracion?.leer || false;
@@ -33,66 +28,32 @@ export const usePedidos = () => {
   // ==========================================
 
   /**
-   * Carga las órdenes para la pestaña "Activos" aplicando filtros de seguridad.
-   * Las dependencias [sucursalId, tieneAccesoGlobal] ahora son estables.
+   * Carga las órdenes para la pestaña "Activos" aplicando filtros por sucursal.
    */
   const cargarOrdenesActivas = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await PedidosService.getOrdenesActivas();
-    
-    if (error) {
-      toast.error('Error al sincronizar pedidos activos');
-      console.error("Error getOrdenesActivas:", error.message);
+    try {
+      const { data, error } = await PedidosService.getOrdenesActivas();
+      
+      if (error) {
+        toast.error('Error al sincronizar pedidos activos');
+        console.error("Error getOrdenesActivas:", error.message);
+        return;
+      }
+
+      let datosFinales = data || [];
+
+      // Si el usuario no es administrador global, solo ve lo de su sucursal
+      if (!tieneAccesoGlobal && sucursalId) {
+          datosFinales = datosFinales.filter(orden => orden.sucursal_id === sucursalId);
+      }
+
+      setOrdenesActivas(datosFinales);
+    } catch (err) {
+      console.error(err);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    let datosFinales = data || [];
-
-    /**
-     * LÓGICA DE VISIBILIDAD BASADA EN PERMISOS JSON:
-     * Si no tiene acceso global, filtramos por la sucursal del usuario.
-     */
-    if (!tieneAccesoGlobal && sucursalId) {
-        datosFinales = datosFinales.filter(orden => orden.sucursal_id === sucursalId);
-    }
-
-    setOrdenesActivas(datosFinales);
-    setLoading(false);
-  }, [sucursalId, tieneAccesoGlobal]);
-
-  /**
-   * Carga el historial de órdenes completadas o canceladas filtrado por rango de fechas
-   * aplicando los mismos filtros de seguridad de sucursal.
-   */
-  const cargarHistorialPorFechas = useCallback(async (fechaInicio, fechaFin) => {
-    if (!fechaInicio || !fechaFin) {
-      toast.error('Selecciona un rango de fechas válido');
-      return;
-    }
-
-    setLoading(true);
-    const { data, error } = await PedidosService.getHistorialPorFechas(fechaInicio, fechaFin);
-    
-    if (error) {
-      toast.error('Error al recuperar historial');
-      console.error("Error getHistorialPorFechas:", error.message);
-      setLoading(false);
-      return;
-    }
-
-    let datosFinales = data || [];
-
-    /**
-     * LÓGICA DE VISIBILIDAD BASADA EN PERMISOS JSON:
-     * Filtramos por sucursal de igual manera que con las activas si no es administrador global.
-     */
-    if (!tieneAccesoGlobal && sucursalId) {
-      datosFinales = datosFinales.filter(orden => orden.sucursal_id === sucursalId);
-    }
-
-    setOrdenesHistorial(datosFinales);
-    setLoading(false);
   }, [sucursalId, tieneAccesoGlobal]);
 
   /**
@@ -101,15 +62,17 @@ export const usePedidos = () => {
   const cargarDetalleDeOrden = useCallback(async (ordenId) => {
     if (!ordenId) return;
     setLoading(true);
-    const { data, error } = await PedidosService.getDetalleDeOrden(ordenId);
-    setLoading(false);
-    
-    if (error) {
-      toast.error('No se pudo recuperar el detalle de la orden');
-      return null;
+    try {
+      const { data, error } = await PedidosService.getDetalleDeOrden(ordenId);
+      if (error) {
+        toast.error('No se pudo recuperar el detalle de la orden');
+        return null;
+      }
+      setDetalleOrdenActual(data);
+      return data;
+    } finally {
+      setLoading(false);
     }
-    setDetalleOrdenActual(data);
-    return data;
   }, []);
 
   // ==========================================
@@ -118,27 +81,27 @@ export const usePedidos = () => {
 
   /**
    * Cambia el estado de un item (Pendiente <-> Comprado).
-   * Usa Optimistic UI para que la experiencia en móviles sea instantánea.
+   * Implementa Optimistic UI para que el check sea instantáneo.
    */
   const toggleEstatusItem = async (detalleId, estatusActual) => {
     const nuevoEstatus = estatusActual === 'Comprado' ? 'Pendiente' : 'Comprado';
     
     if (detalleOrdenActual) {
-      // 1. Guardamos backup por si falla la conexión
+      // 1. Backup de seguridad
       const backup = { ...detalleOrdenActual };
       
-      // 2. Actualizamos la UI inmediatamente (Optimista)
+      // 2. Actualización optimista
       const nuevosDetalles = detalleOrdenActual.detalles.map(det => 
         det.id === detalleId ? { ...det, estatus: nuevoEstatus } : det
       );
       setDetalleOrdenActual({ ...detalleOrdenActual, detalles: nuevosDetalles });
 
-      // 3. Enviamos la petición a Supabase
+      // 3. Petición real
       const { error } = await PedidosService.actualizarEstatusItem(detalleId, nuevoEstatus);
       
       if (error) {
-        toast.error('Error de red al actualizar item');
-        setDetalleOrdenActual(backup); // Revertimos en caso de error
+        toast.error('Error de conexión al actualizar ítem');
+        setDetalleOrdenActual(backup); // Revertimos cambios si falla
         return false;
       }
     }
@@ -146,29 +109,39 @@ export const usePedidos = () => {
   };
 
   /**
-   * Pasa un producto no disponible al segundo proveedor registrado de ese insumo.
-   * Crea una nueva orden para el segundo proveedor y retira el item de la orden actual.
+   * Gestiona el traspaso de un insumo al segundo proveedor por falta de stock.
+   * Remueve el ítem del checklist actual tras la transferencia exitosa.
    */
   const pasarASegundoProveedor = async (detalleId, productoId) => {
     if (!detalleId || !productoId) return false;
+    
+    // Preguntamos al usuario para evitar reasignaciones accidentales
+    const confirmar = window.confirm('¿Confirmas que no hay stock? Se creará un nuevo pedido con el proveedor secundario.');
+    if (!confirmar) return false;
+
     setLoading(true);
-
     try {
-      const { error } = await PedidosService.cambiarAlSegundoProveedor(detalleId, productoId);
+      const { success, nuevoFolio, error } = await PedidosService.cambiarAlSegundoProveedor(detalleId, productoId);
 
-      if (error) {
-        toast.error(error.message || 'No se pudo transferir el insumo al segundo proveedor');
-        setLoading(false);
+      if (!success) {
+        toast.error(error || 'No se pudo transferir el insumo');
         return false;
       }
 
-      setLoading(false);
+      // LIMPIEZA LOCAL (UI): Eliminamos el ítem del checklist actual
+      if (detalleOrdenActual) {
+        const nuevosDetalles = detalleOrdenActual.detalles.filter(det => det.id !== detalleId);
+        setDetalleOrdenActual({ ...detalleOrdenActual, detalles: nuevosDetalles });
+      }
+
+      toast.success(`Insumo reasignado al pedido: ${nuevoFolio}`, { duration: 5000 });
       return true;
     } catch (err) {
       console.error('Error en pasarASegundoProveedor:', err);
       toast.error('Ocurrió un error inesperado');
-      setLoading(false);
       return false;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -177,7 +150,7 @@ export const usePedidos = () => {
   // ==========================================
 
   /**
-   * Cambia el estatus global de la orden (ej: pasar a 'Completado')
+   * Cambia el estatus global de la orden
    */
   const cambiarEstatusOrden = async (ordenId, nuevoEstatus) => {
     setLoading(true);
@@ -189,30 +162,23 @@ export const usePedidos = () => {
       return false;
     }
 
-    // Feedback visual al usuario
     if (nuevoEstatus === 'Completado') {
-      toast.success('¡Orden finalizada y guardada!');
-    } else {
-      toast.success(`Orden marcada como ${nuevoEstatus}`);
-    }
-    
-    // Limpieza de estados tras completar o cancelar
-    if (['Completado', 'Cancelado'].includes(nuevoEstatus)) {
+      toast.success('¡Pedido surtido y archivado correctamente!');
       setOrdenesActivas(prev => prev.filter(o => o.id !== ordenId));
       setDetalleOrdenActual(null);
     } else {
-      // Si solo cambió a "En Proceso", refrescamos la lista
-      await cargarOrdenesActivas();
+      toast.success(`Pedido marcado como ${nuevoEstatus}`);
+      await cargarOrdenesActivas(); 
     }
     
     return true;
   };
 
   /**
-   * Cancela la orden completa
+   * Cancela la orden completa.
    */
   const cancelarPedido = async (ordenId) => {
-    if (!window.confirm('¿Seguro que deseas cancelar este pedido? Se moverá al historial como cancelado.')) return;
+    if (!window.confirm('¿Seguro que deseas cancelar este pedido?')) return;
 
     setLoading(true);
     const { error } = await PedidosService.cancelarOrden(ordenId);
@@ -232,11 +198,9 @@ export const usePedidos = () => {
   return {
     loading,
     ordenesActivas,
-    ordenesHistorial,
     detalleOrdenActual,
     setDetalleOrdenActual,
     cargarOrdenesActivas,
-    cargarHistorialPorFechas,
     cargarDetalleDeOrden,
     toggleEstatusItem,
     pasarASegundoProveedor,

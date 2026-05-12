@@ -21,7 +21,6 @@ export default function Productos({ onVolver }) {
     categoria_id: '',
     presentacion: '',
     contenido: '',
-    costo_actual: '',
     proveedor_id: '',
     proveedor_secundario_id: '',
     um_id: '',
@@ -53,14 +52,6 @@ export default function Productos({ onVolver }) {
     }
   };
 
-  const handleToggleTodasLasSucursales = () => {
-    if (todasSeleccionadas) {
-      setFormData({ ...formData, sucursales_ids: [] });
-    } else {
-      setFormData({ ...formData, sucursales_ids: catalogos.sucursales.map(s => s.id) });
-    }
-  };
-
   const todasSeleccionadas = useMemo(() => {
     if (!catalogos.sucursales || catalogos.sucursales.length === 0) return false;
     const idsActuales = Array.isArray(formData.sucursales_ids) ? formData.sucursales_ids : [];
@@ -82,6 +73,9 @@ export default function Productos({ onVolver }) {
 
   const procesarGuardado = async () => {
     if (!formData.nombre.trim()) return toast.error('El nombre es obligatorio');
+    if (!formData.categoria_id) return toast.error('La categoría es obligatoria');
+    if (!formData.um_id) return toast.error('La unidad de medida es obligatoria');
+    
     const exito = await guardarProducto(formData);
     if (exito) setMostrandoFormulario(false);
   };
@@ -113,14 +107,17 @@ export default function Productos({ onVolver }) {
       </header>
 
       {mostrandoFormulario ? (
-        /* --- FORMULARIO --- */
+        /* --- FORMULARIO ACTUALIZADO --- */
         <section className={styles.card} style={{ animation: 'slideUp 0.3s ease', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '15px' }}>
+            
+            {/* Fila 1: Nombre */}
             <div>
               <label className={styles.labelTop}>NOMBRE DEL PRODUCTO *</label>
-              <input type="text" name="nombre" value={formData.nombre} onChange={handleInputChange} className={styles.inputEditorial} placeholder="Ej: Aceite de Oliva 1L" />
+              <input type="text" name="nombre" value={formData.nombre} onChange={handleInputChange} className={styles.inputEditorial} placeholder="Ej: Aceite de Oliva" />
             </div>
 
+            {/* Fila 2: Marca y Categoría */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div>
                 <label className={styles.labelTop}>MARCA</label>
@@ -135,22 +132,50 @@ export default function Productos({ onVolver }) {
               </div>
             </div>
 
+            {/* Fila 3: Presentación y Contenido (Clave para surtido) */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div>
-                <label className={styles.labelTop}>COSTO ($)</label>
-                <input type="number" name="costo_actual" value={formData.costo_actual} onChange={handleInputChange} className={styles.inputEditorial} placeholder="0.00" />
+                <label className={styles.labelTop}>PRESENTACIÓN (Empaque)</label>
+                <input type="text" name="presentacion" value={formData.presentacion} onChange={handleInputChange} className={styles.inputEditorial} placeholder="Ej: Caja, Saco, Botella" />
               </div>
               <div>
-                <label className={styles.labelTop}>UNIDAD (UM)</label>
+                <label className={styles.labelTop}>CONTENIDO NETO (Número)</label>
+                <input type="number" name="contenido" value={formData.contenido} onChange={handleInputChange} className={styles.inputEditorial} placeholder="Ej: 6, 1.5, 20" />
+              </div>
+            </div>
+
+            {/* Fila 4: Unidad de Medida */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div>
+                <label className={styles.labelTop}>UNIDAD (UM) *</label>
                 <select name="um_id" value={formData.um_id} onChange={handleInputChange} className={styles.selectEditorial}>
                   <option value="">Seleccionar...</option>
-                  {catalogos.unidades.map(u => <option key={u.id} value={u.id}>{u.abreviatura}</option>)}
+                  {catalogos.unidades.map(u => <option key={u.id} value={u.id}>{u.abreviatura} - {u.nombre}</option>)}
                 </select>
               </div>
             </div>
 
+            {/* Fila 5: Proveedores (Principal y Secundario) */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div>
+                <label className={styles.labelTop}>PROVEEDOR PRINCIPAL</label>
+                <select name="proveedor_id" value={formData.proveedor_id} onChange={handleInputChange} className={styles.selectEditorial}>
+                  <option value="">Ninguno</option>
+                  {catalogos.proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={styles.labelTop}>PROVEEDOR SECUNDARIO</label>
+                <select name="proveedor_secundario_id" value={formData.proveedor_secundario_id} onChange={handleInputChange} className={styles.selectEditorial}>
+                  <option value="">Ninguno</option>
+                  {catalogos.proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {/* Fila 6: Sucursales */}
             <div>
-              <label className={styles.labelTop}>SUCURSALES DISPONIBLES</label>
+              <label className={styles.labelTop}>VISIBILIDAD POR SUCURSAL</label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '8px', padding: '12px', background: 'var(--color-surface-lowest)', borderRadius: '12px', maxHeight: '140px', overflowY: 'auto' }}>
                 {catalogos.sucursales.map(suc => {
                   const selec = formData.sucursales_ids.includes(suc.id);
@@ -171,7 +196,7 @@ export default function Productos({ onVolver }) {
           </button>
         </section>
       ) : (
-        /* --- LISTADO (HOMOLOGADO A SUCURSALES) --- */
+        /* --- LISTADO --- */
         <>
           <button 
             onClick={abrirParaCrear} 
@@ -199,7 +224,6 @@ export default function Productos({ onVolver }) {
                   padding: '8px 12px', borderRadius: '10px', backgroundColor: 'white',
                   boxShadow: '0 2px 6px rgba(0,0,0,0.02)', gap: '12px', minHeight: '64px'
                 }}>
-                  {/* Info */}
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <h4 style={{ fontSize: '0.875rem', margin: 0, fontWeight: 'bold', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -216,37 +240,21 @@ export default function Productos({ onVolver }) {
                     </div>
 
                     <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <span style={{ fontWeight: 'bold', color: 'var(--color-primary)' }}>${prod.costo_actual}</span>
-                      <span>•</span>
                       <span>{prod.categoria?.nombre || 'S/C'}</span>
+                      <span>•</span>
+                      <span>{prod.presentacion || 'PIEZA'} ({prod.contenido || 1} {prod.unidad_medida?.abreviatura})</span>
                       <span>•</span>
                       <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>location_on</span>
                       {numSucs === 0 || numSucs === catalogos.sucursales.length ? 'Todas' : `${numSucs} sucs`}
                     </p>
                   </div>
                   
-                  {/* Botones cuadrados mini */}
                   <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                    <button 
-                      onClick={() => abrirParaEditar(prod)} 
-                      className={styles.btnSecondary} 
-                      style={{ padding: '0', width: '34px', height: '34px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-surface-low)' }} 
-                    >
+                    <button onClick={() => abrirParaEditar(prod)} className={styles.btnSecondary} style={{ padding: '0', width: '34px', height: '34px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-surface-low)' }}>
                       <span className="material-symbols-outlined" style={{ fontSize: '1.05rem', color: 'var(--text-main)' }}>edit</span>
                     </button>
-                    <button 
-                      onClick={() => toggleEstatus(prod.id, prod.activo)} 
-                      className={styles.btnOutlined} 
-                      style={{ 
-                        padding: '0', width: '34px', height: '34px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        borderColor: esActivo ? '#ba1a1a' : 'var(--color-primary)',
-                        color: esActivo ? '#ba1a1a' : 'var(--color-primary)',
-                        backgroundColor: 'transparent'
-                      }} 
-                    >
-                      <span className="material-symbols-outlined" style={{ fontSize: '1.05rem' }}>
-                        {esActivo ? 'visibility_off' : 'visibility'}
-                      </span>
+                    <button onClick={() => toggleEstatus(prod.id, prod.activo)} className={styles.btnOutlined} style={{ padding: '0', width: '34px', height: '34px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderColor: esActivo ? '#ba1a1a' : 'var(--color-primary)', color: esActivo ? '#ba1a1a' : 'var(--color-primary)', backgroundColor: 'transparent' }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '1.05rem' }}>{esActivo ? 'visibility_off' : 'visibility'}</span>
                     </button>
                   </div>
                 </div>

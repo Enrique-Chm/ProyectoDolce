@@ -8,13 +8,12 @@ export const useHistorial = () => {
   const [loading, setLoading] = useState(false);
   const [ordenesHistorial, setOrdenesHistorial] = useState([]);
   
-  // Obtenemos la sesión
+  // Obtenemos la sesión para validar la pertenencia de los datos
   const sesion = AuthService.getSesion();
 
   /**
    * ESTABILIZACIÓN DE DEPENDENCIAS
-   * Extraemos valores primitivos (strings/booleans) para evitar que el cambio de 
-   * referencia del objeto 'sesion' genere un bucle infinito en el useEffect.
+   * Extraemos valores primitivos para evitar bucles en los efectos secundarios.
    */
   const sucursalId = sesion?.sucursal_id;
   const esAdmin = sesion?.permisos?.configuracion?.leer || false;
@@ -22,6 +21,10 @@ export const useHistorial = () => {
   // ==========================================
   // 1. CARGA DE DATOS CON FILTRO DE SEGURIDAD
   // ==========================================
+  /**
+   * Recupera el historial general aplicando restricciones por sucursal
+   * si el usuario no tiene rol administrativo.
+   */
   const cargarHistorial = useCallback(async () => {
     setLoading(true);
     try {
@@ -31,11 +34,7 @@ export const useHistorial = () => {
 
       let datosFiltrados = data || [];
 
-      /**
-       * LÓGICA DE VISIBILIDAD DINÁMICA:
-       * Si el usuario no tiene permisos globales (no es Admin/Gerente), 
-       * solo puede ver el historial de su propia sucursal.
-       */
+      // LÓGICA DE VISIBILIDAD: Si no es Admin, solo ve su sucursal
       if (!esAdmin && sucursalId) {
         datosFiltrados = datosFiltrados.filter(orden => orden.sucursal_id === sucursalId);
       }
@@ -52,6 +51,9 @@ export const useHistorial = () => {
   // ==========================================
   // 2. CARGA DE DATOS POR RANGO DE FECHAS
   // ==========================================
+  /**
+   * Filtra las órdenes finalizadas por un periodo de tiempo específico.
+   */
   const cargarHistorialPorFechas = useCallback(async (fechaInicio, fechaFin) => {
     if (!fechaInicio || !fechaFin) {
       toast.error('Selecciona un rango de fechas válido');
@@ -66,7 +68,7 @@ export const useHistorial = () => {
 
       let datosFiltrados = data || [];
 
-      // Aplicamos la misma lógica de visibilidad dinámica
+      // Filtro de seguridad por sucursal
       if (!esAdmin && sucursalId) {
         datosFiltrados = datosFiltrados.filter(orden => orden.sucursal_id === sucursalId);
       }
@@ -83,8 +85,11 @@ export const useHistorial = () => {
   // ==========================================
   // 3. BÚSQUEDA POR FOLIO (RESPETANDO EL FILTRO)
   // ==========================================
+  /**
+   * Permite localizar una orden específica mediante su folio único.
+   */
   const buscarFolio = async (termino) => {
-    // Si el campo de búsqueda está vacío, recargamos la lista completa
+    // Si el campo de búsqueda está vacío, regresamos a la lista completa
     if (!termino.trim()) return cargarHistorial();
 
     setLoading(true);
@@ -95,7 +100,7 @@ export const useHistorial = () => {
 
       let datosFiltrados = data || [];
 
-      // Aplicamos el mismo filtro de seguridad en los resultados de búsqueda
+      // Aplicamos el filtro de seguridad en los resultados de búsqueda
       if (!esAdmin && sucursalId) {
         datosFiltrados = datosFiltrados.filter(orden => orden.sucursal_id === sucursalId);
       }

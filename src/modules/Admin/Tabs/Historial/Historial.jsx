@@ -49,14 +49,6 @@ export default function Historial({ onVerDetalle }) {
     });
   };
 
-  // Formateador de moneda MXN
-  const formatearDinero = (monto) => {
-    return new Intl.NumberFormat('es-MX', { 
-      style: 'currency', 
-      currency: 'MXN' 
-    }).format(monto || 0);
-  };
-
   return (
     <div className={styles.fadeIN} style={{ width: '100%', maxWidth: '100%', paddingBottom: '100px' }}>
       {/* --- ENCABEZADO --- */}
@@ -189,7 +181,7 @@ export default function Historial({ onVerDetalle }) {
                 gap: '6px'
               }}
             >
-              {/* --- FILA SUPERIOR: FOLIO Y STATUS HASTA LA DERECHA --- */}
+              {/* --- FILA SUPERIOR: FOLIO Y STATUS --- */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                 <span className={styles.labelTop} style={{ 
                   fontSize: '0.625rem', 
@@ -216,9 +208,8 @@ export default function Historial({ onVerDetalle }) {
                 </span>
               </div>
 
-              {/* --- FILA INFERIOR: INFORMACIÓN Y ACCIONES --- */}
+              {/* --- FILA INFERIOR: INFORMACIÓN --- */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', width: '100%', gap: '12px' }}>
-                {/* Bloque Izquierdo: Sucursal, Proveedor, Total y Solicitante */}
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
                   
                   {/* Sucursal */}
@@ -247,12 +238,8 @@ export default function Historial({ onVerDetalle }) {
                     {orden.proveedor?.nombre || 'Proveedor Desconocido'}
                   </h2>
 
-                  {/* Precio, Solicitante y Fecha */}
+                  {/* Solicitante y Fecha */}
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    <span style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>
-                      {formatearDinero(orden.total_estimado)}
-                    </span>
-                    <span>•</span>
                     <span style={{ color: 'var(--text-light)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       👤 {orden.solicitante?.nombre_completo || 'Sistema'}
                     </span>
@@ -263,7 +250,7 @@ export default function Historial({ onVerDetalle }) {
                   </div>
                 </div>
                 
-                {/* Bloque Derecho: Botón de Acción Mini */}
+                {/* Botón de Acción Mini */}
                 <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                   <button 
                     onClick={(e) => { e.stopPropagation(); onVerDetalle(orden.id); }}

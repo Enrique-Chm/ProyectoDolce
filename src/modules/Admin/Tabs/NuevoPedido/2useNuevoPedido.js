@@ -72,7 +72,7 @@ export const useNuevoPedido = (onVolver) => {
   }, [cargarProductos]);
 
   // ==========================================
-  // 2. GESTIÓN DEL CARRITO (CON CONCIENCIA DE UNIDAD)
+  // 2. GESTIÓN DEL CARRITO (OPERATIVO)
   // ==========================================
   
   const agregarAlCarrito = useCallback((producto, cantidad = 1) => {
@@ -90,13 +90,12 @@ export const useNuevoPedido = (onVolver) => {
         );
       }
 
-      // Guardamos toda la metadata necesaria para el resumen y la base de datos
+      // Guardamos metadata operativa necesaria para el resumen y la base de datos (SIN COSTOS)
       return [...prev, {
         producto_id: producto.id,
         nombre: producto.nombre,
         marca: producto.marca,
         abreviatura_um: producto.um_abreviatura, // ej. "L"
-        costo_unitario: producto.costo_actual || 0,
         cantidad: numCant,
         proveedor_id: producto.proveedor_id,
         categoria_nombre: producto.categoria_nombre,
@@ -112,10 +111,6 @@ export const useNuevoPedido = (onVolver) => {
     setCarrito(prev => prev.filter(item => item.producto_id !== id));
     toast.success('Insumo removido');
   };
-
-  const totalEstimado = useMemo(() => {
-    return carrito.reduce((acc, item) => acc + (item.cantidad * item.costo_unitario), 0);
-  }, [carrito]);
 
   // ==========================================
   // 3. PROCESAMIENTO FINAL (DIVISIÓN POR PROVEEDOR)
@@ -139,10 +134,9 @@ export const useNuevoPedido = (onVolver) => {
 
       const idsProveedores = Object.keys(gruposPorProveedor);
 
-      // 2. Insertamos cada Orden de Compra
+      // 2. Insertamos cada Orden de Compra (Requisición)
       for (const pId of idsProveedores) {
         const itemsGrupo = gruposPorProveedor[pId];
-        const subtotal = itemsGrupo.reduce((acc, i) => acc + (i.cantidad * i.costo_unitario), 0);
         
         const randomStr = Math.random().toString(36).substring(7).toUpperCase();
         const folio = `REQ-${new Date().getFullYear()}-${randomStr}`;
@@ -152,11 +146,11 @@ export const useNuevoPedido = (onVolver) => {
           solicitante_id: header.solicitante_id,
           sucursal_id: header.sucursal_id,
           proveedor_id: pId === 'SIN-PROVEEDOR' ? null : pId,
-          total_estimado: subtotal,
           notas: header.observaciones,
           estatus: 'Pendiente'
         };
 
+        // El servicio ya no debe recibir total_estimado ni costos_unitarios
         const { error } = await NuevoPedidoService.guardarOrdenCompleta(payloadCabecera, itemsGrupo);
         if (error) throw error;
       }
@@ -179,7 +173,6 @@ export const useNuevoPedido = (onVolver) => {
     header,
     setHeader,
     carrito,
-    totalEstimado,
     agregarAlCarrito,
     eliminarDelCarrito,
     procesarOrden

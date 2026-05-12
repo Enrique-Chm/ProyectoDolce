@@ -1,4 +1,3 @@
-// src/modules/Admin/Tabs/Pedidos/1Pedidos.Service.js
 import { supabase } from '../../../../lib/supabaseClient';
 
 export const PedidosService = {
@@ -34,8 +33,6 @@ export const PedidosService = {
   /**
    * Trae productos marcados como activos para el catálogo de selección.
    * Incluye la Unidad de Medida, el Proveedor, la Presentación y el Contenido.
-   * Se añade categoria_id para la validación de permisos por rol.
-   * Se agrega la relación explícita '!proveedor_id' para evitar ambigüedades.
    */
   async getProductosParaOrden() {
     const { data, error } = await supabase
@@ -44,7 +41,6 @@ export const PedidosService = {
         id, 
         nombre, 
         marca, 
-        costo_actual, 
         presentacion,
         contenido,
         proveedor_id,
@@ -78,7 +74,6 @@ export const PedidosService = {
   // ==========================================
   /**
    * Procesa la creación de una orden completa.
-   * Primero inserta la cabecera para obtener el ID y luego las partidas.
    */
   async crearNuevaOrden(ordenCabecera, listaProductos) {
     // Normalización de campos para asegurar compatibilidad con el esquema
@@ -87,7 +82,7 @@ export const PedidosService = {
       notas: ordenCabecera.notas || ordenCabecera.notes || '' 
     };
     
-    // Eliminación de campos redundantes o mal escritos del front
+    // Eliminación de campos redundantes
     delete payloadCabecera.notes;
 
     // A. Insertar la Cabecera de la Orden
@@ -107,7 +102,6 @@ export const PedidosService = {
       orden_id: nuevaOrden.id,
       producto_id: item.producto_id,
       cantidad: item.cantidad,
-      costo_unitario: item.costo_unitario,
       estatus: 'Pendiente'
     }));
 
@@ -118,8 +112,6 @@ export const PedidosService = {
 
     if (errorDetalles) {
         console.error("Error al insertar detalles:", errorDetalles.message);
-        // Nota: En un entorno ideal aquí se manejaría una reversión (rollback) 
-        // de la cabecera si fallan los detalles.
         throw errorDetalles;
     }
 
@@ -131,6 +123,7 @@ export const PedidosService = {
   // ==========================================
   /**
    * Obtiene toda la información de una orden específica y sus partidas.
+   * IMPORTANTE: Traemos el proveedor_secundario_id para la lógica de "No hay".
    */
   async getDetalleDeOrden(ordenId) {
     const { data, error } = await supabase
@@ -142,13 +135,16 @@ export const PedidosService = {
         sucursal:Cat_sucursales(nombre),
         detalles:BD_Ordenes_Detalle (
           id, 
+          producto_id,
           cantidad, 
           estatus, 
-          costo_unitario,
           producto:BD_Productos (
+            id,
             nombre, 
             marca, 
             presentacion,
+            contenido,
+            proveedor_secundario_id,
             um:Cat_UM(abreviatura)
           )
         )
@@ -160,7 +156,7 @@ export const PedidosService = {
   },
 
   /**
-   * Actualiza el estatus de un solo producto dentro de una orden (ej: 'Pendiente' -> 'Comprado').
+   * Actualiza el estatus de un solo producto dentro de una orden.
    */
   async actualizarEstatusItem(detalleId, nuevoEstatus) {
     const { data, error } = await supabase
@@ -196,103 +192,66 @@ export const PedidosService = {
   },
 
   // ==========================================
-  // 5. HISTORIAL: OBTENER ÓRDENES POR FECHAS
-  // ==========================================
-  /**
-   * Recupera las órdenes con estatus Completado o Cancelado dentro de un rango de fechas.
-   * @param {string} fechaInicio - Fecha inicial en formato YYYY-MM-DD
-   * @param {string} fechaFin - Fecha final en formato YYYY-MM-DD
-   */
-  async getHistorialPorFechas(fechaInicio, fechaFin) {
-    const inicioIso = `${fechaInicio}T00:00:00.000Z`;
-    const finIso = `${fechaFin}T23:59:59.999Z`;
-
-    const { data, error } = await supabase
-      .from('BD_Ordenes_Compra')
-      .select(`
-        *,
-        proveedor:Cat_Proveedores(nombre),
-        solicitante:Cat_Trabajadores(nombre_completo),
-        sucursal:Cat_sucursales(nombre)
-      `)
-      .in('estatus', ['Completado', 'Cancelado'])
-      .gte('created_at', inicioIso)
-      .lte('created_at', finIso)
-      .order('created_at', { ascending: false });
-
-    return { data, error };
-  },
-
-  // ==========================================
-  // 6. TRASPASO AL SEGUNDO PROVEEDOR
+  // 5. TRASPASO AL SEGUNDO PROVEEDOR
   // ==========================================
   /**
    * Toma un ítem que no hay en stock y genera una nueva orden para el segundo proveedor.
-   * @param {string} detalleId - ID de la partida en BD_Ordenes_Detalle
-   * @param {string} productoId - ID del producto en BD_Productos
+   * Realiza la creación de la nueva orden y la eliminación de la anterior de forma secuencial.
    */
   async cambiarAlSegundoProveedor(detalleId, productoId) {
     try {
-      // 1. Consultar información del detalle actual junto con su orden y datos del producto
+      // 1. Consultar información necesaria del detalle y la orden madre
       const { data: item, error: errItem } = await supabase
         .from('BD_Ordenes_Detalle')
         .select(`
-          *,
-          orden:BD_Ordenes_Compra(*),
-          producto:BD_Productos(id, nombre, proveedor_secundario_id)
+          cantidad,
+          producto_id,
+          orden:BD_Ordenes_Compra(folio, solicitante_id, sucursal_id, prioridad),
+          producto:BD_Productos(nombre, proveedor_secundario_id)
         `)
         .eq('id', detalleId)
         .single();
 
-      if (errItem || !item) {
-        throw new Error(errItem?.message || 'No se pudo encontrar el detalle del pedido');
-      }
+      if (errItem || !item) throw new Error('No se pudo encontrar el detalle del pedido original.');
 
       const segundoProveedorId = item.producto?.proveedor_secundario_id;
-
       if (!segundoProveedorId) {
-        throw new Error('Este insumo no tiene asignado un segundo proveedor en el catálogo.');
+        throw new Error(`El insumo "${item.producto.nombre}" no tiene un segundo proveedor asignado.`);
       }
 
-      // 2. Generar nueva orden de compra vinculada al segundo proveedor
-      const folio = `OC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
-      const totalEstimado = Number(item.cantidad) * Number(item.costo_unitario);
-
-      const nuevaOrdenCabecera = {
-        folio,
-        solicitante_id: item.orden.solicitante_id,
-        sucursal_id: item.orden.sucursal_id,
-        proveedor_id: segundoProveedorId,
-        prioridad: item.orden.prioridad,
-        total_estimado: totalEstimado,
-        estatus: 'Pendiente',
-        notas: `Reasignado por falta de stock de la orden original: ${item.orden.folio}`
-      };
+      // 2. Generar nueva orden para el segundo proveedor
+      const randomStr = Math.random().toString(36).substring(7).toUpperCase();
+      const nuevoFolio = `REQ-REASIG-${randomStr}`;
 
       const { data: nuevaOrden, error: errNuevaCabecera } = await supabase
         .from('BD_Ordenes_Compra')
-        .insert([nuevaOrdenCabecera])
+        .insert([{
+          folio: nuevoFolio,
+          solicitante_id: item.orden.solicitante_id,
+          sucursal_id: item.orden.sucursal_id,
+          proveedor_id: segundoProveedorId,
+          prioridad: item.orden.prioridad,
+          estatus: 'Pendiente',
+          notas: `Reasignado automáticamente por falta de stock de la orden original: ${item.orden.folio}`
+        }])
         .select()
         .single();
 
       if (errNuevaCabecera) throw errNuevaCabecera;
 
-      // 3. Crear el nuevo detalle en la nueva orden
-      const nuevoDetalle = {
-        orden_id: nuevaOrden.id,
-        producto_id: item.producto_id,
-        cantidad: item.cantidad,
-        costo_unitario: item.costo_unitario,
-        estatus: 'Pendiente'
-      };
-
+      // 3. Crear el nuevo detalle vinculado a la nueva orden
       const { error: errNuevoDetalle } = await supabase
         .from('BD_Ordenes_Detalle')
-        .insert([nuevoDetalle]);
+        .insert([{
+          orden_id: nuevaOrden.id,
+          producto_id: item.producto_id,
+          cantidad: item.cantidad,
+          estatus: 'Pendiente'
+        }]);
 
       if (errNuevoDetalle) throw errNuevoDetalle;
 
-      // 4. Retirar el ítem de la orden original
+      // 4. Retirar el ítem de la orden original (Limpieza del checklist)
       const { error: errBorrado } = await supabase
         .from('BD_Ordenes_Detalle')
         .delete()
@@ -300,18 +259,11 @@ export const PedidosService = {
 
       if (errBorrado) throw errBorrado;
 
-      // 5. Restar el monto del ítem removido de la orden original
-      const nuevoTotalOrdenOriginal = Math.max(0, Number(item.orden.total_estimado) - totalEstimado);
-      await supabase
-        .from('BD_Ordenes_Compra')
-        .update({ total_estimado: nuevoTotalOrdenOriginal })
-        .eq('id', item.orden.id);
-
-      return { data: nuevaOrden, error: null };
+      return { success: true, nuevoFolio };
 
     } catch (err) {
-      console.error("Error al transferir a segundo proveedor:", err.message || err);
-      return { data: null, error: err };
+      console.error("Fallo crítico en reasignación:", err.message);
+      return { success: false, error: err.message };
     }
   }
 };

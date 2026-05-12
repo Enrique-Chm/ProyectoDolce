@@ -8,12 +8,12 @@ export default function ImportadorMasivo({ onVolver }) {
   const [tipoImportacion, setTipoImportacion] = useState('productos');
   const [loading, setLoading] = useState(false);
 
-  // Definición de las plantillas exactas para orientar al usuario
+  // Definición de las plantillas exactas para orientar al usuario (SIN COSTOS)
   const plantillas = {
     productos: {
       titulo: 'Productos e Insumos',
-      headers: 'nombre,marca,modelo,categoria,presentacion,contenido,unidad_medida,costo_actual,proveedor,proveedor_secundario,sucursales,activo',
-      descripcion: 'Carga masiva de insumos. Recuerda que las categorías, unidades de medida y proveedores deben estar previamente creados en el sistema para que se vinculen correctamente.'
+      headers: 'nombre,marca,categoria,presentacion,contenido,unidad_medida,proveedor,proveedor_secundario,sucursales,activo',
+      descripcion: 'Carga masiva de insumos operativos. Recuerda que las categorías, unidades de medida y proveedores deben existir previamente para que el vínculo sea exitoso.'
     },
     proveedores: {
       titulo: 'Proveedores',
@@ -32,7 +32,7 @@ export default function ImportadorMasivo({ onVolver }) {
     }
   };
 
-  // Parseador de CSV seguro que respeta las comas dentro de comillas
+  // Parseador de CSV seguro
   const procesarArchivoCSV = (text) => {
     const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== '');
     if (lines.length < 2) {
@@ -50,7 +50,6 @@ export default function ImportadorMasivo({ onVolver }) {
           inQuotes = !inQuotes;
         } else if (line[i] === ',' && !inQuotes) {
           let val = line.substring(start, i).trim();
-          // Removemos comillas dobles si el valor las tiene al inicio y al final
           if (val.startsWith('"') && val.endsWith('"')) {
             val = val.substring(1, val.length - 1).trim();
           }
@@ -59,7 +58,6 @@ export default function ImportadorMasivo({ onVolver }) {
         }
       }
 
-      // Añadimos el último valor de la línea
       let lastVal = line.substring(start).trim();
       if (lastVal.startsWith('"') && lastVal.endsWith('"')) {
         lastVal = lastVal.substring(1, lastVal.length - 1).trim();
@@ -87,7 +85,6 @@ export default function ImportadorMasivo({ onVolver }) {
 
         let res = null;
 
-        // Enrutamos al servicio de configuración para todas las opciones
         if (tipoImportacion === 'productos') {
           res = await ConfiguracionService.importarProductosMasivo(rows);
         } else if (tipoImportacion === 'proveedores') {
@@ -104,7 +101,7 @@ export default function ImportadorMasivo({ onVolver }) {
           });
         } else {
           toast.success(`¡Se han importado exitosamente ${res?.data?.length || 0} registros de ${tipoImportacion}!`);
-          e.target.value = ''; // Limpiamos el input
+          e.target.value = ''; 
         }
       } catch (err) {
         console.error("Error al procesar el archivo CSV:", err);
@@ -119,7 +116,7 @@ export default function ImportadorMasivo({ onVolver }) {
 
   return (
     <div style={{ width: '100%', maxWidth: '100%', animation: 'slideUp 0.3s ease' }}>
-      {/* --- ENCABEZADO INTERNO --- */}
+      {/* --- ENCABEZADO --- */}
       <header style={{ marginBottom: 'var(--space-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
           <span className={styles.labelTop} style={{ display: 'block', marginBottom: '2px' }}>Herramientas de datos</span>
@@ -141,7 +138,7 @@ export default function ImportadorMasivo({ onVolver }) {
       {/* --- GRID DE CONFIGURACIÓN --- */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
         
-        {/* PANEL IZQUIERDO: SELECCIÓN */}
+        {/* SELECCIÓN */}
         <section className={styles.card} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <h3 className={styles.labelTop} style={{ color: 'var(--color-primary)', borderBottom: '1px solid var(--border-ghost)', paddingBottom: '8px' }}>
             1. Selección de Catálogo
@@ -172,7 +169,7 @@ export default function ImportadorMasivo({ onVolver }) {
           </div>
         </section>
 
-        {/* PANEL DERECHO: PLANTILLA Y SUBIDA */}
+        {/* PLANTILLA Y CARGA */}
         <section className={styles.card} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <h3 className={styles.labelTop} style={{ color: 'var(--color-primary)', borderBottom: '1px solid var(--border-ghost)', paddingBottom: '8px' }}>
             2. Plantilla y Carga
@@ -195,7 +192,6 @@ export default function ImportadorMasivo({ onVolver }) {
             </div>
           </div>
 
-          {/* DRAG AND DROP / SUBIR FILE */}
           <div style={{
             border: '2px dashed var(--border-ghost)',
             borderRadius: '12px',

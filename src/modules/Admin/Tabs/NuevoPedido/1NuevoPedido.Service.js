@@ -7,6 +7,7 @@ export const NuevoPedidoService = {
    * Recupera los insumos activos vinculando sus catálogos (UM, Categoría, Proveedor).
    * Es fundamental traer 'sucursales_ids' para que el Hook filtre lo que el
    * trabajador puede ver según su ubicación.
+   * Se ha eliminado el campo 'costo_actual'.
    */
   async getProductosDisponibles() {
     const { data, error } = await supabase
@@ -17,7 +18,6 @@ export const NuevoPedidoService = {
         marca, 
         presentacion, 
         contenido, 
-        costo_actual, 
         activo,
         categoria_id,
         proveedor_id,
@@ -40,6 +40,7 @@ export const NuevoPedidoService = {
    * 2. GUARDAR ORDEN COMPLETA (Cabecera + Detalles)
    * Este método realiza dos inserciones. Primero crea el registro en 'BD_Ordenes_Compra'
    * y usa ese ID generado para insertar todas las partidas en 'BD_Ordenes_Detalle'.
+   * Se han eliminado los campos 'total_estimado' y 'costo_unitario'.
    */
   async guardarOrdenCompleta(ordenCabecera, listaProductos) {
     try {
@@ -53,7 +54,6 @@ export const NuevoPedidoService = {
         sucursal_id: ordenCabecera.sucursal_id,
         proveedor_id: ordenCabecera.proveedor_id || null, // UUID o null si es multi-proveedor
         prioridad: ordenCabecera.prioridad || 'Media',
-        total_estimado: Number(ordenCabecera.total_estimado) || 0,
         estatus: ordenCabecera.estatus || 'Pendiente',
         notas: ordenCabecera.notas || ''
       };
@@ -75,7 +75,6 @@ export const NuevoPedidoService = {
         orden_id: nuevaOrden.id, // Vínculo con la cabecera
         producto_id: item.producto_id,
         cantidad: Number(item.cantidad),
-        costo_unitario: Number(item.costo_unitario) || 0,
         estatus: 'Pendiente' 
       }));
 

@@ -46,63 +46,78 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
   const totalItems = detalleOrdenActual.detalles.length;
   const progreso = totalItems > 0 ? (itemsComprados / totalItems) * 100 : 0;
 
+  /**
+   * Finaliza el surtido global de la orden.
+   */
   const handleFinalizarCompra = async () => {
     if (itemsComprados < totalItems) {
-      if (!window.confirm('Hay productos sin marcar. ¿Deseas finalizar el pedido y moverlo al historial?')) return;
+      if (!window.confirm('Hay productos sin marcar. ¿Deseas finalizar el surtido de este pedido?')) return;
     }
     const exito = await cambiarEstatusOrden(detalleOrdenActual.id, 'Completado');
     if (exito) onVolver();
   };
 
+  /**
+   * Dispara la reasignación al proveedor secundario.
+   * La confirmación se maneja dentro del Hook para centralizar la lógica.
+   */
   const handleNoHay = async (e, item) => {
-    e.stopPropagation();
-    if (!window.confirm(`¿Confirmas que no hay stock de "${item.producto?.nombre}"? Se generará una requisición para el segundo proveedor.`)) return;
-
-    if (pasarASegundoProveedor) {
-      const exito = await pasarASegundoProveedor(item.id, item.producto_id);
-      if (exito) {
-        toast.success('Insumo reasignado con éxito');
-        cargarDetalleDeOrden(ordenId);
-      }
+    e.stopPropagation(); // Evita que se dispare el toggle de estatus del card
+    
+    // Llamamos a la función del Hook que ya contiene el flujo transaccional
+    const exito = await pasarASegundoProveedor(item.id, item.producto_id);
+    
+    if (exito) {
+      // El Hook ya se encarga de limpiar el estado local y mostrar el toast con el folio
+      console.log(`Item ${item.id} reasignado exitosamente.`);
     }
   };
 
+  /**
+   * Genera el documento PDF de la requisición (Sin información de costos).
+   */
   const descargarPdf = () => {
     try {
       const doc = new jsPDF();
+      
+      // Encabezado Estético
       doc.setFillColor(0, 95, 86); 
       doc.rect(0, 0, 210, 35, 'F');
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(18);
-      doc.text('ORDEN DE COMPRA', 14, 22);
+      doc.text('REQUISICIÓN DE INSUMOS', 14, 22);
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.text(`FOLIO: ${detalleOrdenActual.folio || 'N/A'}`, 14, 28);
       doc.text(`FECHA: ${new Date(detalleOrdenActual.created_at).toLocaleDateString('es-MX')}`, 140, 28);
+      
+      // Información de Proveedor y Destino
       doc.setTextColor(51, 51, 51);
       doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
-      doc.text('Datos del Proveedor:', 14, 48);
+      doc.text('Proveedor:', 14, 48);
       doc.setFont('helvetica', 'normal');
       doc.text(`Nombre: ${detalleOrdenActual.proveedor?.nombre || 'General'}`, 14, 54);
       doc.text(`Contacto: ${detalleOrdenActual.proveedor?.numero_contacto || 'No registrado'}`, 14, 60);
+      
       doc.setFont('helvetica', 'bold');
       doc.text('Destino de Entrega:', 120, 48);
       doc.setFont('helvetica', 'normal');
       doc.text(`Sucursal: ${detalleOrdenActual.sucursal?.nombre || 'General'}`, 120, 54);
       doc.text(`Solicitado por: ${detalleOrdenActual.solicitante?.nombre_completo || 'Sistema'}`, 120, 60);
+      
       doc.setDrawColor(220, 220, 220);
       doc.line(14, 68, 196, 68);
 
-      const columnas = ['Producto', 'Marca', 'Cant.', 'UM', 'Costo Unit.', 'Importe'];
+      // Tabla de Productos Operativos
+      const columnas = ['Producto', 'Marca', 'Cant.', 'Presentación', 'Contenido Total'];
       const filas = detalleOrdenActual.detalles.map(item => [
         item.producto?.nombre || 'Insumo',
         item.producto?.marca || 'S/M',
         item.cantidad,
-        item.producto?.um?.abreviatura || 'pz',
-        `$${item.costo_unitario}`,
-        `$${(Number(item.cantidad) * Number(item.costo_unitario)).toFixed(2)}`
+        item.producto?.presentacion || 'PIEZA',
+        `${item.cantidad * (item.producto?.contenido || 1)} ${item.producto?.um?.abreviatura || ''}`
       ]);
 
       autoTable(doc, {
@@ -115,28 +130,28 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
       });
 
       const finalY = doc.lastAutoTable?.finalY || 80;
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(12);
-      doc.text(`TOTAL ESTIMADO: $${Number(detalleOrdenActual.total_estimado || 0).toFixed(2)} MXN`, 125, finalY + 15);
 
-      if (detalleOrdenActual.notas) {
+      // Notas al pie
+      if (detalleOrdenActual.notas || detalleOrdenActual.notes) {
         doc.setFontSize(9);
         doc.setFont('helvetica', 'italic');
         doc.setTextColor(100, 100, 100);
-        doc.text('Notas adicionales:', 14, finalY + 25);
-        doc.text(detalleOrdenActual.notas, 14, finalY + 30);
+        doc.text('Notas adicionales:', 14, finalY + 15);
+        doc.text(detalleOrdenActual.notas || detalleOrdenActual.notes, 14, finalY + 20);
       }
 
-      doc.save(`Pedido_${detalleOrdenActual.folio || 'S_F'}.pdf`);
+      doc.save(`Requisicion_${detalleOrdenActual.folio || 'S_F'}.pdf`);
       toast.success('¡PDF generado con éxito!');
     } catch (error) {
       toast.error('No se pudo crear el PDF');
+      console.error(error);
     }
   };
 
   return (
     <div className={styles.fadeIN} style={{ width: '100%', maxWidth: '100%', paddingBottom: '120px' }}>
       
+      {/* --- ENCABEZADO --- */}
       <header style={{ marginBottom: 'var(--space-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
           <span className={styles.labelTop} style={{ display: 'block', marginBottom: '2px' }}>CONTROL DE SURTIDO</span>
@@ -166,6 +181,7 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
         </div>
       </header>
 
+      {/* --- BARRA DE PROGRESO --- */}
       <div style={{ marginBottom: '20px', backgroundColor: 'white', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-ghost)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.65rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
           <span style={{ color: progreso === 100 ? 'var(--color-primary)' : 'var(--text-muted)' }}>
@@ -183,9 +199,12 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
         </div>
       </div>
 
+      {/* --- LISTADO DE PRODUCTOS --- */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {detalleOrdenActual.detalles.map((item) => {
           const esComprado = item.estatus === 'Comprado';
+          const contenidoBase = item.producto?.contenido || 1;
+          const totalNeto = item.cantidad * contenidoBase;
           
           return (
             <div 
@@ -197,10 +216,7 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
                 flexDirection: 'row',
                 justifyContent: 'space-between', 
                 alignItems: 'center',
-                paddingTop: '10px',
-                paddingBottom: '10px',
-                paddingLeft: '14px',
-                paddingRight: '14px',
+                padding: '12px 14px',
                 borderRadius: '10px',
                 backgroundColor: esComprado ? 'var(--color-surface-lowest)' : 'white',
                 borderLeft: esComprado ? '4px solid #999' : '4px solid var(--color-primary)',
@@ -211,6 +227,7 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
                 transition: 'all 0.2s ease'
               }}
             >
+              {/* Checkbox Visual */}
               <div style={{ 
                 width: '24px', height: '24px', borderRadius: '6px', 
                 border: esComprado ? 'none' : '2px solid var(--border-ghost)',
@@ -220,10 +237,10 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
                 {esComprado && <span className="material-symbols-outlined" style={{ color: 'white', fontSize: '1rem' }}>done</span>}
               </div>
 
+              {/* Información del Insumo */}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <h4 style={{ 
-                  marginTop: 0,
-                  marginBottom: 0,
+                  margin: 0,
                   fontSize: '0.9rem', 
                   fontWeight: 'bold', 
                   textDecoration: esComprado ? 'line-through' : 'none',
@@ -232,18 +249,38 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
                 }}>
                   {item.producto?.nombre}
                 </h4>
-                <p style={{ marginTop: 0, marginBottom: 0, fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '500' }}>
-                  {item.cantidad} {item.producto?.um?.abreviatura} {item.producto?.marca && `• ${item.producto.marca}`}
+                
+                <p style={{ marginTop: '2px', marginBottom: 0, fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '500' }}>
+                  <span style={{ fontWeight: '800', color: esComprado ? 'inherit' : 'var(--text-main)' }}>
+                    {item.cantidad} {item.producto?.presentacion || 'PIEZA'}
+                  </span>
+                  
+                  {contenidoBase > 1 && (
+                    <span style={{ 
+                      marginLeft: '6px',
+                      color: 'var(--color-primary)', 
+                      fontWeight: 'bold',
+                      backgroundColor: 'var(--color-surface-low)',
+                      padding: '1px 5px',
+                      borderRadius: '4px',
+                      fontSize: '0.65rem'
+                    }}>
+                      ({totalNeto} {item.producto?.um?.abreviatura})
+                    </span>
+                  )}
+                  
+                  {item.producto?.marca && ` • ${item.producto.marca}`}
                 </p>
               </div>
 
+              {/* Acciones del Item */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
-                {puedeEditar && !esComprado && (
+                {puedeEditar && !esComprado && item.producto?.proveedor_secundario_id && (
                   <button 
                     onClick={(e) => handleNoHay(e, item)}
                     style={{ 
                       backgroundColor: 'transparent', border: '1px solid #ba1a1a', color: '#ba1a1a',
-                      borderRadius: '6px', paddingTop: '4px', paddingBottom: '4px', paddingLeft: '8px', paddingRight: '8px',
+                      borderRadius: '6px', padding: '4px 8px',
                       fontSize: '0.65rem', fontWeight: '900',
                       display: 'flex', alignItems: 'center', gap: '4px'
                     }}
@@ -252,17 +289,13 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
                     NO HAY
                   </button>
                 )}
-                <div style={{ textAlign: 'right', minWidth: '60px' }}>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: esComprado ? 'var(--text-muted)' : 'var(--text-main)' }}>
-                    ${item.costo_unitario}
-                  </span>
-                </div>
               </div>
             </div>
           );
         })}
       </div>
 
+      {/* --- BOTÓN FLOTANTE FINALIZAR --- */}
       {puedeEditar && (
         <div style={{ 
           position: 'fixed', bottom: '85px', left: '16px', right: '16px', zIndex: 100
@@ -276,7 +309,7 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
             }}
           >
             <span className="material-symbols-outlined">check_circle</span>
-            FINALIZAR Y ARCHIVAR PEDIDO
+            FINALIZAR SURTIDO
           </button>
         </div>
       )}

@@ -95,13 +95,13 @@ export default function Configuracion({
 
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           {/* BOTÓN: PRODUCTOS */}
-          <button onClick={onAbrirProductos} className={`${styles.btnBase} ${styles.btnPrimary}`}>
+          <button onClick={onAbrirProductos} className={`${styles.btnBase} ${styles.btnSecondary}`}>
             <span className="material-symbols-outlined" style={{ fontSize: '1.125rem' }}>inventory</span>
             Productos
           </button>
           
           {/* BOTÓN: PROVEEDORES */}
-          <button onClick={onAbrirProveedores} className={`${styles.btnBase} ${styles.btnOutlined}`}>
+          <button onClick={onAbrirProveedores} className={`${styles.btnBase} ${styles.btnSecondary}`}>
             <span className="material-symbols-outlined" style={{ fontSize: '1.125rem' }}>local_shipping</span>
             Proveedores
           </button>
@@ -130,7 +130,7 @@ export default function Configuracion({
 
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           {/* BOTÓN: TRABAJADORES */}
-          <button onClick={onAbrirTrabajadores} className={`${styles.btnBase} ${styles.btnPrimary}`}>
+          <button onClick={onAbrirTrabajadores} className={`${styles.btnBase} ${styles.btnSecondary}`}>
             <span className="material-symbols-outlined" style={{ fontSize: '1.125rem' }}>badge</span>
             Trabajadores
           </button>
@@ -156,7 +156,7 @@ export default function Configuracion({
 
         <button 
           onClick={() => setMostrandoImportador(true)} 
-          className={`${styles.btnBase} ${styles.btnPrimary}`} 
+          className={`${styles.btnBase} ${styles.btnSecondary}`} 
           style={{ width: 'fit-content' }}
         >
           <span className="material-symbols-outlined" style={{ fontSize: '1.125rem' }}>upload_file</span>

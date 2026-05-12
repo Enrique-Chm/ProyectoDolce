@@ -7,6 +7,7 @@ export const ProductosService = {
   // ==========================================
   async getProductos() {
     // 1. Cargamos todos los productos con sus nombres de catálogos
+    // Nota: Aunque usamos *, como eliminaste la columna en SQL, ya no traerá costos.
     const { data: productos, error } = await supabase
       .from('BD_Productos')
       .select(`
@@ -43,7 +44,7 @@ export const ProductosService = {
       const ids = p.sucursales_ids || [];
       return {
         ...p,
-        // Creamos una propiedad virtual para que el frontend muestre los nombres fácilmente
+        // Propiedad virtual para que el frontend muestre los nombres de sucursales fácilmente
         sucursales_info: ids.map(id => ({ id, nombre: sucursalesMap[id] || 'Desconocida' }))
       };
     });
@@ -63,12 +64,12 @@ export const ProductosService = {
       const esNuevo = !rawData.id || rawData.id === "" || rawData.id === "null";
 
       // 3. Objeto limpio que respeta estrictamente las columnas de la tabla
+      // SE ELIMINÓ: costo_actual para evitar errores de columna inexistente
       const dataParaBD = {
         nombre: rawData.nombre,
         marca: rawData.marca || null,
         presentacion: rawData.presentacion || null,
         contenido: (rawData.contenido === "" || rawData.contenido === undefined) ? null : Number(rawData.contenido),
-        costo_actual: (rawData.costo_actual === "" || rawData.costo_actual === undefined) ? 0 : Number(rawData.costo_actual),
         
         // Relaciones UUID (Si vienen vacíos, deben ser null para no romper el Foreign Key)
         um_id: rawData.um_id || null,
@@ -125,7 +126,7 @@ export const ProductosService = {
   // ==========================================
   async getCatalogosFormulario() {
     try {
-      // Cargamos todo en paralelo para máxima velocidad
+      // Cargamos todo en paralelo para optimizar tiempos de respuesta
       const [proveedores, sucursales, unidades, categorias] = await Promise.all([
         supabase.from('Cat_Proveedores').select('id, nombre').eq('estatus', 'Activo').order('nombre'),
         supabase.from('Cat_sucursales').select('id, nombre').eq('estatus', 'Activo').order('nombre'),
