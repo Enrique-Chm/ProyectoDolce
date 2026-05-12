@@ -201,7 +201,7 @@ export default function Historial({ onVerDetalle }) {
                   borderRadius: '4px',
                   textTransform: 'uppercase',
                   backgroundColor: orden.estatus === 'Completado' ? 'var(--color-primary-container)' : '#ffebee',
-                  color: orden.estatus === 'Completado' ? 'var(--color-on-primary-container)' : '#ba1a1a',
+                  color: orden.estatus === 'Completado' ? 'var(--color-on-primary-container)' : '#b96464',
                   border: `1px solid ${orden.estatus === 'Completado' ? 'var(--color-primary)' : '#ffcdd2'}`
                 }}>
                   {orden.estatus}

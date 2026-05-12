@@ -63,7 +63,7 @@ export default function Login({ onLoginSuccess }) {
             </span>
           </div>
           <span className={styles.labelTop} style={{ letterSpacing: '2px', fontWeight: '800', color: 'var(--color-primary)', fontSize: '0.65rem' }}>
-            KITCHEN INVENTARIOS
+            KIKITCHEN INVENTARIOS
           </span>
           <h1 className={styles.title} style={{ fontSize: '1.85rem', marginTop: '6px', fontWeight: '800', color: 'var(--text-main)' }}>
             Bienvenido
