@@ -47,7 +47,10 @@ export default function NuevoPedido({ onVolver }) {
       agregarAlCarrito(prod, cant);
     } else {
       setRevisadosLocales(prev => [...prev, prod.id]);
-      toast.success(`${prod.nombre} revisado`, { icon: '👁️', style: { fontSize: '0.8rem' } });
+      toast.success(`${prod.nombre} revisado`, { 
+        icon: '👁️', 
+        style: { fontSize: '0.8rem', borderRadius: '10px', background: '#333', color: '#fff' } 
+      });
     }
     setCantidadesLocales(prev => ({ ...prev, [prod.id]: '' }));
   };
@@ -62,9 +65,11 @@ export default function NuevoPedido({ onVolver }) {
       overflow: 'hidden'
     }}>
       
-      {/* --- ENCABEZADO --- */}
       <header style={{ 
-        paddingTop: '16px', paddingRight: '16px', paddingBottom: '0', paddingLeft: '16px',
+        paddingTop: '16px', 
+        paddingRight: '16px', 
+        paddingLeft: '16px',
+        paddingBottom: 0,
         marginBottom: 'var(--space-md)', 
         display: 'flex', 
         justifyContent: 'space-between', 
@@ -73,33 +78,30 @@ export default function NuevoPedido({ onVolver }) {
       }}>
         <div>
           <span className={styles.labelTop} style={{ display: 'block', marginBottom: '2px' }}>OPERACIONES DE COCINA</span>
-          <h1 className={styles.title} style={{ fontSize: '2rem', lineHeight: '1', margin: 0 }}>
+          <h1 className={styles.title} style={{ fontSize: '2rem', lineHeight: '1', marginTop: 0, marginBottom: 0 }}>
             {paso === 1 ? 'Surtir\nInsumos' : 'Revisar\nPedido'}
           </h1>
         </div>
         <button 
           onClick={paso === 2 ? () => setPaso(1) : onVolver} 
           className={`${styles.btnBase} ${styles.btnSecondary}`}
-          style={{ height: '38px', paddingRight: '12px', paddingLeft: '12px', fontSize: '0.8rem' }}
+          style={{ height: '38px', paddingTop: 0, paddingBottom: 0, paddingLeft: '12px', paddingRight: '12px', fontSize: '0.8rem' }}
         >
-          <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>arrow_back</span>
+          <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>
+            {paso === 2 ? 'close' : 'arrow_back'}
+          </span>
+          {paso === 2 ? 'Cancelar' : 'Volver'}
         </button>
       </header>
 
       {paso === 1 ? (
-        /* VISTA 1: LISTADO (CHECKLIST) */
-        <div style={{ 
-          flex: 1, 
-          display: 'flex', 
-          flexDirection: 'column', 
-          paddingTop: '0', paddingRight: '16px', paddingBottom: '0', paddingLeft: '16px', 
-          overflow: 'hidden' 
-        }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', paddingLeft: '16px', paddingRight: '16px', overflow: 'hidden' }}>
+          
           <button 
             onClick={() => setPaso(2)} 
             disabled={carrito.length === 0}
             className={`${styles.btnBase} ${styles.btnPrimary}`} 
-            style={{ width: '100%', marginBottom: '16px', height: '44px', fontSize: '0.875rem', flexShrink: 0 }}
+            style={{ width: '100%', marginBottom: '16px', height: '48px', fontSize: '0.875rem', flexShrink: 0 }}
           >
             <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>fact_check</span>
             FINALIZAR REVISIÓN ({carrito.length})
@@ -114,54 +116,126 @@ export default function NuevoPedido({ onVolver }) {
                 value={filtroBusqueda} onChange={(e) => setFiltroBusqueda(e.target.value)}
               />
             </div>
+            
             <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'none' }}>
               {categorias.map(cat => (
                 <button 
                   key={cat} onClick={() => setCatActiva(cat)}
                   style={{
-                    paddingTop: '6px', paddingRight: '14px', paddingBottom: '6px', paddingLeft: '14px',
-                    borderRadius: '20px', fontSize: '0.75rem', whiteSpace: 'nowrap', fontWeight: 'bold',
+                    paddingTop: '6px',
+                    paddingBottom: '6px',
+                    paddingLeft: '14px',
+                    paddingRight: '14px',
+                    borderRadius: '20px', fontSize: '0.7rem', whiteSpace: 'nowrap', fontWeight: 'bold',
                     border: catActiva === cat ? 'none' : '1px solid var(--border-ghost)',
                     backgroundColor: catActiva === cat ? 'var(--color-primary)' : 'white',
                     color: catActiva === cat ? 'white' : 'var(--text-main)',
                   }}
                 >
-                  {cat}
+                  {cat.toUpperCase()}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* LISTA DE INSUMOS */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, overflowY: 'auto', paddingBottom: '140px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, overflowY: 'auto', paddingBottom: '120px' }}>
             {productosPendientes.length === 0 ? (
-              <div style={{ textAlign: 'center', paddingTop: '3rem', paddingBottom: '3rem' }}>
-                <span className="material-symbols-outlined" style={{ fontSize: '3rem', color: 'var(--color-primary)', opacity: 0.3 }}>checklist_rtl</span>
-                <p style={{ marginTop: '10px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Todos los artículos revisados.</p>
+              <div style={{ textAlign: 'center', paddingTop: '3rem', paddingBottom: '3rem', paddingLeft: '1rem', paddingRight: '1rem' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '3rem', color: 'var(--color-primary)', opacity: 0.2 }}>task_alt</span>
+                <p style={{ marginTop: '10px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Lista revisada por completo.</p>
                 {revisadosLocales.length > 0 && (
-                  <button onClick={() => setRevisadosLocales([])} style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontSize: '0.75rem', textDecoration: 'underline' }}>Reiniciar lista</button>
+                  <button onClick={() => setRevisadosLocales([])} style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontSize: '0.75rem', textDecoration: 'underline' }}>Resetear lista</button>
                 )}
               </div>
             ) : (
               productosPendientes.map((prod) => {
                 const qtyInput = cantidadesLocales[prod.id] || '';
                 const totalVolumen = (Number(qtyInput) || 0) * (prod.contenido || 1);
+                
                 return (
-                  <div key={prod.id} className={styles.card} style={{ borderLeft: '4px solid var(--color-primary)', paddingTop: '12px', paddingRight: '14px', paddingBottom: '12px', paddingLeft: '14px', borderRadius: '10px', backgroundColor: 'white', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <h4 style={{ fontSize: '0.9rem', margin: 0, fontWeight: 'bold', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{prod.nombre}</h4>
-                      <p style={{ margin: 0, fontSize: '0.65rem', color: 'var(--color-primary)', fontWeight: '800', textTransform: 'uppercase' }}>
-                      {prod.presentacion || 'Pieza'} <span style={{ color: 'var(--text-muted)', fontWeight: '400' }}>de {prod.contenido} {prod.um_abreviatura}</span>
+                  <div 
+                    key={prod.id} 
+                    className={styles.card} 
+                    style={{ 
+                      display: 'flex', 
+                      flexDirection: 'row',
+                      justifyContent: 'space-between', 
+                      alignItems: 'center', 
+                      borderLeft: '4px solid var(--color-primary)', 
+                      paddingTop: '10px',
+                      paddingBottom: '10px',
+                      paddingLeft: '14px',
+                      paddingRight: '14px',
+                      borderRadius: '10px', 
+                      backgroundColor: 'white',
+                      minHeight: '70px',
+                      gap: '12px'
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                      <h4 style={{ fontSize: '0.9rem', marginTop: 0, marginBottom: 0, fontWeight: 'bold', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {prod.nombre}
+                      </h4>
+                      <p style={{ marginTop: '2px', marginBottom: 0, fontSize: '0.65rem', color: 'var(--text-muted)', display: 'flex', gap: '4px', fontWeight: 'bold' }}>
+                        <span style={{ color: 'var(--color-primary)' }}>{prod.presentacion || 'PIEZA'}</span>
+                        <span>•</span>
+                        <span>{prod.contenido} {prod.um_abreviatura}</span>
+                        {prod.marca && <span>• {prod.marca}</span>}
                       </p>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', flexShrink: 0 }}>
                       <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                        <input type="number" placeholder="0" className={styles.inputEditorial} style={{ width: '55px', height: '36px', textAlign: 'center', padding: 0 }} value={qtyInput} onChange={(e) => setCantidadesLocales(prev => ({ ...prev, [prod.id]: e.target.value }))} />
-                        <button onClick={() => handleAdd(prod)} className={styles.btnPrimary} style={{ width: '36px', height: '36px', borderRadius: '8px', padding: 0 }}><span className="material-symbols-outlined">{Number(qtyInput) > 0 ? 'add' : 'done'}</span></button>
+                        <input 
+                          type="number" 
+                          placeholder="0" 
+                          className={styles.inputEditorial} 
+                          style={{ 
+                            width: '52px', 
+                            height: '36px', 
+                            textAlign: 'center', 
+                            paddingTop: 0,
+                            paddingBottom: 0,
+                            paddingLeft: 0,
+                            paddingRight: 0,
+                            fontSize: '0.95rem',
+                            fontWeight: 'bold',
+                            border: '1px solid var(--border-ghost)'
+                          }} 
+                          value={qtyInput} 
+                          onChange={(e) => setCantidadesLocales(prev => ({ ...prev, [prod.id]: e.target.value }))} 
+                        />
+                        <button 
+                          onClick={() => handleAdd(prod)} 
+                          className={styles.btnPrimary} 
+                          style={{ 
+                            width: '36px', 
+                            height: '36px', 
+                            borderRadius: '8px', 
+                            paddingTop: 0,
+                            paddingBottom: 0,
+                            paddingLeft: 0,
+                            paddingRight: 0,
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            backgroundColor: Number(qtyInput) > 0 ? 'var(--color-primary)' : 'var(--color-surface-high)',
+                            color: Number(qtyInput) > 0 ? 'white' : 'var(--text-main)',
+                            border: 'none'
+                          }}
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>
+                            {Number(qtyInput) > 0 ? 'add' : 'done'}
+                          </span>
+                        </button>
                       </div>
+
                       {Number(qtyInput) > 0 && prod.contenido > 1 && (
-                        <span style={{ fontSize: '0.65rem', color: 'var(--color-tertiary)', fontWeight: 'bold', background: 'var(--color-surface-low)', paddingTop: '2px', paddingRight: '6px', paddingBottom: '2px', paddingLeft: '6px', borderRadius: '4px' }}>
-                          Recibirás: {totalVolumen} {prod.um_abreviatura}
+                        <span style={{ 
+                          fontSize: '0.6rem', color: 'var(--color-primary)', fontWeight: 'bold', 
+                          background: 'var(--color-surface-low)', paddingTop: '2px', paddingBottom: '2px', paddingLeft: '6px', paddingRight: '6px', borderRadius: '4px' 
+                        }}>
+                          {totalVolumen} {prod.um_abreviatura} TOTAL
                         </span>
                       )}
                     </div>
@@ -172,35 +246,55 @@ export default function NuevoPedido({ onVolver }) {
           </div>
         </div>
       ) : (
-        /* VISTA 2: FORMULARIO (REVISIÓN Y ENVÍO) */
-        <div style={{ paddingTop: '0', paddingRight: '16px', paddingBottom: '40px', paddingLeft: '16px', flex: 1, overflowY: 'auto' }}>
-          <section className={styles.card} style={{ animation: 'slideUp 0.3s ease', display: 'flex', flexDirection: 'column', gap: '20px', paddingTop: '16px', paddingRight: '16px', paddingBottom: '16px', paddingLeft: '16px' }}>
-            <div style={{ borderBottom: '1px solid var(--border-ghost)', paddingBottom: '10px' }}>
-              <label className={styles.labelTop}>RESUMEN DE CARGA</label>
-              <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <div style={{ paddingTop: 0, paddingBottom: '40px', paddingLeft: '16px', paddingRight: '16px', flex: 1, overflowY: 'auto' }}>
+          <section className={styles.card} style={{ animation: 'slideUp 0.3s ease', display: 'flex', flexDirection: 'column', gap: '20px', paddingTop: '16px', paddingBottom: '16px', paddingLeft: '16px', paddingRight: '16px' }}>
+            <div>
+              <label className={styles.labelTop}>RESUMEN DEL PEDIDO</label>
+              <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {carrito.map(item => (
-                  <div key={item.producto_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-surface-lowest)', paddingTop: '10px', paddingRight: '10px', paddingBottom: '10px', paddingLeft: '10px', borderRadius: '10px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>{item.nombre}</span>
-                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{item.cantidad} {item.presentacion} = {item.cantidad * item.contenido} {item.abreviatura_um}</span>
+                  <div key={item.producto_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-surface-lowest)', paddingTop: '10px', paddingBottom: '10px', paddingLeft: '10px', paddingRight: '10px', borderRadius: '10px', border: '1px solid var(--border-ghost)' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.nombre}</span>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                        {item.cantidad} {item.presentacion} <span style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>({item.cantidad * item.contenido} {item.abreviatura_um})</span>
+                      </span>
                     </div>
-                    <button onClick={() => eliminarDelCarrito(item.producto_id)} style={{ background: 'none', border: 'none', color: '#ba1a1a', padding: 0 }}><span className="material-symbols-outlined">delete</span></button>
+                    <button onClick={() => eliminarDelCarrito(item.producto_id)} style={{ background: 'none', border: 'none', color: '#ba1a1a', paddingTop: '4px', paddingBottom: '4px', paddingLeft: '4px', paddingRight: '4px' }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>delete_sweep</span>
+                    </button>
                   </div>
                 ))}
               </div>
             </div>
+
             <div>
               <label className={styles.labelTop}>NOTAS O INSTRUCCIONES</label>
-              <textarea name="observaciones" value={header.observaciones} onChange={(e) => setHeader({...header, observaciones: e.target.value})} className={styles.inputEditorial} style={{ height: '100px', resize: 'none', paddingTop: '10px' }} placeholder="Instrucciones para la compra..." />
+              <textarea 
+                name="observaciones" value={header.observaciones} 
+                onChange={(e) => setHeader({...header, observaciones: e.target.value})} 
+                className={styles.inputEditorial} 
+                style={{ height: '80px', resize: 'none', paddingTop: '10px', fontSize: '0.85rem' }} 
+                placeholder="Ej: Pedir todo para mañana antes de las 10 AM..." 
+              />
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', paddingBottom: '10px', borderTop: '2px dashed var(--border-ghost)' }}>
-              <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>COSTO ESTIMADO</span>
-              <span style={{ fontSize: '1.5rem', fontWeight: '900', color: 'var(--color-primary)' }}>${totalEstimado.toFixed(2)}</span>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px', paddingBottom: 0, borderTop: '2px dashed var(--border-ghost)' }}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>COSTO ESTIMADO</span>
+                <span style={{ fontSize: '1.5rem', fontWeight: '900', color: 'var(--color-primary)', lineHeight: 1 }}>
+                  ${totalEstimado.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+              <button 
+                onClick={procesarOrden} 
+                disabled={loading || carrito.length === 0} 
+                className={`${styles.btnBase} ${styles.btnPrimary}`} 
+                style={{ paddingTop: 0, paddingBottom: 0, paddingLeft: '20px', paddingRight: '20px', height: '48px', borderRadius: '14px' }}
+              >
+                <span className="material-symbols-outlined">send</span>
+                {loading ? 'ENVIANDO...' : 'ENVIAR'}
+              </button>
             </div>
-            <button onClick={procesarOrden} disabled={loading} className={`${styles.btnBase} ${styles.btnPrimary}`} style={{ width: '100%', paddingTop: '1.2rem', paddingBottom: '1.2rem', borderRadius: '16px' }}>
-              <span className="material-symbols-outlined">send</span>
-              {loading ? 'ENVIANDO...' : 'ENVIAR REQUISICIÓN FINAL'}
-            </button>
           </section>
         </div>
       )}

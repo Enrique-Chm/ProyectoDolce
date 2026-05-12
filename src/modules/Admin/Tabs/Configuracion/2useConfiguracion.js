@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 export const useConfiguracion = () => {
   const [loading, setLoading] = useState(false);
   
-  // --- ESTADOS DE DATOS ---
+  // --- ESTADOS DE DATOS (LISTADOS) ---
   const [sucursales, setSucursales] = useState([]);
   const [proveedores, setProveedores] = useState([]);
   const [trabajadores, setTrabajadores] = useState([]);
@@ -15,7 +15,7 @@ export const useConfiguracion = () => {
   const [roles, setRoles] = useState([]); 
   const [categorias, setCategorias] = useState([]);
 
-  // Estado unificado para formularios (Selects)
+  // Estado unificado para formularios (Selects en cascada o auxiliares)
   const [catalogosSelectores, setCatalogosSelectores] = useState({
     unidades: [],
     areas: [],
@@ -35,6 +35,7 @@ export const useConfiguracion = () => {
     setLoading(false);
     if (error) return toast.error('Error al cargar sucursales');
     setSucursales(data || []);
+    return data || [];
   }, []);
 
   const cargarProveedores = useCallback(async () => {
@@ -45,13 +46,41 @@ export const useConfiguracion = () => {
     setProveedores(data || []);
   }, []);
 
-  const cargarTrabajadores = useCallback(async () => {
+  /**
+   * CARGA DE TRABAJADORES: Estable y sin bucles.
+   * Se eliminó [sucursales] de las dependencias para evitar que la función se recree
+   * cada vez que los catálogos se actualizan.
+   */
+  const cargarTrabajadores = useCallback(async (sucursalesVigentes = []) => {
     setLoading(true);
     const { data, error } = await ConfiguracionService.getTrabajadores();
+    
+    if (error) {
+      setLoading(false);
+      return toast.error('Error al cargar trabajadores');
+    }
+
+    /**
+     * Mapeo de nombres de sucursales:
+     * Si no recibimos sucursalesVigentes (parámetro), el cruce será vacío al inicio, 
+     * pero se hidratará correctamente mediante cargarDatosIniciales.
+     */
+    const procesados = (data || []).map(t => {
+      const ids = t.sucursales_ids || [];
+      const nombresSucs = ids
+        .map(id => sucursalesVigentes.find(s => s.id === id)?.nombre)
+        .filter(Boolean);
+
+      return {
+        ...t,
+        sucursales_nombres_lista: nombresSucs,
+        rol_nombre: t.rol?.nombre || 'Sin Rol'
+      };
+    });
+
+    setTrabajadores(procesados);
     setLoading(false);
-    if (error) return toast.error('Error al cargar trabajadores');
-    setTrabajadores(data || []);
-  }, []);
+  }, []); // Dependencia vacía para mantener la referencia de la función estable
 
   const cargarUnidadesMedida = useCallback(async () => {
     setLoading(true);
@@ -85,12 +114,17 @@ export const useConfiguracion = () => {
     setCategorias(data || []);
   }, []);
 
-  // Carga paralela para selectores
+  /**
+   * Sincroniza todos los catálogos necesarios para los selectores de los formularios.
+   */
   const cargarCatalogosParaFormularios = useCallback(async () => {
-    setLoading(true);
+    // No usamos setLoading(true) aquí para evitar parpadeos si se usa en combo
     const res = await ConfiguracionService.getCatalogosParaSelectores();
-    setLoading(false);
-    if (res.error) toast.error('Error al sincronizar catálogos auxiliares');
+    
+    if (res.error) {
+      toast.error('Error al sincronizar catálogos auxiliares');
+      return res;
+    }
     
     setCatalogosSelectores({
       unidades: res.unidades || [],
@@ -100,7 +134,26 @@ export const useConfiguracion = () => {
       roles: res.roles || [],
       categorias: res.categorias || []
     });
+
+    setRoles(res.roles || []);
+    setSucursales(res.sucursales || []);
+    
+    return res; // Importante retornar el resultado para cargarDatosIniciales
   }, []);
+
+  /**
+   * FUNCIÓN MAESTRA PARA TRABAJADORES
+   * Ejecuta la carga secuencial para asegurar que el mapeo de nombres funcione
+   * sin disparar bucles de efectos.
+   */
+  const cargarDatosIniciales = useCallback(async () => {
+    setLoading(true);
+    // 1. Obtenemos los catálogos primero
+    const resCatalogos = await cargarCatalogosParaFormularios();
+    // 2. Pasamos los datos frescos directamente a la carga de trabajadores
+    await cargarTrabajadores(resCatalogos.sucursales || []);
+    setLoading(false);
+  }, [cargarTrabajadores, cargarCatalogosParaFormularios]);
 
   // ==========================================
   // MÉTODOS DE GUARDADO (CREATE / UPDATE)
@@ -115,11 +168,10 @@ export const useConfiguracion = () => {
 
     if (error) {
       let mensajeAmigable = 'No se pudo guardar la información.';
-      
-      // Mapeo de códigos de error de Postgres (Supabase)
-      if (error.code === '23505') mensajeAmigable = 'Error: Ya existe un registro con ese nombre o identificador único.';
-      if (error.code === '23503') mensajeAmigable = 'Error: No se puede eliminar o modificar porque este registro está siendo usado en otra tabla.';
-      if (error.code === '23502') mensajeAmigable = 'Error: Faltan campos obligatorios para completar el registro.';
+      if (error.code === '23505') mensajeAmigable = 'Error: Registro duplicado.';
+      if (error.code === '23503') mensajeAmigable = 'Error: Registro en uso por otra tabla.';
+      if (error.code === '23502') mensajeAmigable = 'Error: Campos obligatorios vacíos.';
+      if (error.code === '42703') mensajeAmigable = 'Error de estructura: Columna inexistente.';
       
       toast.error(`${mensajeAmigable}\nDetalle: ${error.message}`, { duration: 5000 });
       return false;
@@ -130,10 +182,9 @@ export const useConfiguracion = () => {
     return true;
   };
 
-  // Alias para componentes
   const guardarSucursal = (data) => guardarDatoGenerico(ConfiguracionService.guardarSucursal, data, cargarSucursales);
   const guardarProveedor = (data) => guardarDatoGenerico(ConfiguracionService.guardarProveedor, data, cargarProveedores);
-  const guardarTrabajador = (data) => guardarDatoGenerico(ConfiguracionService.guardarTrabajador, data, cargarTrabajadores);
+  const guardarTrabajador = (data) => guardarDatoGenerico(ConfiguracionService.guardarTrabajador, data, cargarDatosIniciales);
   const guardarRol = (data) => guardarDatoGenerico(ConfiguracionService.guardarRol, data, cargarRoles);
   const guardarCategoria = (data) => guardarDatoGenerico(ConfiguracionService.guardarCategoria, data, cargarCategorias);
 
@@ -143,14 +194,12 @@ export const useConfiguracion = () => {
 
   const cambiarEstatus = async (tabla, id, estatusActual, callbackCarga) => {
     setLoading(true);
-    // Normalizamos el estatus a minúsculas para coincidir con el trigger SQL
-    const nuevoEstatus = (estatusActual === 'activo') ? 'inactivo' : 'activo';
-    
+    const nuevoEstatus = (estatusActual === 'Activo' || estatusActual === 'activo') ? 'Inactivo' : 'Activo';
     const { error } = await ConfiguracionService.toggleEstatusGenerico(tabla, id, estatusActual);
     setLoading(false);
 
     if (error) {
-      toast.error('Error al cambiar el estatus en el servidor.');
+      toast.error('Error al cambiar el estatus.');
       return false;
     }
     
@@ -160,12 +209,12 @@ export const useConfiguracion = () => {
   };
 
   // ==========================================
-  // IMPORTACIÓN MASIVA (EXCEL)
+  // IMPORTACIÓN MASIVA
   // ==========================================
 
   const importarMasivoGenerico = async (metodo, datos, callbackCarga, nombreEntidad) => {
     if (!Array.isArray(datos) || datos.length === 0) {
-      toast.error('El archivo no contiene datos válidos.');
+      toast.error('Datos de importación inválidos.');
       return false;
     }
 
@@ -173,13 +222,11 @@ export const useConfiguracion = () => {
     try {
       const { data, error } = await metodo(datos);
       if (error) throw error;
-
-      toast.success(`¡Sincronización exitosa! Se procesaron ${data?.length || 0} ${nombreEntidad}.`);
+      toast.success(`Sincronización de ${nombreEntidad} completada.`);
       if (callbackCarga) await callbackCarga();
       return true;
     } catch (err) {
-      console.error(`Error importando ${nombreEntidad}:`, err);
-      toast.error(`Error en la importación: ${err.message}`);
+      toast.error(`Fallo en importación: ${err.message}`);
       return false;
     } finally {
       setLoading(false);
@@ -201,7 +248,6 @@ export const useConfiguracion = () => {
     roles, 
     categorias,
     catalogosSelectores,
-
     cargarSucursales,
     cargarProveedores,
     cargarTrabajadores,
@@ -210,14 +256,13 @@ export const useConfiguracion = () => {
     cargarRoles, 
     cargarCategorias,
     cargarCatalogosParaFormularios,
-
+    cargarDatosIniciales,
     guardarSucursal,
     guardarProveedor,
     guardarTrabajador,
     guardarRol, 
     guardarCategoria,
     cambiarEstatus,
-
     importarProveedores,
     importarSucursales,
     importarCategorias,

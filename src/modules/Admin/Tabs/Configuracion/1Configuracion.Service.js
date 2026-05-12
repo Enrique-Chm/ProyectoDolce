@@ -68,7 +68,6 @@ export const ConfiguracionService = {
 
   async guardarRol(rolData) {
     const dataLimpia = { ...rolData };
-    // Corrección: dataLimpia.id
     if (!dataLimpia.id || dataLimpia.id === "" || String(dataLimpia.id) === "null") {
       delete dataLimpia.id;
     }
@@ -86,26 +85,47 @@ export const ConfiguracionService = {
   // 4. TRABAJADORES (Recursos Humanos)
   // ==========================================
   async getTrabajadores() {
+    /** * CORRECCIÓN: Eliminamos el join automático 'sucursal:Cat_sucursales' 
+     * ya que la columna sucursal_id ya no existe. 
+     * El cruce de nombres de sucursales se hará en el Hook mediante el array sucursales_ids.
+     */
     const { data, error } = await supabase
       .from('Cat_Trabajadores')
       .select(`
         *,
-        sucursal:Cat_sucursales(id, nombre),
         rol:Cat_Roles(id, nombre, permisos) 
       `)
       .order('nombre_completo', { ascending: true });
-    return { data, error };
+
+    // Solo procesamos el nombre del rol, las sucursales las procesa el Hook
+    const dataProcesada = data?.map(t => ({
+      ...t,
+      rol_nombre: t.rol?.nombre || 'N/A'
+    }));
+
+    return { data: dataProcesada, error };
   },
 
   async guardarTrabajador(trabajadorData) {
     const dataLimpia = { ...trabajadorData };
+    
+    // Si es nuevo, eliminamos el ID para que Postgres genere el UUID
     if (!dataLimpia.id || dataLimpia.id === "" || String(dataLimpia.id) === "null") {
       delete dataLimpia.id;
     }
 
-    // Normalización de UUIDs obligatorios
-    dataLimpia.sucursal_id = dataLimpia.sucursal_id || null;
-    dataLimpia.rol_id = dataLimpia.rol_id || null;
+    // Seguridad: Password
+    if (dataLimpia.id && (!dataLimpia.password || dataLimpia.password.trim() === "")) {
+      delete dataLimpia.password;
+    }
+
+    /**
+     * LIMPIEZA CRÍTICA: Eliminamos explícitamente cualquier referencia a la columna vieja.
+     * Si el objeto del formulario aún tiene 'sucursal_id', Supabase lanzará el error 42703.
+     */
+    delete dataLimpia.sucursal_id;
+    delete dataLimpia.sucursal_nombre;
+    delete dataLimpia.rol_nombre; // Eliminamos metadata de la UI que no es columna de tabla
 
     const { data, error } = await supabase
       .from('Cat_Trabajadores')
@@ -150,14 +170,13 @@ export const ConfiguracionService = {
     return { data, error };
   },
 
-  // Carga masiva para formularios
   async getCatalogosParaSelectores() {
     const [unidades, sucursales, proveedores, roles, categorias] = await Promise.all([
-      supabase.from('Cat_UM').select('id, nombre, abreviatura').eq('estatus', 'activo'),
-      supabase.from('Cat_sucursales').select('id, nombre').eq('estatus', 'activo'),
-      supabase.from('Cat_Proveedores').select('id, nombre').eq('estatus', 'activo'),
-      supabase.from('Cat_Roles').select('id, nombre').eq('estatus', 'activo'),
-      supabase.from('Cat_Categorias').select('id, nombre').eq('estatus', 'activo')
+      supabase.from('Cat_UM').select('id, nombre, abreviatura').eq('estatus', 'Activo'),
+      supabase.from('Cat_sucursales').select('id, nombre').eq('estatus', 'Activo'),
+      supabase.from('Cat_Proveedores').select('id, nombre').eq('estatus', 'Activo'),
+      supabase.from('Cat_Roles').select('id, nombre').eq('estatus', 'Activo'),
+      supabase.from('Cat_Categorias').select('id, nombre').eq('estatus', 'Activo')
     ]);
 
     return {
@@ -171,11 +190,10 @@ export const ConfiguracionService = {
   },
 
   // ==========================================
-  // 6. ACCIÓN GENÉRICA DE ESTATUS
+  // 6. ACCIÓN GENÉRICA DE ESTATUS (Toggle)
   // ==========================================
   async toggleEstatusGenerico(tabla, id, estatusActual) {
-    // Normalizado a minúsculas para coincidir con el SQL
-    const nuevoEstatus = (estatusActual === 'activo') ? 'inactivo' : 'activo';
+    const nuevoEstatus = (estatusActual.toLowerCase() === 'activo') ? 'Inactivo' : 'Activo';
     
     const { data, error } = await supabase
       .from(tabla)
@@ -195,7 +213,6 @@ export const ConfiguracionService = {
     }
 
     try {
-      // 1. Cargamos catálogos actuales para mapear Nombres a UUIDs
       const [proveedores, sucursales, unidades, categorias] = await Promise.all([
         supabase.from('Cat_Proveedores').select('id, nombre'),
         supabase.from('Cat_sucursales').select('id, nombre'),
@@ -208,14 +225,12 @@ export const ConfiguracionService = {
         return String(str).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
       };
 
-      // Crear Mapas de búsqueda
       const mapProv = (proveedores.data || []).reduce((acc, p) => ({ ...acc, [normalizar(p.nombre)]: p.id }), {});
       const mapSucs = (sucursales.data || []).reduce((acc, s) => ({ ...acc, [normalizar(s.nombre)]: s.id }), {});
       const mapUms = (unidades.data || []).reduce((acc, u) => ({ ...acc, [normalizar(u.abreviatura)]: u.id, [normalizar(u.nombre)]: u.id }), {});
       const mapCats = (categorias.data || []).reduce((acc, c) => ({ ...acc, [normalizar(c.nombre)]: c.id }), {});
 
       const productosListos = productosExcel.map(row => {
-        // Lógica de sucursales (Todas vs Lista)
         let sucsIds = [];
         const sucsTexto = normalizar(row.sucursales);
         if (sucsTexto === 'todas' || sucsTexto === 'todaslassucursales') {

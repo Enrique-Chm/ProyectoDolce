@@ -12,26 +12,25 @@ export default function Productos({ onVolver }) {
   } = useProductos();
 
   const [mostrandoFormulario, setMostrandoFormulario] = useState(false);
+  const [filtroBusqueda, setFiltroBusqueda] = useState('');
   
-  // 1. ESTADO INICIAL: Sincronizado con las columnas de la tabla BD_Productos
   const estadoInicialFormulario = {
     id: null,
     nombre: '',
     marca: '',
-    categoria_id: '', // Relación UUID
+    categoria_id: '',
     presentacion: '',
     contenido: '',
     costo_actual: '',
-    proveedor_id: '', // Relación UUID
-    proveedor_secundario_id: '', // Relación UUID
-    um_id: '', // Relación UUID
+    proveedor_id: '',
+    proveedor_secundario_id: '',
+    um_id: '',
     sucursales_ids: [], 
     activo: true
   };
   
   const [formData, setFormData] = useState(estadoInicialFormulario);
 
-  // Carga inicial de datos y catálogos
   useEffect(() => {
     cargarProductos();
     cargarCatalogosFormulario();
@@ -45,28 +44,20 @@ export default function Productos({ onVolver }) {
     });
   };
 
-  // --- LÓGICA DE SUCURSALES (ARRAY DE UUIDs) ---
   const handleSucursalCheckboxChange = (id) => {
     const idsActuales = Array.isArray(formData.sucursales_ids) ? formData.sucursales_ids : [];
     if (idsActuales.includes(id)) {
-      setFormData({
-        ...formData,
-        sucursales_ids: idsActuales.filter(sucId => sucId !== id)
-      });
+      setFormData({ ...formData, sucursales_ids: idsActuales.filter(sucId => sucId !== id) });
     } else {
-      setFormData({
-        ...formData,
-        sucursales_ids: [...idsActuales, id]
-      });
+      setFormData({ ...formData, sucursales_ids: [...idsActuales, id] });
     }
   };
 
-  const handleToggleTodasLasSucursales = (checked) => {
-    if (checked) {
-      const todosLosIds = catalogos.sucursales.map(s => s.id);
-      setFormData({ ...formData, sucursales_ids: todosLosIds });
-    } else {
+  const handleToggleTodasLasSucursales = () => {
+    if (todasSeleccionadas) {
       setFormData({ ...formData, sucursales_ids: [] });
+    } else {
+      setFormData({ ...formData, sucursales_ids: catalogos.sucursales.map(s => s.id) });
     }
   };
 
@@ -76,7 +67,6 @@ export default function Productos({ onVolver }) {
     return catalogos.sucursales.every(s => idsActuales.includes(s.id));
   }, [catalogos.sucursales, formData.sucursales_ids]);
 
-  // --- MANEJO DE MODAL/VISTA ---
   const abrirParaCrear = () => {
     setFormData(estadoInicialFormulario);
     setMostrandoFormulario(true);
@@ -84,39 +74,32 @@ export default function Productos({ onVolver }) {
 
   const abrirParaEditar = (producto) => {
     setFormData({
-      id: producto.id,
-      nombre: producto.nombre || '',
-      marca: producto.marca || '',
-      categoria_id: producto.categoria_id || '',
-      presentacion: producto.presentacion || '',
-      contenido: producto.contenido || '',
-      costo_actual: producto.costo_actual || '',
-      proveedor_id: producto.proveedor_id || '',
-      proveedor_secundario_id: producto.proveedor_secundario_id || '',
-      um_id: producto.um_id || '',
-      sucursales_ids: Array.isArray(producto.sucursales_ids) ? producto.sucursales_ids : [],
-      activo: producto.activo
+      ...producto,
+      sucursales_ids: Array.isArray(producto.sucursales_ids) ? producto.sucursales_ids : []
     });
     setMostrandoFormulario(true);
   };
 
   const procesarGuardado = async () => {
-    // El servicio y el hook ya manejan la limpieza de datos,
-    // aquí solo validamos que lo mínimo necesario esté presente.
+    if (!formData.nombre.trim()) return toast.error('El nombre es obligatorio');
     const exito = await guardarProducto(formData);
-    if (exito) {
-      setMostrandoFormulario(false);
-    }
+    if (exito) setMostrandoFormulario(false);
   };
 
+  const productosFiltrados = productos.filter(p => 
+    p.nombre.toLowerCase().includes(filtroBusqueda.toLowerCase()) ||
+    (p.marca || '').toLowerCase().includes(filtroBusqueda.toLowerCase())
+  );
+
   return (
-    <div style={{ width: '100%', maxWidth: '100%' }}>
+    <div className={styles.fadeIN} style={{ width: '100%', maxWidth: '100%', paddingBottom: '40px' }}>
+      
       {/* --- ENCABEZADO --- */}
       <header style={{ marginBottom: 'var(--space-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
-          <span className={styles.labelTop} style={{ display: 'block', marginBottom: '2px' }}>Gestión de Inventario</span>
-          <h1 className={styles.title} style={{ fontSize: '2rem', lineHeight: '1' }}>
-            {mostrandoFormulario ? (formData.id ? 'Editar\nProducto' : 'Nuevo\nProducto') : 'Productos'}
+          <span className={styles.labelTop} style={{ display: 'block', marginBottom: '2px' }}>GESTIÓN DE INVENTARIO</span>
+          <h1 className={styles.title} style={{ fontSize: '2rem', lineHeight: '1', margin: 0 }}>
+            {mostrandoFormulario ? (formData.id ? 'Datos del\nProducto' : 'Nuevo\nProducto') : 'Productos'}
           </h1>
         </div>
         <button 
@@ -130,209 +113,145 @@ export default function Productos({ onVolver }) {
       </header>
 
       {mostrandoFormulario ? (
-        /* =========================================
-           VISTA: FORMULARIO DE ALTA / EDICIÓN
-           ========================================= */
-        <section className={styles.card} style={{ animation: 'slideUp 0.3s ease' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
-            
-            {/* BLOQUE 1: IDENTIDAD */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <h3 className={styles.labelTop} style={{ color: 'var(--color-primary)', borderBottom: '1px solid var(--border-ghost)', paddingBottom: '8px' }}>Información Básica</h3>
-              
-              <div>
-                <label className={styles.labelTop}>Nombre del Producto *</label>
-                <input type="text" name="nombre" value={formData.nombre} onChange={handleInputChange} placeholder="Ej: Aceite de Oliva 1L" className={styles.inputEditorial} disabled={loading} />
-              </div>
+        /* --- FORMULARIO --- */
+        <section className={styles.card} style={{ animation: 'slideUp 0.3s ease', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '15px' }}>
+            <div>
+              <label className={styles.labelTop}>NOMBRE DEL PRODUCTO *</label>
+              <input type="text" name="nombre" value={formData.nombre} onChange={handleInputChange} className={styles.inputEditorial} placeholder="Ej: Aceite de Oliva 1L" />
+            </div>
 
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div>
-                <label className={styles.labelTop}>Marca</label>
-                <input type="text" name="marca" value={formData.marca} onChange={handleInputChange} className={styles.inputEditorial} disabled={loading} />
+                <label className={styles.labelTop}>MARCA</label>
+                <input type="text" name="marca" value={formData.marca} onChange={handleInputChange} className={styles.inputEditorial} placeholder="Kirkland" />
               </div>
-
               <div>
-                <label className={styles.labelTop}>Categoría de Producto *</label>
-                <select name="categoria_id" value={formData.categoria_id} onChange={handleInputChange} className={styles.selectEditorial} disabled={loading}>
-                  <option value="">-- Seleccionar Categoría --</option>
-                  {catalogos.categorias.map(c => (
-                    <option key={c.id} value={c.id}>{c.nombre}</option>
-                  ))}
+                <label className={styles.labelTop}>CATEGORÍA *</label>
+                <select name="categoria_id" value={formData.categoria_id} onChange={handleInputChange} className={styles.selectEditorial}>
+                  <option value="">Seleccionar...</option>
+                  {catalogos.categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                 </select>
               </div>
             </div>
 
-            {/* BLOQUE 2: ESPECIFICACIONES */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <h3 className={styles.labelTop} style={{ color: 'var(--color-primary)', borderBottom: '1px solid var(--border-ghost)', paddingBottom: '8px' }}>Especificaciones y Costo</h3>
-              
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div>
-                <label className={styles.labelTop}>Presentación</label>
-                <input type="text" name="presentacion" value={formData.presentacion} onChange={handleInputChange} placeholder="Ej: Botella de vidrio" className={styles.inputEditorial} disabled={loading} />
+                <label className={styles.labelTop}>COSTO ($)</label>
+                <input type="number" name="costo_actual" value={formData.costo_actual} onChange={handleInputChange} className={styles.inputEditorial} placeholder="0.00" />
               </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label className={styles.labelTop}>Contenido</label>
-                  <input type="number" name="contenido" value={formData.contenido} onChange={handleInputChange} placeholder="Ej: 1" className={styles.inputEditorial} disabled={loading} />
-                </div>
-                <div>
-                  <label className={styles.labelTop}>Unidad (UM) *</label>
-                  <select name="um_id" value={formData.um_id} onChange={handleInputChange} className={styles.selectEditorial} disabled={loading}>
-                    <option value="">-- UM --</option>
-                    {catalogos.unidades.map(u => (
-                      <option key={u.id} value={u.id}>{u.abreviatura} - {u.nombre}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
               <div>
-                <label className={styles.labelTop}>Costo de Compra Actual ($)</label>
-                <input type="number" name="costo_actual" value={formData.costo_actual} onChange={handleInputChange} placeholder="0.00" className={styles.inputEditorial} disabled={loading} />
+                <label className={styles.labelTop}>UNIDAD (UM)</label>
+                <select name="um_id" value={formData.um_id} onChange={handleInputChange} className={styles.selectEditorial}>
+                  <option value="">Seleccionar...</option>
+                  {catalogos.unidades.map(u => <option key={u.id} value={u.id}>{u.abreviatura}</option>)}
+                </select>
               </div>
             </div>
 
-            {/* BLOQUE 3: LOGÍSTICA */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <h3 className={styles.labelTop} style={{ color: 'var(--color-primary)', borderBottom: '1px solid var(--border-ghost)', paddingBottom: '8px' }}>Proveedores y Sucursales</h3>
-              
-              <div>
-                <label className={styles.labelTop}>Proveedor Principal</label>
-                <select name="proveedor_id" value={formData.proveedor_id} onChange={handleInputChange} className={styles.selectEditorial} disabled={loading}>
-                  <option value="">-- Seleccionar --</option>
-                  {catalogos.proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label className={styles.labelTop}>Proveedor Secundario (Opcional)</label>
-                <select name="proveedor_secundario_id" value={formData.proveedor_secundario_id} onChange={handleInputChange} className={styles.selectEditorial} disabled={loading}>
-                  <option value="">-- Seleccionar --</option>
-                  {catalogos.proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label className={styles.labelTop} style={{ display: 'block', marginBottom: '8px' }}>Disponibilidad en Sucursales</label>
-                <div style={{
-                  backgroundColor: 'var(--color-surface-lowest)',
-                  border: '1px solid var(--border-ghost)',
-                  borderRadius: '12px',
-                  padding: '12px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px',
-                  maxHeight: '140px',
-                  overflowY: 'auto'
-                }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold', borderBottom: '1px solid var(--border-ghost)', paddingBottom: '6px' }}>
-                    <input type="checkbox" checked={todasSeleccionadas} onChange={(e) => handleToggleTodasLasSucursales(e.target.checked)} disabled={loading} />
-                    Seleccionar todas
-                  </label>
-
-                  {catalogos.sucursales.map(suc => (
-                    <label key={suc.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.825rem' }}>
-                      <input 
-                        type="checkbox" 
-                        checked={formData.sucursales_ids.includes(suc.id)} 
-                        onChange={() => handleSucursalCheckboxChange(suc.id)} 
-                        disabled={loading} 
-                      />
+            <div>
+              <label className={styles.labelTop}>SUCURSALES DISPONIBLES</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '8px', padding: '12px', background: 'var(--color-surface-lowest)', borderRadius: '12px', maxHeight: '140px', overflowY: 'auto' }}>
+                {catalogos.sucursales.map(suc => {
+                  const selec = formData.sucursales_ids.includes(suc.id);
+                  return (
+                    <div key={suc.id} onClick={() => handleSucursalCheckboxChange(suc.id)} style={{ padding: '8px', borderRadius: '8px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', backgroundColor: selec ? 'var(--color-primary)' : 'white', color: selec ? 'white' : 'inherit', border: '1px solid var(--border-ghost)' }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>{selec ? 'check_box' : 'check_box_outline_blank'}</span>
                       {suc.nombre}
-                    </label>
-                  ))}
-                </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
 
-          <button onClick={procesarGuardado} disabled={loading} className={`${styles.btnBase} ${styles.btnPrimary}`} style={{ width: '100%', marginTop: '32px' }}>
-            <span className="material-symbols-outlined">{loading ? 'sync' : 'save'}</span>
-            {loading ? 'Procesando...' : 'Finalizar y Guardar'}
+          <button onClick={procesarGuardado} disabled={loading} className={`${styles.btnBase} ${styles.btnPrimary}`} style={{ width: '100%', padding: '1rem' }}>
+            <span className="material-symbols-outlined">save</span>
+            {loading ? 'GUARDANDO...' : 'GUARDAR PRODUCTO'}
           </button>
         </section>
-
       ) : (
-        /* =========================================
-           VISTA: LISTADO DE PRODUCTOS
-           ========================================= */
+        /* --- LISTADO (HOMOLOGADO A SUCURSALES) --- */
         <>
-          <section className={styles.cardLow} style={{ marginBottom: 'var(--space-md)', padding: '10px 14px' }}>
-             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>
-                  Mostrando <b>{productos.length}</b> productos en catálogo.
-                </p>
-                <button onClick={abrirParaCrear} className={`${styles.btnBase} ${styles.btnPrimary}`} style={{ height: '36px', padding: '0 12px', fontSize: '0.8rem' }} disabled={loading}>
-                  <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>add</span> Nuevo Insumo
-                </button>
-             </div>
-          </section>
+          <button 
+            onClick={abrirParaCrear} 
+            className={`${styles.btnBase} ${styles.btnPrimary}`} 
+            style={{ width: '100%', marginBottom: 'var(--space-md)', padding: '0.8rem', fontSize: '0.875rem', height: '44px' }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>add_box</span>
+            REGISTRAR PRODUCTO
+          </button>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {productos.map(prod => (
-              <section 
-                key={prod.id} 
-                className={styles.card} 
-                style={{ 
-                  opacity: prod.activo ? 1 : 0.6, 
-                  padding: '14px 18px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  borderLeft: prod.activo ? '5px solid var(--color-primary)' : '5px solid #ccc',
-                  backgroundColor: 'white'
-                }}
-              >
-                {/* Info Principal */}
-                <div onClick={() => abrirParaEditar(prod)} style={{ cursor: 'pointer', flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <h2 style={{ fontSize: '1rem', margin: 0, fontWeight: '700', color: 'var(--text-main)' }}>
-                      {prod.nombre}
-                    </h2>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--color-primary)', fontWeight: 'bold', backgroundColor: 'var(--color-surface-low)', padding: '2px 8px', borderRadius: '6px' }}>
-                      ${prod.costo_actual}
-                    </span>
+          <div style={{ position: 'relative', marginBottom: '16px' }}>
+            <span className="material-symbols-outlined" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }}>search</span>
+            <input type="text" placeholder="Buscar por nombre o marca..." className={styles.inputEditorial} style={{ width: '100%', paddingLeft: '40px' }} value={filtroBusqueda} onChange={(e) => setFiltroBusqueda(e.target.value)} />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {productosFiltrados.map(prod => {
+              const esActivo = prod.activo;
+              const numSucs = prod.sucursales_ids?.length || 0;
+              return (
+                <div key={prod.id} className={styles.card} style={{ 
+                  display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+                  opacity: esActivo ? 1 : 0.65,
+                  borderLeft: esActivo ? '4px solid var(--color-primary)' : '4px solid #999',
+                  padding: '8px 12px', borderRadius: '10px', backgroundColor: 'white',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.02)', gap: '12px', minHeight: '64px'
+                }}>
+                  {/* Info */}
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <h4 style={{ fontSize: '0.875rem', margin: 0, fontWeight: 'bold', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {prod.nombre}
+                      </h4>
+                      <span style={{ 
+                        fontSize: '0.55rem', 
+                        background: esActivo ? 'var(--color-primary-fixed)' : 'var(--color-surface-high)', 
+                        color: esActivo ? 'var(--color-on-primary-fixed)' : 'var(--text-muted)', 
+                        padding: '1px 6px', borderRadius: '4px', fontWeight: 'bold', textTransform: 'uppercase'
+                      }}>
+                        {esActivo ? 'ACTIVO' : 'BAJA'}
+                      </span>
+                    </div>
+
+                    <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span style={{ fontWeight: 'bold', color: 'var(--color-primary)' }}>${prod.costo_actual}</span>
+                      <span>•</span>
+                      <span>{prod.categoria?.nombre || 'S/C'}</span>
+                      <span>•</span>
+                      <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>location_on</span>
+                      {numSucs === 0 || numSucs === catalogos.sucursales.length ? 'Todas' : `${numSucs} sucs`}
+                    </p>
                   </div>
-
-                  <div style={{ display: 'flex', gap: '6px', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', alignItems: 'center' }}>
-                    <span style={{ fontWeight: '600' }}>{prod.marca || 'Genérico'}</span>
-                    <span>•</span>
-                    <span>{prod.unidad_medida?.abreviatura || 'S/UM'}</span>
-                    <span>•</span>
-                    <span style={{ color: 'var(--color-primary)', opacity: 0.8 }}>{prod.categoria?.nombre || 'Sin Categoría'}</span>
-                  </div>
-
-                  {/* Sucursales Badge Mini */}
-                  <div style={{ marginTop: '6px' }}>
-                    <span style={{ fontSize: '0.65rem', color: 'var(--text-light)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: '0.9rem' }}>location_on</span>
-                      {prod.sucursales_ids?.length === 0 ? 'Disponible en todas' : `${prod.sucursales_ids?.length} sucursales`}
-                    </span>
+                  
+                  {/* Botones cuadrados mini */}
+                  <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                    <button 
+                      onClick={() => abrirParaEditar(prod)} 
+                      className={styles.btnSecondary} 
+                      style={{ padding: '0', width: '34px', height: '34px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-surface-low)' }} 
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: '1.05rem', color: 'var(--text-main)' }}>edit</span>
+                    </button>
+                    <button 
+                      onClick={() => toggleEstatus(prod.id, prod.activo)} 
+                      className={styles.btnOutlined} 
+                      style={{ 
+                        padding: '0', width: '34px', height: '34px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        borderColor: esActivo ? '#ba1a1a' : 'var(--color-primary)',
+                        color: esActivo ? '#ba1a1a' : 'var(--color-primary)',
+                        backgroundColor: 'transparent'
+                      }} 
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: '1.05rem' }}>
+                        {esActivo ? 'visibility_off' : 'visibility'}
+                      </span>
+                    </button>
                   </div>
                 </div>
-                
-                {/* Acciones Rápidas */}
-                <div style={{ display: 'flex', gap: '8px', marginLeft: '16px' }}>
-                  <button onClick={() => abrirParaEditar(prod)} className={`${styles.btnBase} ${styles.btnSecondary}`} style={{ width: '36px', height: '36px', padding: 0, borderRadius: '10px' }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>edit</span>
-                  </button>
-                  <button 
-                    onClick={() => toggleEstatus(prod.id, prod.activo)} 
-                    className={styles.btnBase} 
-                    style={{ 
-                      width: '36px', height: '36px', padding: 0, borderRadius: '10px',
-                      backgroundColor: 'transparent',
-                      border: `1px solid ${prod.activo ? '#ff4d4d' : '#4CAF50'}`,
-                      color: prod.activo ? '#ff4d4d' : '#4CAF50'
-                    }}
-                  >
-                    <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>
-                      {prod.activo ? 'visibility_off' : 'visibility'}
-                    </span>
-                  </button>
-                </div>
-              </section>
-            ))}
+              );
+            })}
           </div>
         </>
       )}

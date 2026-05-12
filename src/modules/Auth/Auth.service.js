@@ -8,6 +8,11 @@ export const AuthService = {
    * @param {string} password - Contraseña en texto plano
    */
   async login(usuario, password) {
+    /**
+     * ACTUALIZACIÓN: Cambiamos sucursal_id por sucursales_ids.
+     * Eliminamos el join sucursal:Cat_sucursales ya que al ser un array, 
+     * PostgREST no puede resolver la relación automáticamente en este select.
+     */
     const { data, error } = await supabase
       .from('Cat_Trabajadores')
       .select(`
@@ -16,17 +21,16 @@ export const AuthService = {
         usuario, 
         password, 
         estatus,
-        sucursal_id,
-        sucursal:Cat_sucursales(nombre),
+        sucursales_ids,
         rol:Cat_Roles(
           id,
           nombre,
           permisos
         )
       `)
-      .eq('usuario', usuario)    // Búsqueda por la columna 'usuario'
-      .eq('password', password)  // Comparación directa de contraseña
-      .eq('estatus', 'Activo')   // Solo usuarios permitidos
+      .eq('usuario', usuario)    
+      .eq('password', password)  
+      .eq('estatus', 'Activo')   
       .single();
 
     // Si hay error de Supabase o no hay datos, las credenciales son inválidas
@@ -40,9 +44,10 @@ export const AuthService = {
 
     /**
      * Preparamos el objeto de sesión con la información necesaria para el Front-End.
-     * Ahora incluimos el objeto 'permisos' para habilitar/deshabilitar funciones
-     * dinámicamente en la interfaz.
+     * Adaptamos la estructura para manejar múltiples sucursales.
      */
+    const numSucs = data.sucursales_ids?.length || 0;
+    
     const sesion = {
       id: data.id,
       nombre_completo: data.nombre_completo,
@@ -50,8 +55,11 @@ export const AuthService = {
       rol_id: data.rol?.id,
       rol_nombre: data.rol?.nombre || 'Sin Rol',
       permisos: data.rol?.permisos || {},
-      sucursal_id: data.sucursal_id,
-      sucursal_nombre: data.sucursal?.nombre || 'Sin Sucursal Asignada'
+      // Ahora guardamos el arreglo completo de IDs
+      sucursales_ids: data.sucursales_ids || [],
+      // Mantenemos sucursal_id por compatibilidad (usando la primera del array)
+      sucursal_id: data.sucursales_ids?.[0] || null,
+      sucursal_nombre: numSucs > 1 ? `${numSucs} Sucursales` : (numSucs === 1 ? 'Sucursal Asignada' : 'Sin Sucursal')
     };
 
     // Guardamos la sesión real en el navegador
@@ -62,7 +70,6 @@ export const AuthService = {
 
   /**
    * Recupera la sesión persistida en el localStorage al recargar la app.
-   * Si existe una sesión simulada activa, devuelve esa en su lugar.
    */
   getSesion() {
     const simulada = localStorage.getItem('sesion_simulada');
@@ -80,7 +87,6 @@ export const AuthService = {
       if (!saved) return null;
       
       const parsed = JSON.parse(saved);
-      // Validamos que tenga la estructura mínima esperada
       return parsed.id ? parsed : null;
     } catch (e) {
       console.error("Error al recuperar sesión:", e);
@@ -90,12 +96,11 @@ export const AuthService = {
   },
 
   /**
-   * Limpia los datos de navegación y fuerza un refresco para resetear el estado de React
+   * Limpia los datos de navegación y fuerza un refresco
    */
   logout() {
     localStorage.removeItem('sesion_compra');
     localStorage.removeItem('sesion_simulada');
-    // Forzamos el reload para limpiar todos los estados de los hooks en memoria
     window.location.reload(); 
   },
 
@@ -103,39 +108,27 @@ export const AuthService = {
   // MÉTODOS PARA SIMULACIÓN DE ROLES (IMPERSONATE)
   // ==========================================
 
-  /**
-   * Inicia la simulación inyectando los datos de permisos y rol seleccionados
-   * @param {object} rolSimulado - Objeto con { id, nombre, permisos } del nuevo rol
-   */
   iniciarSimulacion(rolSimulado) {
     const sesionReal = this.getSesionReal();
     if (!sesionReal) return;
 
-    // Clonamos la sesión original y reemplazamos los campos del rol
     const nuevaSesion = {
       ...sesionReal,
-      rolSimulado: true, // Bandera de apoyo visual
+      rolSimulado: true, 
       rol_nombre: rolSimulado.nombre,
       rol_id: rolSimulado.id,
-      permisos: rolSimulado.permisos // Inyectamos sus permisos exactos
+      permisos: rolSimulado.permisos 
     };
 
     localStorage.setItem('sesion_simulada', JSON.stringify(nuevaSesion));
-    // Recargamos la aplicación para resetear todos los estados del menú de navegación
     window.location.reload();
   },
 
-  /**
-   * Detiene la simulación y regresa al Administrador real
-   */
   detenerSimulacion() {
     localStorage.removeItem('sesion_simulada');
     window.location.reload();
   },
 
-  /**
-   * Obtiene la sesión original del administrador
-   */
   getSesionReal() {
     const saved = localStorage.getItem('sesion_compra');
     try {
@@ -145,9 +138,6 @@ export const AuthService = {
     }
   },
 
-  /**
-   * Retorna si actualmente estamos en modo de simulación
-   */
   estaSimulando() {
     return localStorage.getItem('sesion_simulada') !== null;
   }
