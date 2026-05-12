@@ -1,5 +1,5 @@
 // src/modules/Admin/Tabs/Productos/2useProductos.js
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { ProductosService } from './1Productos.Service';
 import toast from 'react-hot-toast';
 
@@ -7,6 +7,10 @@ export const useProductos = () => {
   const [loading, setLoading] = useState(false);
   const [productos, setProductos] = useState([]);
   
+  // --- ESTADOS DE FILTRADO (UI) ---
+  const [filtroBusqueda, setFiltroBusqueda] = useState('');
+  const [catActiva, setCatActiva] = useState('Todas');
+
   const [catalogos, setCatalogos] = useState({
     proveedores: [],
     sucursales: [],
@@ -15,11 +19,8 @@ export const useProductos = () => {
   });
 
   // ==========================================
-  // OBTENER DATOS (LISTADO)
+  // 1. CARGA DE DATOS Y NORMALIZACIÓN
   // ==========================================
-  /**
-   * Carga la lista de productos enriquecida desde el servicio.
-   */
   const cargarProductos = useCallback(async () => {
     setLoading(true);
     try {
@@ -28,22 +29,23 @@ export const useProductos = () => {
         toast.error(`Error de carga: ${error.message || 'No se pudo obtener la lista'}`);
         return;
       }
-      setProductos(data || []);
+
+      // Normalizamos la data para que el filtrado sea más rápido y sencillo
+      const procesados = (data || []).map(p => ({
+        ...p,
+        categoria_nombre: p.categoria?.nombre || 'Sin Categoría',
+        um_abreviatura: p.unidad_medida?.abreviatura || 'pz'
+      }));
+
+      setProductos(procesados);
     } catch (err) {
       console.error("Error inesperado al cargar productos:", err);
-      toast.error("Error de conexión al cargar la lista de productos.");
+      toast.error("Error de conexión al cargar la lista.");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // ==========================================
-  // CARGAR OPCIONES PARA SELECTS (UI)
-  // ==========================================
-  /**
-   * Sincroniza los catálogos necesarios para los formularios.
-   * Recupera proveedores, sucursales, unidades y categorías.
-   */
   const cargarCatalogosFormulario = useCallback(async () => {
     setLoading(true);
     try {
@@ -62,20 +64,42 @@ export const useProductos = () => {
       });
     } catch (err) {
       console.error("Error inesperado al cargar catálogos:", err);
-      toast.error("No se pudieron obtener los catálogos del servidor.");
     } finally {
       setLoading(false);
     }
   }, []);
 
   // ==========================================
-  // GUARDAR DATOS (CREAR O EDITAR)
+  // 2. LÓGICA DE FILTRADO (SEARCHABLE)
   // ==========================================
-  /**
-   * Procesa el guardado de un producto incluyendo la lógica de proveedores.
-   */
+
+  // Extraer categorías únicas para los Tabs del listado
+  const listaCategoriasFiltro = useMemo(() => {
+    const sets = new Set(productos.map(p => p.categoria_nombre));
+    return ['Todas', ...Array.from(sets).sort()];
+  }, [productos]);
+
+  // Motor de búsqueda y filtrado por categoría
+  const productosFiltrados = useMemo(() => {
+    return productos.filter(p => {
+      // Filtro 1: Por Pestaña/Categoría
+      const coincideCat = catActiva === 'Todas' || p.categoria_nombre === catActiva;
+
+      // Filtro 2: Por Texto (Nombre, Marca o Categoría)
+      const search = filtroBusqueda.toLowerCase();
+      const coincideTexto = 
+        p.nombre.toLowerCase().includes(search) ||
+        (p.marca || '').toLowerCase().includes(search) ||
+        p.categoria_nombre.toLowerCase().includes(search);
+
+      return coincideCat && coincideTexto;
+    });
+  }, [productos, filtroBusqueda, catActiva]);
+
+  // ==========================================
+  // 3. ACCIONES (GUARDAR / ESTATUS)
+  // ==========================================
   const guardarProducto = useCallback(async (productoData) => {
-    // --- VALIDACIONES DE NEGOCIO ---
     if (!productoData.nombre || productoData.nombre.trim() === '') {
       toast.error('El nombre del producto es obligatorio.');
       return false;
@@ -83,11 +107,6 @@ export const useProductos = () => {
 
     if (!productoData.categoria_id) {
       toast.error('Debes seleccionar una categoría.');
-      return false;
-    }
-
-    if (!productoData.um_id) {
-      toast.error('Debes seleccionar una unidad de medida.');
       return false;
     }
 
@@ -103,20 +122,15 @@ export const useProductos = () => {
 
     setLoading(true);
     try {
-      /**
-       * Enviamos el objeto completo. 
-       * El servicio debe estar listo para recibir proveedor_id y proveedor_secundario_id.
-       */
       const { error } = await ProductosService.guardarProducto(productoData);
 
       if (error) {
-        const mensajePrincipal = error.message || 'Error desconocido';
-        toast.error(`No se pudo guardar:\n${mensajePrincipal}`, { duration: 5000 });
+        toast.error(`No se pudo guardar: ${error.message}`, { duration: 5000 });
         return false;
       }
 
       toast.success('¡Producto guardado exitosamente!');
-      await cargarProductos(); // Refrescamos para ver el nuevo icono de "Respaldo" si aplica
+      await cargarProductos(); 
       return true;
     } catch (err) {
       console.error("Error en guardarProducto:", err);
@@ -127,12 +141,6 @@ export const useProductos = () => {
     }
   }, [cargarProductos]);
 
-  // ==========================================
-  // CAMBIAR ESTATUS (ACTIVAR/DESACTIVAR)
-  // ==========================================
-  /**
-   * Alterna el estado de visibilidad del producto.
-   */
   const toggleEstatus = useCallback(async (id, estatusActual) => {
     try {
       const { error } = await ProductosService.toggleEstatusProducto(id, estatusActual);
@@ -142,17 +150,13 @@ export const useProductos = () => {
         return false;
       }
 
-      // Actualización optimista
-      setProductos(prevProductos => 
-        prevProductos.map(prod => 
-          prod.id === id ? { ...prod, activo: !estatusActual } : prod
-        )
+      setProductos(prev => 
+        prev.map(prod => prod.id === id ? { ...prod, activo: !estatusActual } : prod)
       );
       
       toast.success(estatusActual ? 'Producto desactivado' : 'Producto activado');
       return true;
     } catch (err) {
-      console.error("Error en toggleEstatus:", err);
       toast.error("Error crítico al cambiar el estatus.");
       return false;
     }
@@ -160,8 +164,13 @@ export const useProductos = () => {
 
   return {
     loading,
-    productos,
+    productos: productosFiltrados, // Entregamos la lista ya filtrada
     catalogos,
+    filtroBusqueda,
+    setFiltroBusqueda,
+    catActiva,
+    setCatActiva,
+    listaCategoriasFiltro,
     cargarProductos,
     cargarCatalogosFormulario,
     guardarProducto,

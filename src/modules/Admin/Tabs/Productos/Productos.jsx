@@ -13,6 +13,7 @@ export default function Productos({ onVolver }) {
 
   const [mostrandoFormulario, setMostrandoFormulario] = useState(false);
   const [filtroBusqueda, setFiltroBusqueda] = useState('');
+  const [catActiva, setCatActiva] = useState('Todas'); // Nueva lógica de filtro por pestaña
   
   const estadoInicialFormulario = {
     id: null,
@@ -35,6 +36,12 @@ export default function Productos({ onVolver }) {
     cargarCatalogosFormulario();
   }, [cargarProductos, cargarCatalogosFormulario]);
 
+  // Memorizamos las categorías disponibles para el filtro superior
+  const listaCategoriasFiltro = useMemo(() => {
+    const sets = new Set(productos.map(p => p.categoria?.nombre).filter(Boolean));
+    return ['Todas', ...Array.from(sets).sort()];
+  }, [productos]);
+
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData({ 
@@ -43,9 +50,6 @@ export default function Productos({ onVolver }) {
     });
   };
 
-  /**
-   * Gestión de visibilidad multi-sucursal.
-   */
   const handleSucursalCheckboxChange = (id) => {
     const idsActuales = Array.isArray(formData.sucursales_ids) ? formData.sucursales_ids : [];
     if (idsActuales.includes(id)) {
@@ -77,10 +81,23 @@ export default function Productos({ onVolver }) {
     if (exito) setMostrandoFormulario(false);
   };
 
-  const productosFiltrados = productos.filter(p => 
-    p.nombre.toLowerCase().includes(filtroBusqueda.toLowerCase()) ||
-    (p.marca || '').toLowerCase().includes(filtroBusqueda.toLowerCase())
-  );
+  /**
+   * CORRECCIÓN: Búsqueda Multicriterio
+   * Ahora filtra por categoría seleccionada Y por texto (nombre, marca o categoría)
+   */
+  const productosFiltrados = productos.filter(p => {
+    // 1. Filtro por Pestaña de Categoría
+    const coincidePestaña = catActiva === 'Todas' || p.categoria?.nombre === catActiva;
+    
+    // 2. Filtro por Texto del Buscador
+    const searchLower = filtroBusqueda.toLowerCase();
+    const coincideTexto = 
+      p.nombre.toLowerCase().includes(searchLower) ||
+      (p.marca || '').toLowerCase().includes(searchLower) ||
+      (p.categoria?.nombre || '').toLowerCase().includes(searchLower);
+
+    return coincidePestaña && coincideTexto;
+  });
 
   return (
     <div className={styles.fadeIN} style={{ width: '100%', maxWidth: '100%', paddingBottom: '40px' }}>
@@ -108,13 +125,11 @@ export default function Productos({ onVolver }) {
         <section className={styles.card} style={{ animation: 'slideUp 0.3s ease', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '15px' }}>
             
-            {/* Fila 1: Nombre */}
             <div>
               <label className={styles.labelTop}>NOMBRE DEL PRODUCTO *</label>
               <input type="text" name="nombre" value={formData.nombre} onChange={handleInputChange} className={styles.inputEditorial} placeholder="Ej: Aceite de Oliva" />
             </div>
 
-            {/* Fila 2: Marca y Categoría */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div>
                 <label className={styles.labelTop}>MARCA</label>
@@ -129,7 +144,6 @@ export default function Productos({ onVolver }) {
               </div>
             </div>
 
-            {/* Fila 3: Presentación y Contenido */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div>
                 <label className={styles.labelTop}>PRESENTACIÓN (Empaque)</label>
@@ -141,7 +155,6 @@ export default function Productos({ onVolver }) {
               </div>
             </div>
 
-            {/* Fila 4: Unidad de Medida */}
             <div>
               <label className={styles.labelTop}>UNIDAD DE MEDIDA (UM) *</label>
               <select name="um_id" value={formData.um_id} onChange={handleInputChange} className={styles.selectEditorial}>
@@ -150,7 +163,6 @@ export default function Productos({ onVolver }) {
               </select>
             </div>
 
-            {/* Fila 5: Proveedores (Soporte para Reasignación) */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div>
                 <label className={styles.labelTop}>PROVEEDOR PRINCIPAL</label>
@@ -160,7 +172,7 @@ export default function Productos({ onVolver }) {
                 </select>
               </div>
               <div>
-                <label className={styles.labelTop} style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>PROVEEDOR SECUNDARIO (Respaldo)</label>
+                <label className={styles.labelTop} style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>PROVEEDOR SECUNDARIO</label>
                 <select name="proveedor_secundario_id" value={formData.proveedor_secundario_id} onChange={handleInputChange} className={styles.selectEditorial} style={{ border: '1px solid var(--color-primary)' }}>
                   <option value="">Ninguno</option>
                   {catalogos.proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
@@ -168,7 +180,6 @@ export default function Productos({ onVolver }) {
               </div>
             </div>
 
-            {/* Fila 6: Sucursales */}
             <div>
               <label className={styles.labelTop}>VISIBILIDAD EN SUCURSALES</label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '8px', padding: '12px', background: 'var(--color-surface-lowest)', borderRadius: '12px', maxHeight: '140px', overflowY: 'auto', border: '1px solid var(--border-ghost)' }}>
@@ -185,7 +196,7 @@ export default function Productos({ onVolver }) {
             </div>
           </div>
 
-          <button onClick={procesarGuardado} disabled={loading} className={`${styles.btnBase} ${styles.btnPrimary}`} style={{ width: '100%', padding: '1.2rem', marginTop: '10px' }}>
+          <button onClick={procesarGuardado} disabled={loading} className={`${styles.btnBase} ${styles.btnPrimary}`} style={{ width: '100%', padding: '1rem', marginTop: '10px' }}>
             <span className="material-symbols-outlined">save</span>
             {loading ? 'GUARDANDO...' : 'GUARDAR PRODUCTO'}
           </button>
@@ -202,54 +213,91 @@ export default function Productos({ onVolver }) {
             REGISTRAR PRODUCTO
           </button>
 
+          {/* Buscador de Texto */}
           <div style={{ position: 'relative', marginBottom: '16px' }}>
             <span className="material-symbols-outlined" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }}>search</span>
-            <input type="text" placeholder="Buscar por nombre o marca..." className={styles.inputEditorial} style={{ width: '100%', paddingLeft: '40px' }} value={filtroBusqueda} onChange={(e) => setFiltroBusqueda(e.target.value)} />
+            <input 
+              type="text" 
+              placeholder="Buscar por nombre, marca o categoría..." 
+              className={styles.inputEditorial} 
+              style={{ width: '100%', paddingLeft: '40px' }} 
+              value={filtroBusqueda} 
+              onChange={(e) => setFiltroBusqueda(e.target.value)} 
+            />
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {productosFiltrados.map(prod => {
-              const esActivo = prod.activo;
-              const numSucs = prod.sucursales_ids?.length || 0;
-              return (
-                <div key={prod.id} className={styles.card} style={{ 
-                  display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-                  opacity: esActivo ? 1 : 0.65,
-                  borderLeft: esActivo ? '4px solid var(--color-primary)' : '4px solid #999',
-                  padding: '10px 12px', borderRadius: '10px', backgroundColor: 'white',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.02)', gap: '12px', minHeight: '64px'
-                }}>
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <h4 style={{ fontSize: '0.875rem', margin: 0, fontWeight: 'bold', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {prod.nombre}
-                      </h4>
-                      {prod.proveedor_secundario_id && (
-                         <span title="Tiene proveedor de respaldo" className="material-symbols-outlined" style={{ fontSize: '0.9rem', color: 'var(--color-primary)' }}>verified_user</span>
-                      )}
-                    </div>
+          {/* NUEVO: Barra de Categorías (Searchable via UI) */}
+          <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '12px', scrollbarWidth: 'none', marginBottom: '8px' }}>
+            {listaCategoriasFiltro.map(cat => (
+              <button 
+                key={cat} 
+                onClick={() => setCatActiva(cat)}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '20px', 
+                  fontSize: '0.7rem', 
+                  whiteSpace: 'nowrap', 
+                  fontWeight: 'bold',
+                  border: catActiva === cat ? 'none' : '1px solid var(--border-ghost)',
+                  backgroundColor: catActiva === cat ? 'var(--color-primary)' : 'white',
+                  color: catActiva === cat ? 'white' : 'var(--text-main)',
+                  transition: 'all 0.2s ease',
+                  cursor: 'pointer'
+                }}
+              >
+                {cat.toUpperCase()}
+              </button>
+            ))}
+          </div>
 
-                    <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <span style={{ fontWeight: 'bold' }}>{prod.categoria?.nombre || 'S/C'}</span>
-                      <span>•</span>
-                      <span>{prod.presentacion || 'PZ'} ({prod.contenido || 1} {prod.unidad_medida?.abreviatura})</span>
-                      <span>•</span>
-                      <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>location_on</span>
-                      {numSucs === 0 ? 'Todas' : `${numSucs} sucs`}
-                    </p>
+          {/* Listado de Cards */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {productosFiltrados.length === 0 ? (
+               <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>No se encontraron productos con esos criterios.</p>
+            ) : (
+              productosFiltrados.map(prod => {
+                const esActivo = prod.activo;
+                const numSucs = prod.sucursales_ids?.length || 0;
+                return (
+                  <div key={prod.id} className={styles.card} style={{ 
+                    display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+                    opacity: esActivo ? 1 : 0.65,
+                    borderLeft: esActivo ? '4px solid var(--color-primary)' : '4px solid #999',
+                    padding: '10px 12px', borderRadius: '10px', backgroundColor: 'white',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.02)', gap: '12px', minHeight: '64px'
+                  }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <h4 style={{ fontSize: '0.875rem', margin: 0, fontWeight: 'bold', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {prod.nombre}
+                        </h4>
+                        {prod.proveedor_secundario_id && (
+                           <span title="Tiene proveedor de respaldo" className="material-symbols-outlined" style={{ fontSize: '0.9rem', color: 'var(--color-primary)' }}>verified_user</span>
+                        )}
+                      </div>
+
+                      <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span style={{ fontWeight: 'bold', color: 'var(--color-primary)' }}>{prod.categoria?.nombre || 'S/C'}</span>
+                        <span>•</span>
+                        <span>{prod.presentacion || 'PZ'} ({prod.contenido || 1} {prod.um_abreviatura})</span>
+                        <span>•</span>
+                        <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>location_on</span>
+                        {numSucs === 0 ? 'Todas' : `${numSucs} sucs`}
+                      </p>
+                    </div>
+                    
+                    <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                      <button onClick={() => abrirParaEditar(prod)} className={styles.btnSecondary} style={{ padding: '0', width: '34px', height: '34px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-surface-low)' }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '1.05rem', color: 'var(--text-main)' }}>edit</span>
+                      </button>
+                      <button onClick={() => toggleEstatus(prod.id, prod.activo)} className={styles.btnOutlined} style={{ padding: '0', width: '34px', height: '34px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderColor: esActivo ? '#ba1a1a' : 'var(--color-primary)', color: esActivo ? '#ba1a1a' : 'var(--color-primary)', backgroundColor: 'transparent' }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '1.05rem' }}>{esActivo ? 'visibility_off' : 'visibility'}</span>
+                      </button>
+                    </div>
                   </div>
-                  
-                  <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                    <button onClick={() => abrirParaEditar(prod)} className={styles.btnSecondary} style={{ padding: '0', width: '34px', height: '34px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-surface-low)' }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: '1.05rem', color: 'var(--text-main)' }}>edit</span>
-                    </button>
-                    <button onClick={() => toggleEstatus(prod.id, prod.activo)} className={styles.btnOutlined} style={{ padding: '0', width: '34px', height: '34px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderColor: esActivo ? '#ba1a1a' : 'var(--color-primary)', color: esActivo ? '#ba1a1a' : 'var(--color-primary)', backgroundColor: 'transparent' }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: '1.05rem' }}>{esActivo ? 'visibility_off' : 'visibility'}</span>
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </>
       )}
