@@ -169,7 +169,7 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
             style={{ width: '38px', height: '38px', padding: 0, borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             title="Descargar PDF"
           >
-            <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>picture_as_pdf</span>
+            <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>download</span>
           </button>
           <button 
             onClick={onVolver} 
@@ -247,29 +247,13 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
                   color: esComprado ? 'var(--text-muted)' : 'var(--text-main)',
                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
                 }}>
-                  {item.producto?.nombre}
+                  {item.producto?.nombre} - {item.producto?.marca && `  ${item.producto.marca}`}
                 </h4>
                 
-                <p style={{ marginTop: '2px', marginBottom: 0, fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '500' }}>
+                <p style={{ marginTop: '2px', marginBottom: 0, fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '800' }}>
                   <span style={{ fontWeight: '800', color: esComprado ? 'inherit' : 'var(--text-main)' }}>
-                    {item.cantidad} {item.producto?.presentacion || 'PIEZA'}
+                    {item.cantidad} {item.producto?.presentacion || 'PIEZA'} ({totalNeto} {item.producto?.um?.abreviatura})
                   </span>
-                  
-                  {contenidoBase > 1 && (
-                    <span style={{ 
-                      marginLeft: '6px',
-                      color: 'var(--color-primary)', 
-                      fontWeight: 'bold',
-                      backgroundColor: 'var(--color-surface-low)',
-                      padding: '1px 5px',
-                      borderRadius: '4px',
-                      fontSize: '0.65rem'
-                    }}>
-                      ({totalNeto} {item.producto?.um?.abreviatura})
-                    </span>
-                  )}
-                  
-                  {item.producto?.marca && ` • ${item.producto.marca}`}
                 </p>
               </div>
 
@@ -285,7 +269,7 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
                       display: 'flex', alignItems: 'center', gap: '4px'
                     }}
                   >
-                    <span className="material-symbols-outlined" style={{ fontSize: '0.9rem' }}>swap_horiz</span>
+                    <span className="material-symbols-outlined" style={{ fontSize: '0.9rem' }}></span>
                     NO HAY
                   </button>
                 )}

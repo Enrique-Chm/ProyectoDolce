@@ -43,6 +43,9 @@ export default function Productos({ onVolver }) {
     });
   };
 
+  /**
+   * Gestión de visibilidad multi-sucursal.
+   */
   const handleSucursalCheckboxChange = (id) => {
     const idsActuales = Array.isArray(formData.sucursales_ids) ? formData.sucursales_ids : [];
     if (idsActuales.includes(id)) {
@@ -51,12 +54,6 @@ export default function Productos({ onVolver }) {
       setFormData({ ...formData, sucursales_ids: [...idsActuales, id] });
     }
   };
-
-  const todasSeleccionadas = useMemo(() => {
-    if (!catalogos.sucursales || catalogos.sucursales.length === 0) return false;
-    const idsActuales = Array.isArray(formData.sucursales_ids) ? formData.sucursales_ids : [];
-    return catalogos.sucursales.every(s => idsActuales.includes(s.id));
-  }, [catalogos.sucursales, formData.sucursales_ids]);
 
   const abrirParaCrear = () => {
     setFormData(estadoInicialFormulario);
@@ -107,7 +104,7 @@ export default function Productos({ onVolver }) {
       </header>
 
       {mostrandoFormulario ? (
-        /* --- FORMULARIO ACTUALIZADO --- */
+        /* --- FORMULARIO DE PRODUCTO --- */
         <section className={styles.card} style={{ animation: 'slideUp 0.3s ease', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '15px' }}>
             
@@ -132,7 +129,7 @@ export default function Productos({ onVolver }) {
               </div>
             </div>
 
-            {/* Fila 3: Presentación y Contenido (Clave para surtido) */}
+            {/* Fila 3: Presentación y Contenido */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div>
                 <label className={styles.labelTop}>PRESENTACIÓN (Empaque)</label>
@@ -145,17 +142,15 @@ export default function Productos({ onVolver }) {
             </div>
 
             {/* Fila 4: Unidad de Medida */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div>
-                <label className={styles.labelTop}>UNIDAD (UM) *</label>
-                <select name="um_id" value={formData.um_id} onChange={handleInputChange} className={styles.selectEditorial}>
-                  <option value="">Seleccionar...</option>
-                  {catalogos.unidades.map(u => <option key={u.id} value={u.id}>{u.abreviatura} - {u.nombre}</option>)}
-                </select>
-              </div>
+            <div>
+              <label className={styles.labelTop}>UNIDAD DE MEDIDA (UM) *</label>
+              <select name="um_id" value={formData.um_id} onChange={handleInputChange} className={styles.selectEditorial}>
+                <option value="">Seleccionar...</option>
+                {catalogos.unidades.map(u => <option key={u.id} value={u.id}>{u.abreviatura} - {u.nombre}</option>)}
+              </select>
             </div>
 
-            {/* Fila 5: Proveedores (Principal y Secundario) */}
+            {/* Fila 5: Proveedores (Soporte para Reasignación) */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div>
                 <label className={styles.labelTop}>PROVEEDOR PRINCIPAL</label>
@@ -165,8 +160,8 @@ export default function Productos({ onVolver }) {
                 </select>
               </div>
               <div>
-                <label className={styles.labelTop}>PROVEEDOR SECUNDARIO</label>
-                <select name="proveedor_secundario_id" value={formData.proveedor_secundario_id} onChange={handleInputChange} className={styles.selectEditorial}>
+                <label className={styles.labelTop} style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>PROVEEDOR SECUNDARIO (Respaldo)</label>
+                <select name="proveedor_secundario_id" value={formData.proveedor_secundario_id} onChange={handleInputChange} className={styles.selectEditorial} style={{ border: '1px solid var(--color-primary)' }}>
                   <option value="">Ninguno</option>
                   {catalogos.proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
                 </select>
@@ -175,12 +170,12 @@ export default function Productos({ onVolver }) {
 
             {/* Fila 6: Sucursales */}
             <div>
-              <label className={styles.labelTop}>VISIBILIDAD POR SUCURSAL</label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '8px', padding: '12px', background: 'var(--color-surface-lowest)', borderRadius: '12px', maxHeight: '140px', overflowY: 'auto' }}>
+              <label className={styles.labelTop}>VISIBILIDAD EN SUCURSALES</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '8px', padding: '12px', background: 'var(--color-surface-lowest)', borderRadius: '12px', maxHeight: '140px', overflowY: 'auto', border: '1px solid var(--border-ghost)' }}>
                 {catalogos.sucursales.map(suc => {
                   const selec = formData.sucursales_ids.includes(suc.id);
                   return (
-                    <div key={suc.id} onClick={() => handleSucursalCheckboxChange(suc.id)} style={{ padding: '8px', borderRadius: '8px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', backgroundColor: selec ? 'var(--color-primary)' : 'white', color: selec ? 'white' : 'inherit', border: '1px solid var(--border-ghost)' }}>
+                    <div key={suc.id} onClick={() => handleSucursalCheckboxChange(suc.id)} style={{ padding: '8px', borderRadius: '8px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', backgroundColor: selec ? 'var(--color-primary)' : 'white', color: selec ? 'white' : 'inherit', border: '1px solid var(--border-ghost)', fontWeight: 'bold' }}>
                       <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>{selec ? 'check_box' : 'check_box_outline_blank'}</span>
                       {suc.nombre}
                     </div>
@@ -190,13 +185,13 @@ export default function Productos({ onVolver }) {
             </div>
           </div>
 
-          <button onClick={procesarGuardado} disabled={loading} className={`${styles.btnBase} ${styles.btnPrimary}`} style={{ width: '100%', padding: '1rem' }}>
+          <button onClick={procesarGuardado} disabled={loading} className={`${styles.btnBase} ${styles.btnPrimary}`} style={{ width: '100%', padding: '1.2rem', marginTop: '10px' }}>
             <span className="material-symbols-outlined">save</span>
             {loading ? 'GUARDANDO...' : 'GUARDAR PRODUCTO'}
           </button>
         </section>
       ) : (
-        /* --- LISTADO --- */
+        /* --- VISTA: LISTADO DE PRODUCTOS --- */
         <>
           <button 
             onClick={abrirParaCrear} 
@@ -221,7 +216,7 @@ export default function Productos({ onVolver }) {
                   display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
                   opacity: esActivo ? 1 : 0.65,
                   borderLeft: esActivo ? '4px solid var(--color-primary)' : '4px solid #999',
-                  padding: '8px 12px', borderRadius: '10px', backgroundColor: 'white',
+                  padding: '10px 12px', borderRadius: '10px', backgroundColor: 'white',
                   boxShadow: '0 2px 6px rgba(0,0,0,0.02)', gap: '12px', minHeight: '64px'
                 }}>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
@@ -229,23 +224,18 @@ export default function Productos({ onVolver }) {
                       <h4 style={{ fontSize: '0.875rem', margin: 0, fontWeight: 'bold', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {prod.nombre}
                       </h4>
-                      <span style={{ 
-                        fontSize: '0.55rem', 
-                        background: esActivo ? 'var(--color-primary-fixed)' : 'var(--color-surface-high)', 
-                        color: esActivo ? 'var(--color-on-primary-fixed)' : 'var(--text-muted)', 
-                        padding: '1px 6px', borderRadius: '4px', fontWeight: 'bold', textTransform: 'uppercase'
-                      }}>
-                        {esActivo ? 'ACTIVO' : 'BAJA'}
-                      </span>
+                      {prod.proveedor_secundario_id && (
+                         <span title="Tiene proveedor de respaldo" className="material-symbols-outlined" style={{ fontSize: '0.9rem', color: 'var(--color-primary)' }}>verified_user</span>
+                      )}
                     </div>
 
                     <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <span>{prod.categoria?.nombre || 'S/C'}</span>
+                      <span style={{ fontWeight: 'bold' }}>{prod.categoria?.nombre || 'S/C'}</span>
                       <span>•</span>
-                      <span>{prod.presentacion || 'PIEZA'} ({prod.contenido || 1} {prod.unidad_medida?.abreviatura})</span>
+                      <span>{prod.presentacion || 'PZ'} ({prod.contenido || 1} {prod.unidad_medida?.abreviatura})</span>
                       <span>•</span>
                       <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>location_on</span>
-                      {numSucs === 0 || numSucs === catalogos.sucursales.length ? 'Todas' : `${numSucs} sucs`}
+                      {numSucs === 0 ? 'Todas' : `${numSucs} sucs`}
                     </p>
                   </div>
                   

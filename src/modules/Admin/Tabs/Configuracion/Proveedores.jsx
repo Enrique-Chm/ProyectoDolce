@@ -15,15 +15,18 @@ export default function Proveedores({ onVolver }) {
 
   const [mostrandoFormulario, setMostrandoFormulario] = useState(false);
 
-  // --- CONFIGURACIÓN DE DÍAS ---
-  const diasSemana = ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'];
+  /**
+   * CONFIGURACIÓN DE DÍAS (Sincronizados con el motor de pedidos)
+   * Usamos nombres completos para que coincidan con toLocaleDateString()
+   */
+  const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
   const estadoInicial = {
     id: null,
     nombre: '',
     direccion: '',
     numero_contacto: '',
-    dias_abierto: [], // Mapeado al text[] de tu SQL
+    dias_abierto: [], // Mapeado al text[] de Postgres
     estatus: 'Activo'
   };
   
@@ -38,7 +41,10 @@ export default function Proveedores({ onVolver }) {
     setFormData({ ...formData, [name]: value });
   };
 
-  // Manejador especial para el arreglo de días
+  /**
+   * Manejador para el arreglo de días.
+   * Permite selección múltiple para definir el calendario de servicio.
+   */
   const toggleDia = (dia) => {
     const nuevosDias = formData.dias_abierto.includes(dia)
       ? formData.dias_abierto.filter(d => d !== dia)
@@ -66,11 +72,12 @@ export default function Proveedores({ onVolver }) {
   const procesarGuardado = async () => {
     if (!formData.nombre.trim()) return toast.error('El nombre es obligatorio');
     
+    // Limpieza de datos antes del envío
     const datosParaEnviar = {
       ...formData,
       direccion: formData.direccion || null,
       numero_contacto: formData.numero_contacto || null,
-      // Si no hay días, mandamos null para limpiar la celda en Postgres
+      // Si el array está vacío, enviamos null para la integridad de la base de datos
       dias_abierto: formData.dias_abierto.length > 0 ? formData.dias_abierto : null
     };
 
@@ -78,11 +85,13 @@ export default function Proveedores({ onVolver }) {
     if (exito) {
       setMostrandoFormulario(false);
       setFormData(estadoInicial);
+      // cargarProveedores() se llama dentro del hook tras el guardado
     }
   };
 
   return (
     <div className={styles.fadeIN} style={{ width: '100%', maxWidth: '100%' }}>
+      
       {/* --- ENCABEZADO --- */}
       <header style={{ marginBottom: 'var(--space-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
@@ -114,6 +123,23 @@ export default function Proveedores({ onVolver }) {
               />
             </div>
 
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+              <div>
+                <label className={styles.labelTop}>TELÉFONO</label>
+                <input 
+                  type="text" name="numero_contacto" value={formData.numero_contacto} onChange={handleInputChange}
+                  className={styles.inputEditorial} placeholder="6671234567" 
+                />
+              </div>
+              <div>
+                <label className={styles.labelTop}>ESTATUS</label>
+                <select name="estatus" value={formData.estatus} onChange={handleInputChange} className={styles.selectEditorial}>
+                  <option value="Activo">Activo</option>
+                  <option value="Inactivo">Inactivo</option>
+                </select>
+              </div>
+            </div>
+
             <div>
               <label className={styles.labelTop}>DIRECCIÓN</label>
               <input 
@@ -122,18 +148,13 @@ export default function Proveedores({ onVolver }) {
               />
             </div>
 
-            <div>
-              <label className={styles.labelTop}>TELÉFONO</label>
-              <input 
-                type="text" name="numero_contacto" value={formData.numero_contacto} onChange={handleInputChange}
-                className={styles.inputEditorial} placeholder="Ej: 6671234567" 
-              />
-            </div>
-
-            {/* --- SELECCIÓN DE DÍAS (text[]) --- */}
+            {/* --- SELECCIÓN DE DÍAS DE SERVICIO --- */}
             <div>
               <label className={styles.labelTop}>DÍAS DE ATENCIÓN / REPARTO</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
+              <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                Solo se mostrarán sus productos en estos días seleccionados.
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 {diasSemana.map(dia => {
                   const seleccionado = formData.dias_abierto.includes(dia);
                   return (
@@ -147,11 +168,10 @@ export default function Proveedores({ onVolver }) {
                         border: seleccionado ? 'none' : '1px solid var(--border-ghost)',
                         backgroundColor: seleccionado ? 'var(--color-primary)' : 'var(--color-surface-lowest)',
                         color: seleccionado ? 'white' : 'var(--text-main)',
-                        fontSize: '0.8rem',
+                        fontSize: '0.75rem',
                         fontWeight: 'bold',
                         cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        outline: 'none'
+                        transition: 'all 0.2s ease'
                       }}
                     >
                       {dia}
@@ -188,13 +208,7 @@ export default function Proveedores({ onVolver }) {
             <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No hay proveedores registrados.</p>
           )}
 
-          {/* LISTA DE FILAS COMPACTAS PARA MÓVIL */}
-          <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column',
-            gap: '8px',
-            width: '100%'
-          }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
             {proveedores.map((prov) => {
               const esActivo = prov.estatus === 'Activo';
               return (
@@ -208,112 +222,49 @@ export default function Proveedores({ onVolver }) {
                     alignItems: 'center',
                     opacity: esActivo ? 1 : 0.65,
                     borderLeft: esActivo ? '4px solid var(--color-primary)' : '4px solid #999',
-                    borderTop: 'none',
                     padding: '8px 12px',
                     borderRadius: '10px',
                     backgroundColor: 'white',
                     boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
-                    transition: 'all 0.15s ease',
                     minHeight: '64px',
                     gap: '12px'
                   }}
                 >
-                  {/* Bloque Izquierdo: Información Resumida */}
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap' }}>
-                      <h4 className={styles.subtitle} style={{ 
-                        fontSize: '0.875rem', 
-                        margin: 0, 
-                        fontWeight: 'bold', 
-                        color: 'var(--text-main)', 
-                        whiteSpace: 'nowrap', 
-                        overflow: 'hidden', 
-                        textOverflow: 'ellipsis' 
-                      }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <h4 style={{ fontSize: '0.875rem', margin: 0, fontWeight: 'bold', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {prov.nombre}
                       </h4>
                       <span style={{ 
-                        fontSize: '0.55rem', 
+                        fontSize: '0.5rem', 
                         background: esActivo ? 'var(--color-primary-fixed)' : 'var(--color-surface-high)', 
                         color: esActivo ? 'var(--color-on-primary-fixed)' : 'var(--text-muted)', 
                         padding: '1px 6px', 
                         borderRadius: '4px', 
-                        fontWeight: 'bold',
-                        textTransform: 'uppercase',
-                        whiteSpace: 'nowrap'
+                        fontWeight: '800',
+                        textTransform: 'uppercase'
                       }}>
-                        {esActivo ? 'Activo' : 'Baja'}
+                        {prov.estatus}
                       </span>
                     </div>
 
-                    {/* Teléfono y Dirección en una sola línea */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: '0.85rem', flexShrink: 0 }}>call</span>
-                      <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {prov.numero_contacto || 'Sin teléfono'}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '0.8rem' }}>call</span>
+                      <span>{prov.numero_contacto || 'S/T'}</span>
+                      <span>•</span>
+                      <span className="material-symbols-outlined" style={{ fontSize: '0.8rem' }}>calendar_today</span>
+                      <span style={{ fontWeight: 'bold', color: 'var(--color-primary)' }}>
+                        {prov.dias_abierto?.length === 7 ? 'Toda la semana' : prov.dias_abierto?.join(', ') || 'Sin días definidos'}
                       </span>
-                      {prov.direccion && (
-                        <>
-                          <span>•</span>
-                          <span className="material-symbols-outlined" style={{ fontSize: '0.85rem', flexShrink: 0 }}>location_on</span>
-                          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {prov.direccion}
-                          </span>
-                        </>
-                      )}
                     </div>
-                    
-                    {/* Visualización de Días Mini */}
-                    {prov.dias_abierto && Array.isArray(prov.dias_abierto) && prov.dias_abierto.length > 0 && (
-                      <div style={{ display: 'flex', flexWrap: 'nowrap', gap: '3px', overflow: 'hidden' }}>
-                        {prov.dias_abierto.map(d => (
-                          <span key={d} style={{ fontSize: '0.55rem', padding: '1px 5px', background: 'var(--color-surface-low)', color: 'var(--text-muted)', borderRadius: '3px', border: '1px solid var(--border-ghost)', fontWeight: 'bold' }}>
-                            {d}
-                          </span>
-                        ))}
-                      </div>
-                    )}
                   </div>
                   
-                  {/* Bloque Derecho: Botones de Acción Mini */}
                   <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                    <button 
-                      onClick={() => abrirEditar(prov)} 
-                      className={styles.btnSecondary} 
-                      style={{ 
-                        padding: '0', 
-                        width: '34px', 
-                        height: '34px', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        borderRadius: '8px',
-                        backgroundColor: 'var(--color-surface-low)'
-                      }} 
-                      title="Editar Proveedor"
-                    >
-                      <span className="material-symbols-outlined" style={{ fontSize: '1.05rem', color: 'var(--text-main)' }}>edit</span>
+                    <button onClick={() => abrirEditar(prov)} className={styles.btnSecondary} style={{ padding: '0', width: '34px', height: '34px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-surface-low)' }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '1.05rem' }}>edit</span>
                     </button>
-                    <button 
-                      onClick={() => cambiarEstatus('Cat_Proveedores', prov.id, prov.estatus, cargarProveedores)} 
-                      className={styles.btnOutlined} 
-                      style={{ 
-                        padding: '0', 
-                        width: '34px', 
-                        height: '34px', 
-                        borderRadius: '8px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderColor: esActivo ? '#ba1a1a' : 'var(--color-primary)',
-                        color: esActivo ? '#ba1a1a' : 'var(--color-primary)',
-                        backgroundColor: 'transparent'
-                      }}
-                      title={esActivo ? 'Desactivar Proveedor' : 'Activar Proveedor'}
-                    >
-                      <span className="material-symbols-outlined" style={{ fontSize: '1.05rem' }}>
-                        {esActivo ? 'visibility_off' : 'visibility'}
-                      </span>
+                    <button onClick={() => cambiarEstatus('Cat_Proveedores', prov.id, prov.estatus, cargarProveedores)} className={styles.btnOutlined} style={{ padding: '0', width: '34px', height: '34px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderColor: esActivo ? '#ba1a1a' : 'var(--color-primary)', color: esActivo ? '#ba1a1a' : 'var(--color-primary)', backgroundColor: 'transparent' }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '1.05rem' }}>{esActivo ? 'visibility_off' : 'visibility'}</span>
                     </button>
                   </div>
                 </div>

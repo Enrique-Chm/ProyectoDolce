@@ -5,9 +5,12 @@ export const ProductosService = {
   // ==========================================
   // LECTURA DE PRODUCTOS (CON RELACIONES)
   // ==========================================
+  /**
+   * Recupera el catálogo de productos con sus relaciones descriptivas.
+   * Mapea unidades de medida, categorías y ambos proveedores (Principal y Secundario).
+   */
   async getProductos() {
     // 1. Cargamos todos los productos con sus nombres de catálogos
-    // Nota: Aunque usamos *, como eliminaste la columna en SQL, ya no traerá costos.
     const { data: productos, error } = await supabase
       .from('BD_Productos')
       .select(`
@@ -24,7 +27,7 @@ export const ProductosService = {
       return { data: null, error };
     }
 
-    // 2. Cargamos las sucursales para mapear los nombres del array sucursales_ids
+    // 2. Cargamos las sucursales para el mapeo de nombres en la visualización
     const { data: sucursales, error: errSucs } = await supabase
       .from('Cat_sucursales')
       .select('id, nombre');
@@ -34,7 +37,7 @@ export const ProductosService = {
       return { data: productos, error: null }; 
     }
 
-    // 3. Mapeo para transformar IDs de sucursales en objetos legibles para la UI
+    // 3. Transformación para que la UI gestione nombres de sucursales en lugar de UUIDs
     const sucursalesMap = (sucursales || []).reduce((acc, s) => {
       acc[s.id] = s.nombre;
       return acc;
@@ -44,8 +47,10 @@ export const ProductosService = {
       const ids = p.sucursales_ids || [];
       return {
         ...p,
-        // Propiedad virtual para que el frontend muestre los nombres de sucursales fácilmente
-        sucursales_info: ids.map(id => ({ id, nombre: sucursalesMap[id] || 'Desconocida' }))
+        // Propiedad virtual para mostrar tags de sucursales fácilmente
+        sucursales_info: ids.map(id => ({ id, nombre: sucursalesMap[id] || 'Desconocida' })),
+        categoria_nombre: p.categoria?.nombre || 'S/C',
+        um_abreviatura: p.unidad_medida?.abreviatura || 'pz'
       };
     });
 
@@ -55,29 +60,29 @@ export const ProductosService = {
   // ==========================================
   // GUARDAR (INSERT / UPDATE)
   // ==========================================
+  /**
+   * Gestiona el ciclo de vida del registro. 
+   * Realiza limpieza de datos para cumplir con el esquema operativo (Sin costos).
+   */
   async guardarProducto(productoData) {
     try {
-      // 1. Clonamos el objeto para limpiar datos antes de enviar a BD
       const rawData = { ...productoData };
-
-      // 2. Identificar si es nuevo (id nulo o inexistente)
       const esNuevo = !rawData.id || rawData.id === "" || rawData.id === "null";
 
-      // 3. Objeto limpio que respeta estrictamente las columnas de la tabla
-      // SE ELIMINÓ: costo_actual para evitar errores de columna inexistente
+      // Objeto estrictamente tipado para la base de datos
       const dataParaBD = {
         nombre: rawData.nombre,
         marca: rawData.marca || null,
         presentacion: rawData.presentacion || null,
         contenido: (rawData.contenido === "" || rawData.contenido === undefined) ? null : Number(rawData.contenido),
         
-        // Relaciones UUID (Si vienen vacíos, deben ser null para no romper el Foreign Key)
+        // Relaciones UUID (Obligatorias y Opcionales)
         um_id: rawData.um_id || null,
         categoria_id: rawData.categoria_id || null,
         proveedor_id: rawData.proveedor_id || null,
         proveedor_secundario_id: rawData.proveedor_secundario_id || null,
         
-        // Control y Arrays
+        // Control de Estado y Visibilidad
         activo: rawData.activo ?? true,
         sucursales_ids: Array.isArray(rawData.sucursales_ids) ? rawData.sucursales_ids : []
       };
@@ -85,12 +90,10 @@ export const ProductosService = {
       let query;
 
       if (esNuevo) {
-        // Inserción de registro nuevo
         query = supabase
           .from('BD_Productos')
           .insert([dataParaBD]);
       } else {
-        // Actualización de registro existente
         query = supabase
           .from('BD_Productos')
           .update(dataParaBD)
@@ -103,13 +106,13 @@ export const ProductosService = {
       return { data, error: null };
 
     } catch (err) {
-      console.error("Error en guardarProducto:", err);
+      console.error("Error en flujo guardarProducto:", err);
       return { data: null, error: err };
     }
   },
 
   // ==========================================
-  // CAMBIO DE ESTATUS (ACTIVAR/DESACTIVAR)
+  // CAMBIO DE ESTATUS
   // ==========================================
   async toggleEstatusProducto(id, estatusActual) {
     const { data, error } = await supabase
@@ -122,16 +125,16 @@ export const ProductosService = {
   },
 
   // ==========================================
-  // CATÁLOGOS PARA SELECTS DEL FORMULARIO
+  // CATÁLOGOS AUXILIARES
   // ==========================================
   async getCatalogosFormulario() {
     try {
-      // Cargamos todo en paralelo para optimizar tiempos de respuesta
+      // Carga paralela para minimizar latencia en la apertura del formulario
       const [proveedores, sucursales, unidades, categorias] = await Promise.all([
         supabase.from('Cat_Proveedores').select('id, nombre').eq('estatus', 'Activo').order('nombre'),
         supabase.from('Cat_sucursales').select('id, nombre').eq('estatus', 'Activo').order('nombre'),
         supabase.from('Cat_UM').select('id, nombre, abreviatura').eq('estatus', 'Activo').order('nombre'),
-        supabase.from('Cat_Categorias').select('id, nombre').eq('estatus', 'activo').order('nombre')
+        supabase.from('Cat_Categorias').select('id, nombre').eq('estatus', 'Activo').order('nombre')
       ]);
 
       return {
@@ -142,7 +145,7 @@ export const ProductosService = {
         error: proveedores.error || sucursales.error || unidades.error || categorias.error
       };
     } catch (err) {
-      console.error("Error al cargar catálogos:", err);
+      console.error("Fallo crítico al cargar catálogos:", err);
       return { proveedores: [], sucursales: [], unidades: [], categorias: [], error: err };
     }
   }

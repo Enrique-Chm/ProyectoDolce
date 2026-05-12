@@ -41,8 +41,8 @@ export const useProductos = () => {
   // CARGAR OPCIONES PARA SELECTS (UI)
   // ==========================================
   /**
-   * Sincroniza los catálogos necesarios para los formularios de creación/edición.
-   * Recupera proveedores, sucursales, unidades y categorías en una sola carga.
+   * Sincroniza los catálogos necesarios para los formularios.
+   * Recupera proveedores, sucursales, unidades y categorías.
    */
   const cargarCatalogosFormulario = useCallback(async () => {
     setLoading(true);
@@ -72,11 +72,10 @@ export const useProductos = () => {
   // GUARDAR DATOS (CREAR O EDITAR)
   // ==========================================
   /**
-   * Procesa el guardado de un producto. 
-   * Valida los campos obligatorios definidos en el esquema SQL (Not Null).
+   * Procesa el guardado de un producto incluyendo la lógica de proveedores.
    */
   const guardarProducto = useCallback(async (productoData) => {
-    // --- VALIDACIONES DE NEGOCIO (FRONTEND) ---
+    // --- VALIDACIONES DE NEGOCIO ---
     if (!productoData.nombre || productoData.nombre.trim() === '') {
       toast.error('El nombre del producto es obligatorio.');
       return false;
@@ -92,26 +91,35 @@ export const useProductos = () => {
       return false;
     }
 
+    // Validación de paracaídas (Proveedor Secundario)
+    if (
+      productoData.proveedor_id && 
+      productoData.proveedor_secundario_id && 
+      productoData.proveedor_id === productoData.proveedor_secundario_id
+    ) {
+      toast.error('El proveedor secundario debe ser distinto al principal.');
+      return false;
+    }
+
     setLoading(true);
     try {
+      /**
+       * Enviamos el objeto completo. 
+       * El servicio debe estar listo para recibir proveedor_id y proveedor_secundario_id.
+       */
       const { error } = await ProductosService.guardarProducto(productoData);
 
       if (error) {
         const mensajePrincipal = error.message || 'Error desconocido';
-        const pista = error.hint ? `\nSugerencia: ${error.hint}` : '';
-        
-        toast.error(
-          `No se pudo guardar:\n${mensajePrincipal}${pista}`,
-          { duration: 6000 }
-        );
+        toast.error(`No se pudo guardar:\n${mensajePrincipal}`, { duration: 5000 });
         return false;
       }
 
       toast.success('¡Producto guardado exitosamente!');
-      await cargarProductos(); // Refrescamos la lista local para reflejar cambios
+      await cargarProductos(); // Refrescamos para ver el nuevo icono de "Respaldo" si aplica
       return true;
     } catch (err) {
-      console.error("Error inesperado en guardarProducto:", err);
+      console.error("Error en guardarProducto:", err);
       toast.error("Error inesperado al procesar la solicitud.");
       return false;
     } finally {
@@ -123,7 +131,7 @@ export const useProductos = () => {
   // CAMBIAR ESTATUS (ACTIVAR/DESACTIVAR)
   // ==========================================
   /**
-   * Alterna el estado de visibilidad del producto (Columna 'activo').
+   * Alterna el estado de visibilidad del producto.
    */
   const toggleEstatus = useCallback(async (id, estatusActual) => {
     try {
@@ -134,7 +142,7 @@ export const useProductos = () => {
         return false;
       }
 
-      // Actualización optimista: Refleja el cambio visual de inmediato
+      // Actualización optimista
       setProductos(prevProductos => 
         prevProductos.map(prod => 
           prod.id === id ? { ...prod, activo: !estatusActual } : prod
@@ -144,7 +152,7 @@ export const useProductos = () => {
       toast.success(estatusActual ? 'Producto desactivado' : 'Producto activado');
       return true;
     } catch (err) {
-      console.error("Error inesperado en toggleEstatus:", err);
+      console.error("Error en toggleEstatus:", err);
       toast.error("Error crítico al cambiar el estatus.");
       return false;
     }

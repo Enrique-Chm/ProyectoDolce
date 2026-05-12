@@ -1,7 +1,7 @@
 // src/modules/Admin/Tabs/NuevoPedido/2useNuevoPedido.js
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { NuevoPedidoService } from './1NuevoPedido.Service';
-import { AuthService } from '../../../Auth/Auth.service';
+import { AuthService } from '../../../Auth/Auth.service'; 
 import toast from 'react-hot-toast';
 
 export const useNuevoPedido = (onVolver) => {
@@ -22,35 +22,48 @@ export const useNuevoPedido = (onVolver) => {
   // Estabilización de permisos para evitar re-renderizados infinitos
   const categoriasPermitidasStr = JSON.stringify(sesion?.permisos?.categorias_permitidas || []);
 
+  /**
+   * FUNCIÓN AUXILIAR: Obtiene el día de la semana actual en español.
+   * Formato: "Lunes", "Martes", etc.
+   */
+  const obtenerDiaActual = () => {
+    const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const hoy = new Date();
+    return dias[hoy.getDay()];
+  };
+
   // ==========================================
-  // 1. CARGA Y FILTRADO INICIAL
+  // 1. CARGA Y FILTRADO POR DÍA Y PERMISOS
   // ==========================================
   const cargarProductos = useCallback(async () => {
     setLoading(true);
     try {
-      const { data, error } = await NuevoPedidoService.getProductosDisponibles();
+      const diaHoy = obtenerDiaActual();
+      
+      // Llamada al servicio enviando el día actual para el filtro de proveedores
+      const { data, error } = await NuevoPedidoService.getProductosDisponibles(diaHoy);
+      
       if (error) throw error;
 
       const categoriasPermitidas = JSON.parse(categoriasPermitidasStr);
       const sucursalUsuario = sesion?.sucursal_id;
 
       /**
-       * NORMALIZACIÓN Y FILTRADO:
-       * Mapeamos contenido y UM para que la UI pueda calcular el volumen total.
+       * NORMALIZACIÓN Y FILTRADO LOCAL:
+       * Además del filtro de día en el servidor, validamos sucursal y categorías permitidas.
        */
       const procesados = (data || [])
         .map(p => ({
           ...p,
           categoria_nombre: p.categoria?.nombre || 'General',
           um_abreviatura: p.um?.abreviatura || 'pz',
-          // Aseguramos que contenido sea numérico y mínimo 1
           contenido_numerico: Number(p.contenido) || 1
         }))
         .filter(p => {
-          // Filtro por permisos de categoría
+          // 1. Filtro por permisos de categoría del trabajador
           const cumpleCat = categoriasPermitidas.length === 0 || categoriasPermitidas.includes(p.categoria_id);
           
-          // Filtro por sucursal asignada (si el array está vacío, es producto global)
+          // 2. Filtro por visibilidad de sucursal del producto
           const cumpleSuc = !p.sucursales_ids || 
                            p.sucursales_ids.length === 0 || 
                            p.sucursales_ids.includes(sucursalUsuario);
@@ -59,6 +72,11 @@ export const useNuevoPedido = (onVolver) => {
         });
 
       setProductosDisponibles(procesados);
+      
+      if (procesados.length === 0) {
+        toast('No hay insumos disponibles para surtir el día de hoy.', { icon: '🗓️' });
+      }
+
     } catch (err) {
       console.error("Error al sincronizar catálogo:", err);
       toast.error('No se pudo cargar el catálogo de insumos');
@@ -90,17 +108,16 @@ export const useNuevoPedido = (onVolver) => {
         );
       }
 
-      // Guardamos metadata operativa necesaria para el resumen y la base de datos (SIN COSTOS)
       return [...prev, {
         producto_id: producto.id,
         nombre: producto.nombre,
         marca: producto.marca,
-        abreviatura_um: producto.um_abreviatura, // ej. "L"
+        abreviatura_um: producto.um_abreviatura,
         cantidad: numCant,
         proveedor_id: producto.proveedor_id,
         categoria_nombre: producto.categoria_nombre,
-        presentacion: producto.presentacion || 'Unidad', // ej. "Caja"
-        contenido: producto.contenido_numerico // ej. 6
+        presentacion: producto.presentacion || 'Unidad',
+        contenido: producto.contenido_numerico
       }];
     });
 
@@ -150,7 +167,6 @@ export const useNuevoPedido = (onVolver) => {
           estatus: 'Pendiente'
         };
 
-        // El servicio ya no debe recibir total_estimado ni costos_unitarios
         const { error } = await NuevoPedidoService.guardarOrdenCompleta(payloadCabecera, itemsGrupo);
         if (error) throw error;
       }

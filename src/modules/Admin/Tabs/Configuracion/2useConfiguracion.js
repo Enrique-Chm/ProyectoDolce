@@ -47,9 +47,8 @@ export const useConfiguracion = () => {
   }, []);
 
   /**
-   * CARGA DE TRABAJADORES: Estable y sin bucles.
-   * Se eliminó [sucursales] de las dependencias para evitar que la función se recree
-   * cada vez que los catálogos se actualizan.
+   * CARGA DE TRABAJADORES:
+   * Realiza el cruce de IDs de sucursales con nombres para la visualización en la tabla.
    */
   const cargarTrabajadores = useCallback(async (sucursalesVigentes = []) => {
     setLoading(true);
@@ -60,11 +59,6 @@ export const useConfiguracion = () => {
       return toast.error('Error al cargar trabajadores');
     }
 
-    /**
-     * Mapeo de nombres de sucursales:
-     * Si no recibimos sucursalesVigentes (parámetro), el cruce será vacío al inicio, 
-     * pero se hidratará correctamente mediante cargarDatosIniciales.
-     */
     const procesados = (data || []).map(t => {
       const ids = t.sucursales_ids || [];
       const nombresSucs = ids
@@ -80,7 +74,7 @@ export const useConfiguracion = () => {
 
     setTrabajadores(procesados);
     setLoading(false);
-  }, []); // Dependencia vacía para mantener la referencia de la función estable
+  }, []);
 
   const cargarUnidadesMedida = useCallback(async () => {
     setLoading(true);
@@ -115,10 +109,9 @@ export const useConfiguracion = () => {
   }, []);
 
   /**
-   * Sincroniza todos los catálogos necesarios para los selectores de los formularios.
+   * Sincroniza catálogos para selectores.
    */
   const cargarCatalogosParaFormularios = useCallback(async () => {
-    // No usamos setLoading(true) aquí para evitar parpadeos si se usa en combo
     const res = await ConfiguracionService.getCatalogosParaSelectores();
     
     if (res.error) {
@@ -138,19 +131,15 @@ export const useConfiguracion = () => {
     setRoles(res.roles || []);
     setSucursales(res.sucursales || []);
     
-    return res; // Importante retornar el resultado para cargarDatosIniciales
+    return res; 
   }, []);
 
   /**
-   * FUNCIÓN MAESTRA PARA TRABAJADORES
-   * Ejecuta la carga secuencial para asegurar que el mapeo de nombres funcione
-   * sin disparar bucles de efectos.
+   * FUNCIÓN MAESTRA: Carga secuencial para evitar inconsistencias de datos.
    */
   const cargarDatosIniciales = useCallback(async () => {
     setLoading(true);
-    // 1. Obtenemos los catálogos primero
     const resCatalogos = await cargarCatalogosParaFormularios();
-    // 2. Pasamos los datos frescos directamente a la carga de trabajadores
     await cargarTrabajadores(resCatalogos.sucursales || []);
     setLoading(false);
   }, [cargarTrabajadores, cargarCatalogosParaFormularios]);
@@ -159,6 +148,9 @@ export const useConfiguracion = () => {
   // MÉTODOS DE GUARDADO (CREATE / UPDATE)
   // ==========================================
 
+  /**
+   * Wrapper genérico para operaciones de escritura.
+   */
   const guardarDatoGenerico = async (metodo, payload, callbackCarga) => {
     if (loading) return false;
 

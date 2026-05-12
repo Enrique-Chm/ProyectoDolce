@@ -22,11 +22,13 @@ export default function NuevoPedido({ onVolver }) {
   const [cantidadesLocales, setCantidadesLocales] = useState({});
   const [revisadosLocales, setRevisadosLocales] = useState([]);
 
+  // Memorizamos las categorías basadas en los productos que sí están disponibles hoy
   const categorias = useMemo(() => {
     const sets = new Set(productosDisponibles.map(p => p.categoria_nombre));
     return ['Todas', ...Array.from(sets).sort()];
   }, [productosDisponibles]);
 
+  // Filtramos la lista para mostrar solo lo que falta por revisar/agregar
   const productosPendientes = useMemo(() => {
     return productosDisponibles.filter(p => {
       const yaEnCarrito = carrito.some(item => item.producto_id === p.id);
@@ -34,23 +36,29 @@ export default function NuevoPedido({ onVolver }) {
       if (yaEnCarrito || yaRevisado) return false;
       const cumpleCat = catActiva === 'Todas' || p.categoria_nombre === catActiva;
       const cumpleBusqueda = p.nombre.toLowerCase().includes(filtroBusqueda.toLowerCase()) ||
-                             p.marca?.toLowerCase().includes(filtroBusqueda.toLowerCase());
+                             (p.marca || '').toLowerCase().includes(filtroBusqueda.toLowerCase());
       return cumpleCat && cumpleBusqueda;
     });
   }, [productosDisponibles, carrito, revisadosLocales, catActiva, filtroBusqueda]);
 
+  /**
+   * Maneja la acción de agregar al carrito o marcar como revisado.
+   */
   const handleAdd = (prod) => {
     const valorRaw = cantidadesLocales[prod.id];
     const cant = Number(valorRaw);
+    
     if (valorRaw !== undefined && valorRaw !== '' && cant > 0) {
       agregarAlCarrito(prod, cant);
     } else {
+      // Si el input está vacío o es 0, se marca como revisado (no se ocupa)
       setRevisadosLocales(prev => [...prev, prod.id]);
       toast.success(`${prod.nombre} revisado`, { 
         icon: '👁️', 
         style: { fontSize: '0.8rem', borderRadius: '10px', background: '#333', color: '#fff' } 
       });
     }
+    // Limpiamos el input local
     setCantidadesLocales(prev => ({ ...prev, [prod.id]: '' }));
   };
 
@@ -64,6 +72,7 @@ export default function NuevoPedido({ onVolver }) {
       overflow: 'hidden'
     }}>
       
+      {/* --- ENCABEZADO --- */}
       <header style={{ 
         paddingTop: '16px', 
         paddingRight: '16px', 
@@ -94,6 +103,7 @@ export default function NuevoPedido({ onVolver }) {
       </header>
 
       {paso === 1 ? (
+        /* --- PASO 1: LEVANTAMIENTO DE INVENTARIO --- */
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', paddingLeft: '16px', paddingRight: '16px', overflow: 'hidden' }}>
           
           <button 
@@ -106,6 +116,7 @@ export default function NuevoPedido({ onVolver }) {
             FINALIZAR REVISIÓN ({carrito.length})
           </button>
 
+          {/* Filtros y Buscador */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px', flexShrink: 0 }}>
             <div style={{ position: 'relative' }}>
               <span className="material-symbols-outlined" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }}>search</span>
@@ -121,10 +132,7 @@ export default function NuevoPedido({ onVolver }) {
                 <button 
                   key={cat} onClick={() => setCatActiva(cat)}
                   style={{
-                    paddingTop: '6px',
-                    paddingBottom: '6px',
-                    paddingLeft: '14px',
-                    paddingRight: '14px',
+                    padding: '6px 14px',
                     borderRadius: '20px', fontSize: '0.7rem', whiteSpace: 'nowrap', fontWeight: 'bold',
                     border: catActiva === cat ? 'none' : '1px solid var(--border-ghost)',
                     backgroundColor: catActiva === cat ? 'var(--color-primary)' : 'white',
@@ -137,6 +145,7 @@ export default function NuevoPedido({ onVolver }) {
             </div>
           </div>
 
+          {/* Listado de Productos Pendientes */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, overflowY: 'auto', paddingBottom: '120px' }}>
             {productosPendientes.length === 0 ? (
               <div style={{ textAlign: 'center', paddingTop: '3rem', paddingBottom: '3rem', paddingLeft: '1rem', paddingRight: '1rem' }}>
@@ -161,10 +170,7 @@ export default function NuevoPedido({ onVolver }) {
                       justifyContent: 'space-between', 
                       alignItems: 'center', 
                       borderLeft: '4px solid var(--color-primary)', 
-                      paddingTop: '10px',
-                      paddingBottom: '10px',
-                      paddingLeft: '14px',
-                      paddingRight: '14px',
+                      padding: '10px 14px',
                       borderRadius: '10px', 
                       backgroundColor: 'white',
                       minHeight: '70px',
@@ -172,7 +178,7 @@ export default function NuevoPedido({ onVolver }) {
                     }}
                   >
                     <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-                      <h4 style={{ fontSize: '0.9rem', marginTop: 0, marginBottom: 0, fontWeight: 'bold', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <h4 style={{ fontSize: '0.9rem', margin: 0, fontWeight: 'bold', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {prod.nombre}
                       </h4>
                       <p style={{ marginTop: '2px', marginBottom: 0, fontSize: '0.65rem', color: 'var(--text-muted)', display: 'flex', gap: '4px', fontWeight: 'bold' }}>
@@ -193,10 +199,7 @@ export default function NuevoPedido({ onVolver }) {
                             width: '52px', 
                             height: '36px', 
                             textAlign: 'center', 
-                            paddingTop: 0,
-                            paddingBottom: 0,
-                            paddingLeft: 0,
-                            paddingRight: 0,
+                            padding: 0,
                             fontSize: '0.95rem',
                             fontWeight: 'bold',
                             border: '1px solid var(--border-ghost)'
@@ -211,10 +214,7 @@ export default function NuevoPedido({ onVolver }) {
                             width: '36px', 
                             height: '36px', 
                             borderRadius: '8px', 
-                            paddingTop: 0,
-                            paddingBottom: 0,
-                            paddingLeft: 0,
-                            paddingRight: 0,
+                            padding: 0,
                             display: 'flex', 
                             alignItems: 'center', 
                             justifyContent: 'center',
@@ -232,7 +232,7 @@ export default function NuevoPedido({ onVolver }) {
                       {Number(qtyInput) > 0 && prod.contenido > 1 && (
                         <span style={{ 
                           fontSize: '0.6rem', color: 'var(--color-primary)', fontWeight: 'bold', 
-                          background: 'var(--color-surface-low)', paddingTop: '2px', paddingBottom: '2px', paddingLeft: '6px', paddingRight: '6px', borderRadius: '4px' 
+                          background: 'var(--color-surface-low)', padding: '2px 6px', borderRadius: '4px' 
                         }}>
                           {totalVolumen} {prod.um_abreviatura} TOTAL
                         </span>
@@ -245,20 +245,21 @@ export default function NuevoPedido({ onVolver }) {
           </div>
         </div>
       ) : (
-        <div style={{ paddingTop: 0, paddingBottom: '40px', paddingLeft: '16px', paddingRight: '16px', flex: 1, overflowY: 'auto' }}>
-          <section className={styles.card} style={{ animation: 'slideUp 0.3s ease', display: 'flex', flexDirection: 'column', gap: '20px', paddingTop: '16px', paddingBottom: '16px', paddingLeft: '16px', paddingRight: '16px' }}>
+        /* --- PASO 2: REVISIÓN DE CARRITO Y ENVÍO --- */
+        <div style={{ padding: '0 16px 40px 16px', flex: 1, overflowY: 'auto' }}>
+          <section className={styles.card} style={{ animation: 'slideUp 0.3s ease', display: 'flex', flexDirection: 'column', gap: '20px', padding: '16px' }}>
             <div>
               <label className={styles.labelTop}>RESUMEN DEL PEDIDO</label>
               <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {carrito.map(item => (
-                  <div key={item.producto_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-surface-lowest)', paddingTop: '10px', paddingBottom: '10px', paddingLeft: '10px', paddingRight: '10px', borderRadius: '10px', border: '1px solid var(--border-ghost)' }}>
+                  <div key={item.producto_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-surface-lowest)', padding: '10px', borderRadius: '10px', border: '1px solid var(--border-ghost)' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                       <span style={{ fontSize: '0.85rem', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.nombre}</span>
                       <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                         {item.cantidad} {item.presentacion} <span style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>({item.cantidad * item.contenido} {item.abreviatura_um})</span>
                       </span>
                     </div>
-                    <button onClick={() => eliminarDelCarrito(item.producto_id)} style={{ background: 'none', border: 'none', color: '#ba1a1a', paddingTop: '4px', paddingBottom: '4px', paddingLeft: '4px', paddingRight: '4px' }}>
+                    <button onClick={() => eliminarDelCarrito(item.producto_id)} style={{ background: 'none', border: 'none', color: '#ba1a1a', padding: '4px' }}>
                       <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>delete_sweep</span>
                     </button>
                   </div>
@@ -277,12 +278,12 @@ export default function NuevoPedido({ onVolver }) {
               />
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', paddingTop: '16px', paddingBottom: 0, borderTop: '2px dashed var(--border-ghost)' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', paddingTop: '16px', borderTop: '2px dashed var(--border-ghost)' }}>
               <button 
                 onClick={procesarOrden} 
                 disabled={loading || carrito.length === 0} 
                 className={`${styles.btnBase} ${styles.btnPrimary}`} 
-                style={{ paddingTop: 0, paddingBottom: 0, paddingLeft: '20px', paddingRight: '20px', height: '48px', borderRadius: '14px' }}
+                style={{ padding: '0 20px', height: '48px', borderRadius: '14px' }}
               >
                 <span className="material-symbols-outlined">send</span>
                 {loading ? 'ENVIANDO...' : 'ENVIAR'}

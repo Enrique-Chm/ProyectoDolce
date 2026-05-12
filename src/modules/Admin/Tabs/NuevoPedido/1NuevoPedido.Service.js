@@ -3,13 +3,15 @@ import { supabase } from '../../../../lib/supabaseClient';
 
 export const NuevoPedidoService = {
   /**
-   * 1. OBTENER PRODUCTOS DISPONIBLES
-   * Recupera los insumos activos vinculando sus catálogos (UM, Categoría, Proveedor).
-   * Es fundamental traer 'sucursales_ids' para que el Hook filtre lo que el
-   * trabajador puede ver según su ubicación.
-   * Se ha eliminado el campo 'costo_actual'.
+   * 1. OBTENER PRODUCTOS DISPONIBLES (FILTRADO POR DÍA)
+   * Recupera los insumos activos cuyos proveedores estén abiertos el día solicitado.
+   * @param {string} diaSemana - Día actual en español (ej. "Lunes", "Martes")
    */
-  async getProductosDisponibles() {
+  async getProductosDisponibles(diaSemana) {
+    /**
+     * NOTA TÉCNICA: Usamos '!inner' en la relación del proveedor para que el filtro 
+     * .contains() actúe como un WHERE a nivel de base de datos sobre la tabla de productos.
+     */
     const { data, error } = await supabase
       .from('BD_Productos')
       .select(`
@@ -24,9 +26,11 @@ export const NuevoPedidoService = {
         sucursales_ids,
         um:Cat_UM(id, nombre, abreviatura),
         categoria:Cat_Categorias(id, nombre),
-        proveedor:Cat_Proveedores!proveedor_id(id, nombre)
+        proveedor:Cat_Proveedores!proveedor_id!inner(id, nombre, dias_abierto)
       `)
       .eq('activo', true)
+      // Filtramos productos cuyo proveedor tenga el día actual en su arreglo de dias_abierto
+      .contains('proveedor.dias_abierto', [diaSemana])
       .order('nombre', { ascending: true });
       
     if (error) {
@@ -38,27 +42,24 @@ export const NuevoPedidoService = {
 
   /**
    * 2. GUARDAR ORDEN COMPLETA (Cabecera + Detalles)
-   * Este método realiza dos inserciones. Primero crea el registro en 'BD_Ordenes_Compra'
-   * y usa ese ID generado para insertar todas las partidas en 'BD_Ordenes_Detalle'.
-   * Se han eliminado los campos 'total_estimado' y 'costo_unitario'.
+   * Procesa la inserción de la cabecera y sus respectivas partidas.
    */
   async guardarOrdenCompleta(ordenCabecera, listaProductos) {
     try {
       /**
        * A. PREPARAR CABECERA
-       * Limpieza y formateo de datos para BD_Ordenes_Compra.
        */
       const payloadCabecera = {
         folio: ordenCabecera.folio,
         solicitante_id: ordenCabecera.solicitante_id,
         sucursal_id: ordenCabecera.sucursal_id,
-        proveedor_id: ordenCabecera.proveedor_id || null, // UUID o null si es multi-proveedor
+        proveedor_id: ordenCabecera.proveedor_id || null,
         prioridad: ordenCabecera.prioridad || 'Media',
         estatus: ordenCabecera.estatus || 'Pendiente',
         notas: ordenCabecera.notas || ''
       };
 
-      // 1. Insertamos la cabecera y recuperamos el ID generado
+      // 1. Insertamos la cabecera
       const { data: nuevaOrden, error: errorCabecera } = await supabase
         .from('BD_Ordenes_Compra')
         .insert([payloadCabecera])
@@ -69,23 +70,21 @@ export const NuevoPedidoService = {
 
       /**
        * B. PREPARAR DETALLES
-       * Mapeamos los productos del carrito a las columnas de BD_Ordenes_Detalle.
        */
       const detallesFormateados = listaProductos.map(item => ({
-        orden_id: nuevaOrden.id, // Vínculo con la cabecera
+        orden_id: nuevaOrden.id,
         producto_id: item.producto_id,
         cantidad: Number(item.cantidad),
         estatus: 'Pendiente' 
       }));
 
-      // 2. Inserción masiva (Bulk Insert) de todas las partidas de la orden
+      // 2. Inserción masiva de detalles
       const { data: detalles, error: errorDetalles } = await supabase
         .from('BD_Ordenes_Detalle')
         .insert(detallesFormateados)
         .select();
 
       if (errorDetalles) {
-        // Si fallan los detalles, lanzamos error para avisar al usuario
         console.error("Fallo al insertar partidas del pedido:", errorDetalles);
         throw errorDetalles;
       }

@@ -154,7 +154,7 @@ export default function Pedidos({ onNuevoPedido, onVerLista }) {
                   {/* Solicitante */}
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     <span style={{ color: 'var(--text-light)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      👤 {orden.solicitante?.nombre_completo || 'Admin'}
+                      Por: {orden.solicitante?.nombre_completo || 'Admin'}
                     </span>
                   </div>
                 </div>
