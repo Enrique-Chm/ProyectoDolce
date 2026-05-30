@@ -269,7 +269,7 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
                       color: '#ba1a1a',
                       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
                     }}>
-                      [OPCIÓN B]: PROVEEDOR SECUNDARIO
+                    () {item.producto?.proveedor_secundario?.nombre || 'Proveedor Alterno sin asignar'} 
                     </h4>
                     
                     <p style={{ marginTop: '2px', marginBottom: 0, fontSize: '0.75rem', color: 'var(--text-main)', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
