@@ -27,7 +27,8 @@ export default function Trabajadores({ onVolver }) {
     rol_id: '',
     sucursales_ids: [], 
     fecha_ingreso: new Date().toISOString().split('T')[0],
-    estatus: 'Activo'
+    estatus: 'Activo',
+    turno: 'Ambos'
   };
   
   const [formData, setFormData] = useState(estadoInicial);
@@ -75,7 +76,8 @@ export default function Trabajadores({ onVolver }) {
       rol_id: traba.rol_id || '',
       sucursales_ids: traba.sucursales_ids || [], 
       fecha_ingreso: traba.fecha_ingreso || '',
-      estatus: traba.estatus || 'Activo'
+      estatus: traba.estatus || 'Activo',
+      turno: traba.turno || 'Ambos'
     });
     setMostrandoFormulario(true);
   };
@@ -102,6 +104,7 @@ export default function Trabajadores({ onVolver }) {
       t.nombre_completo.toLowerCase().includes(busqueda) ||
       t.usuario.toLowerCase().includes(busqueda) ||
       t.puesto.toLowerCase().includes(busqueda) ||
+      (t.turno || '').toLowerCase().includes(busqueda) ||
       (t.rol_nombre || '').toLowerCase().includes(busqueda) ||
       nombresSucursales.includes(busqueda)
     );
@@ -236,12 +239,25 @@ export default function Trabajadores({ onVolver }) {
               </div>
             </div>
 
-            <div>
-              <label className={styles.labelTop}>FECHA DE INGRESO</label>
-              <input 
-                type="date" name="fecha_ingreso" value={formData.fecha_ingreso} onChange={handleInputChange}
-                className={styles.inputEditorial}
-              />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div>
+                <label className={styles.labelTop}>FECHA DE INGRESO</label>
+                <input 
+                  type="date" name="fecha_ingreso" value={formData.fecha_ingreso} onChange={handleInputChange}
+                  className={styles.inputEditorial}
+                />
+              </div>
+              <div>
+                <label className={styles.labelTop}>TURNO ASIGNADO *</label>
+                <select 
+                  name="turno" value={formData.turno} onChange={handleInputChange}
+                  className={styles.selectEditorial}
+                >
+                  <option value="Ambos">Ambos (Acceso Total)</option>
+                  <option value="AM">Mañana (AM)</option>
+                  <option value="PM">Tarde/Cena (PM)</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -270,7 +286,7 @@ export default function Trabajadores({ onVolver }) {
           <div style={{ position: 'relative', marginBottom: '16px' }}>
             <span className="material-symbols-outlined" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }}>search</span>
             <input 
-              type="text" placeholder="Buscar por nombre, puesto, rol o sucursal..." 
+              type="text" placeholder="Buscar por nombre, puesto, rol, turno o sucursal..." 
               className={styles.inputEditorial}
               style={{ width: '100%', paddingLeft: '40px' }}
               value={filtroBusqueda}
@@ -333,6 +349,11 @@ export default function Trabajadores({ onVolver }) {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                       <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>badge</span>
                       <span>{traba.puesto}</span>
+                      <span>•</span>
+                      <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>schedule</span>
+                      <span style={{ fontWeight: 'bold', color: traba.turno === 'AM' ? '#e67e22' : traba.turno === 'PM' ? '#9b59b6' : 'inherit' }}>
+                        {traba.turno === 'AM' ? 'AM' : traba.turno === 'PM' ? 'PM' : 'Ambos'}
+                      </span>
                       <span>•</span>
                       <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>store</span>
                       <span style={{ 

@@ -9,9 +9,8 @@ export const AuthService = {
    */
   async login(usuario, password) {
     /**
-     * ACTUALIZACIÓN: Cambiamos sucursal_id por sucursales_ids.
-     * Eliminamos el join sucursal:Cat_sucursales ya que al ser un array, 
-     * PostgREST no puede resolver la relación automáticamente en este select.
+     * ACTUALIZACIÓN: Añadimos la columna 'turno' a la selección 
+     * para restringir accesos según perfil de trabajo.
      */
     const { data, error } = await supabase
       .from('Cat_Trabajadores')
@@ -22,6 +21,7 @@ export const AuthService = {
         password, 
         estatus,
         sucursales_ids,
+        turno,
         rol:Cat_Roles(
           id,
           nombre,
@@ -44,7 +44,7 @@ export const AuthService = {
 
     /**
      * Preparamos el objeto de sesión con la información necesaria para el Front-End.
-     * Adaptamos la estructura para manejar múltiples sucursales.
+     * Adaptamos la estructura para manejar múltiples sucursales y turnos fijos.
      */
     const numSucs = data.sucursales_ids?.length || 0;
     
@@ -59,7 +59,8 @@ export const AuthService = {
       sucursales_ids: data.sucursales_ids || [],
       // Mantenemos sucursal_id por compatibilidad (usando la primera del array)
       sucursal_id: data.sucursales_ids?.[0] || null,
-      sucursal_nombre: numSucs > 1 ? `${numSucs} Sucursales` : (numSucs === 1 ? 'Sucursal Asignada' : 'Sin Sucursal')
+      sucursal_nombre: numSucs > 1 ? `${numSucs} Sucursales` : (numSucs === 1 ? 'Sucursal Asignada' : 'Sin Sucursal'),
+      turno: data.turno || 'Ambos' // Almacenamos el turno ('AM', 'PM' o 'Ambos') de manera segura
     };
 
     // Guardamos la sesión real en el navegador

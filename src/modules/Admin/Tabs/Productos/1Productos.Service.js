@@ -81,7 +81,8 @@ export const ProductosService = {
         proveedor_secundario_id: rawData.proveedor_secundario_id || null,
         
         activo: rawData.activo ?? true,
-        sucursales_ids: Array.isArray(rawData.sucursales_ids) ? rawData.sucursales_ids : []
+        sucursales_ids: Array.isArray(rawData.sucursales_ids) ? rawData.sucursales_ids : [],
+        turno_uso: rawData.turno_uso || 'Ambos' // Almacena el turno asignado ('AM', 'PM' o 'Ambos')
       };
 
       let query;

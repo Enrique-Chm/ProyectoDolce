@@ -8,6 +8,9 @@ export const useHistorial = () => {
   const [loading, setLoading] = useState(false);
   const [ordenesHistorial, setOrdenesHistorial] = useState([]);
   
+  // Lista de respaldo para realizar búsquedas locales instantáneas respetando las fechas cargadas
+  const [respaldoHistorial, setRespaldoHistorial] = useState([]);
+  
   // Obtenemos la sesión para validar la pertenencia de los datos
   const sesion = AuthService.getSesion();
 
@@ -40,6 +43,7 @@ export const useHistorial = () => {
       }
 
       setOrdenesHistorial(datosFiltrados);
+      setRespaldoHistorial(datosFiltrados);
     } catch (err) {
       console.error("Error en cargarHistorial:", err);
       toast.error('No se pudo cargar el historial de órdenes');
@@ -74,6 +78,7 @@ export const useHistorial = () => {
       }
 
       setOrdenesHistorial(datosFiltrados);
+      setRespaldoHistorial(datosFiltrados);
     } catch (err) {
       console.error("Error en cargarHistorialPorFechas:", err);
       toast.error('No se pudo cargar el historial por fechas');
@@ -83,36 +88,47 @@ export const useHistorial = () => {
   }, [sucursalId, esAdmin]);
 
   // ==========================================
-  // 3. BÚSQUEDA POR FOLIO (RESPETANDO EL FILTRO)
+  // 3. BUSCABLE CRUZADO EN MEMORIA LOCAL (INSENSIBLE A ACENTOS)
   // ==========================================
   /**
-   * Permite localizar una orden específica mediante su folio único.
+   * Filtra en tiempo real los registros cargados por Folio o por Nombre de Proveedor
+   * de forma insensible a mayúsculas, minúsculas y acentos.
    */
-  const buscarFolio = async (termino) => {
-    // Si el campo de búsqueda está vacío, regresamos a la lista completa
-    if (!termino.trim()) return cargarHistorial();
-
-    setLoading(true);
-    try {
-      const { data, error } = await HistorialService.buscarEnHistorial(termino);
-      
-      if (error) throw error;
-
-      let datosFiltrados = data || [];
-
-      // Aplicamos el filtro de seguridad en los resultados de búsqueda
-      if (!esAdmin && sucursalId) {
-        datosFiltrados = datosFiltrados.filter(orden => orden.sucursal_id === sucursalId);
-      }
-
-      setOrdenesHistorial(datosFiltrados);
-    } catch (err) {
-      console.error("Error en buscarFolio:", err);
-      toast.error('Error al realizar la búsqueda');
-    } finally {
-      setLoading(false);
+  const buscarFolio = useCallback((termino) => {
+    if (!termino || !termino.trim()) {
+      // Si el buscador está vacío, restauramos el bloque de registros original
+      setOrdenesHistorial(respaldoHistorial);
+      return;
     }
-  };
+
+    // Función auxiliar interna para remover acentos y pasar a minúsculas de forma segura
+    const limpiarTexto = (texto) => {
+      if (!texto) return '';
+      return texto
+        .toString()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+    };
+
+    const query = limpiarTexto(termino);
+
+    const filtrados = respaldoHistorial.filter(orden => {
+      const cumpleFolio = cumpleTexto(orden.folio, query);
+      const cumpleProveedor = cumpleTexto(orden.proveedor?.nombre, query);
+      const cumpleSucursal = cumpleTexto(orden.sucursal?.nombre, query);
+      
+      return cumpleFolio || cumpleProveedor || cumpleSucursal;
+    });
+
+    // Función de comparación para evitar redundancia de código
+    function cumpleTexto(campoOriginal, consultaLimpia) {
+      if (!campoOriginal) return false;
+      return limpiarTexto(campoOriginal).includes(consultaLimpia);
+    }
+
+    setOrdenesHistorial(filtrados);
+  }, [respaldoHistorial]);
 
   return {
     loading,

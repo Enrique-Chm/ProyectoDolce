@@ -1,3 +1,4 @@
+// src/modules/Admin/Tabs/Pedidos/1Pedidos.Service.js
 import { supabase } from '../../../../lib/supabaseClient';
 
 export const PedidosService = {
@@ -123,7 +124,7 @@ export const PedidosService = {
   // ==========================================
   /**
    * Obtiene toda la información de una orden específica y sus partidas.
-   * IMPORTANTE: Traemos el proveedor_secundario_id para la lógica de "No hay".
+   * IMPORTANTE: Traemos el alias relacional del nombre del proveedor secundario.
    */
   async getDetalleDeOrden(ordenId) {
     const { data, error } = await supabase
@@ -145,6 +146,7 @@ export const PedidosService = {
             presentacion,
             contenido,
             proveedor_secundario_id,
+            proveedor_secundario:Cat_Proveedores!proveedor_secundario_id(nombre),
             um:Cat_UM(abreviatura)
           )
         )

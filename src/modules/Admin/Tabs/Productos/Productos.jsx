@@ -26,7 +26,8 @@ export default function Productos({ onVolver }) {
     proveedor_secundario_id: '',
     um_id: '',
     sucursales_ids: [], 
-    activo: true
+    activo: true,
+    turno_uso: 'Ambos'
   };
   
   const [formData, setFormData] = useState(estadoInicialFormulario);
@@ -67,7 +68,8 @@ export default function Productos({ onVolver }) {
   const abrirParaEditar = (producto) => {
     setFormData({
       ...producto,
-      sucursales_ids: Array.isArray(producto.sucursales_ids) ? producto.sucursales_ids : []
+      sucursales_ids: Array.isArray(producto.sucursales_ids) ? producto.sucursales_ids : [],
+      turno_uso: producto.turno_uso || 'Ambos'
     });
     setMostrandoFormulario(true);
   };
@@ -83,7 +85,7 @@ export default function Productos({ onVolver }) {
 
   /**
    * CORRECCIÓN: Búsqueda Multicriterio
-   * Ahora filtra por categoría seleccionada Y por texto (nombre, marca o categoría)
+   * Ahora filtra por categoría seleccionada Y por texto (nombre, marca, categoría o turno)
    */
   const productosFiltrados = productos.filter(p => {
     // 1. Filtro por Pestaña de Categoría
@@ -94,6 +96,7 @@ export default function Productos({ onVolver }) {
     const coincideTexto = 
       p.nombre.toLowerCase().includes(searchLower) ||
       (p.marca || '').toLowerCase().includes(searchLower) ||
+      (p.turno_uso || '').toLowerCase().includes(searchLower) ||
       (p.categoria?.nombre || '').toLowerCase().includes(searchLower);
 
     return coincidePestaña && coincideTexto;
@@ -155,12 +158,22 @@ export default function Productos({ onVolver }) {
               </div>
             </div>
 
-            <div>
-              <label className={styles.labelTop}>UNIDAD DE MEDIDA (UM) *</label>
-              <select name="um_id" value={formData.um_id} onChange={handleInputChange} className={styles.selectEditorial}>
-                <option value="">Seleccionar...</option>
-                {catalogos.unidades.map(u => <option key={u.id} value={u.id}>{u.abreviatura} - {u.nombre}</option>)}
-              </select>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div>
+                <label className={styles.labelTop}>UNIDAD DE MEDIDA (UM) *</label>
+                <select name="um_id" value={formData.um_id} onChange={handleInputChange} className={styles.selectEditorial}>
+                  <option value="">Seleccionar...</option>
+                  {catalogos.unidades.map(u => <option key={u.id} value={u.id}>{u.abreviatura} - {u.nombre}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={styles.labelTop}>TURNO DE OPERACIÓN *</label>
+                <select name="turno_uso" value={formData.turno_uso} onChange={handleInputChange} className={styles.selectEditorial}>
+                  <option value="Ambos">Ambos (Universal)</option>
+                  <option value="AM">Mañana (AM)</option>
+                  <option value="PM">Tarde/Cena (PM)</option>
+                </select>
+              </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
@@ -266,7 +279,7 @@ export default function Productos({ onVolver }) {
                     padding: '10px 12px', borderRadius: '10px', backgroundColor: 'white',
                     boxShadow: '0 2px 6px rgba(0,0,0,0.02)', gap: '12px', minHeight: '64px'
                   }}>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <h4 style={{ fontSize: '0.875rem', margin: 0, fontWeight: 'bold', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {prod.nombre}
@@ -280,6 +293,10 @@ export default function Productos({ onVolver }) {
                         <span style={{ fontWeight: 'bold', color: 'var(--color-primary)' }}>{prod.categoria?.nombre || 'S/C'}</span>
                         <span>•</span>
                         <span>{prod.presentacion || 'PZ'} ({prod.contenido || 1} {prod.um_abreviatura})</span>
+                        <span>•</span>
+                        <span style={{ fontWeight: 'bold', color: prod.turno_uso === 'AM' ? '#e67e22' : prod.turno_uso === 'PM' ? '#9b59b6' : 'var(--text-muted)' }}>
+                          {prod.turno_uso === 'AM' ? 'AM' : prod.turno_uso === 'PM' ? 'PM' : 'Ambos'}
+                        </span>
                         <span>•</span>
                         <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>location_on</span>
                         {numSucs === 0 ? 'Todas' : `${numSucs} sucs`}

@@ -15,13 +15,14 @@ export default function Sucursales({ onVolver }) {
 
   const [mostrandoFormulario, setMostrandoFormulario] = useState(false);
 
-  // --- ESTADO INICIAL SINCRONIZADO CON TU SQL ---
+  // --- ESTADO INICIAL SINCRONIZADO CON TU SQL (CON SOPORTE DE TURNOS MULTI-SELECCIÓN) ---
   const estadoInicial = {
     id: null,
     nombre: '',
     direccion: '', // Mapeado a la columna 'direccion' de tu tabla
     horario: '',   // Mapeado a la columna 'horario' de tu tabla
-    estatus: 'Activo'
+    estatus: 'Activo',
+    turnos_permitidos: ['AM', 'PM'] // Array por defecto
   };
   
   const [formData, setFormData] = useState(estadoInicial);
@@ -31,10 +32,26 @@ export default function Sucursales({ onVolver }) {
     cargarSucursales();
   }, [cargarSucursales]);
 
-  // Manejador de cambios en inputs
+  // Manejador de cambios en inputs básicos
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
+  };
+
+  // Manejador reactivo para conmutar turnos dentro del array
+  const toggleTurnoPermitido = (turnoTag) => {
+    const actuales = formData.turnos_permitidos || [];
+    if (actuales.includes(turnoTag)) {
+      setFormData({ 
+        ...formData, 
+        turnos_permitidos: actuales.filter(t => t !== turnoTag) 
+      });
+    } else {
+      setFormData({ 
+        ...formData, 
+        turnos_permitidos: [...actuales, turnoTag] 
+      });
+    }
   };
 
   // Preparar formulario para nueva sucursal
@@ -45,7 +62,10 @@ export default function Sucursales({ onVolver }) {
 
   // Preparar formulario para editar existente
   const abrirEditar = (suc) => {
-    setFormData({ ...suc });
+    setFormData({ 
+      ...suc,
+      turnos_permitidos: Array.isArray(suc.turnos_permitidos) ? suc.turnos_permitidos : ['AM', 'PM']
+    });
     setMostrandoFormulario(true);
   };
 
@@ -53,6 +73,10 @@ export default function Sucursales({ onVolver }) {
   const procesarGuardado = async () => {
     if (!formData.nombre.trim()) {
       return toast.error('El nombre de la sucursal es obligatorio');
+    }
+
+    if (!formData.turnos_permitidos || formData.turnos_permitidos.length === 0) {
+      return toast.error('Debe seleccionar al menos un turno permitido para operar');
     }
     
     const exito = await guardarSucursal(formData);
@@ -124,6 +148,61 @@ export default function Sucursales({ onVolver }) {
                 className={styles.inputEditorial} 
                 placeholder="Ej: Lunes a Viernes 8:00 AM - 6:00 PM" 
               />
+            </div>
+
+            {/* NUEVO Campo: Turnos Operativos Permitidos */}
+            <div>
+              <label className={styles.labelTop}>TURNOS OPERATIVOS PERMITIDOS *</label>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                <div 
+                  onClick={() => toggleTurnoPermitido('AM')}
+                  style={{
+                    flex: 1,
+                    height: '42px',
+                    borderRadius: '8px',
+                    fontSize: '0.75rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    cursor: 'pointer',
+                    border: '1px solid var(--border-ghost)',
+                    fontWeight: 'bold',
+                    backgroundColor: formData.turnos_permitidos?.includes('AM') ? 'var(--color-primary)' : 'white',
+                    color: formData.turnos_permitidos?.includes('AM') ? 'white' : 'var(--text-main)',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>
+                    {formData.turnos_permitidos?.includes('AM') ? 'check_box' : 'light_mode'}
+                  </span>
+                  MAÑANA (AM)
+                </div>
+                <div 
+                  onClick={() => toggleTurnoPermitido('PM')}
+                  style={{
+                    flex: 1,
+                    height: '42px',
+                    borderRadius: '8px',
+                    fontSize: '0.75rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    cursor: 'pointer',
+                    border: '1px solid var(--border-ghost)',
+                    fontWeight: 'bold',
+                    backgroundColor: formData.turnos_permitidos?.includes('PM') ? 'var(--color-primary)' : 'white',
+                    color: formData.turnos_permitidos?.includes('PM') ? 'white' : 'var(--text-main)',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>
+                    {formData.turnos_permitidos?.includes('PM') ? 'check_box' : 'dark_mode'}
+                  </span>
+                  TARDE/NOCHE (PM)
+                </div>
+              </div>
             </div>
             
             <button 
@@ -211,6 +290,16 @@ export default function Sucursales({ onVolver }) {
                       }}>
                         {esActivo ? 'Activa' : 'Baja'}
                       </span>
+
+                      {/* Etiquetas de Turnos Operativos Activos en la Sucursal */}
+                      <div style={{ display: 'flex', gap: '3px', marginLeft: 'auto' }}>
+                        {suc.turnos_permitidos?.includes('AM') && (
+                          <span style={{ fontSize: '0.55rem', fontWeight: 'bold', backgroundColor: '#fff3e0', color: '#e67e22', padding: '1px 5px', borderRadius: '4px' }}>AM</span>
+                        )}
+                        {suc.turnos_permitidos?.includes('PM') && (
+                          <span style={{ fontSize: '0.55rem', fontWeight: 'bold', backgroundColor: '#f3e5f5', color: '#9b59b6', padding: '1px 5px', borderRadius: '4px' }}>PM</span>
+                        )}
+                      </div>
                     </div>
 
                     {/* Dirección */}

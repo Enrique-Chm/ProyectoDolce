@@ -1,5 +1,5 @@
 // src/modules/Admin/Tabs/Pedidos/ChecklistPedido.jsx
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import styles from '../../../../assets/styles/EstilosGenerales.module.css';
 import { usePedidos } from './2usePedidos';
 import { AuthService } from '../../../Auth/Auth.service';
@@ -14,12 +14,14 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
     detalleOrdenActual, 
     cargarDetalleDeOrden, 
     toggleEstatusItem, 
-    cambiarEstatusOrden,
-    pasarASegundoProveedor
+    cambiarEstatusOrden
   } = usePedidos();
 
   const sesion = AuthService.getSesion();
   const permisos = sesion?.permisos?.pedidos || {};
+
+  // Estado local para alternar la visualización informativa del Proveedor B en cada tarjeta individual
+  const [mostrandoOpcionB, setMostrandoOpcionB] = useState({});
 
   useEffect(() => {
     if (ordenId) {
@@ -58,19 +60,14 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
   };
 
   /**
-   * Dispara la reasignación al proveedor secundario.
-   * La confirmación se maneja dentro del Hook para centralizar la lógica.
+   * Alterna la información de la tarjeta para mostrar la Opción B de manera puramente informativa.
    */
-  const handleNoHay = async (e, item) => {
-    e.stopPropagation(); // Evita que se dispare el toggle de estatus del card
-    
-    // Llamamos a la función del Hook que ya contiene el flujo transaccional
-    const exito = await pasarASegundoProveedor(item.id, item.producto_id);
-    
-    if (exito) {
-      // El Hook ya se encarga de limpiar el estado local y mostrar el toast con el folio
-      console.log(`Item ${item.id} reasignado exitosamente.`);
-    }
+  const handleNoHayInformativo = (e, itemId) => {
+    e.stopPropagation(); // Evita que se dispare el toggle de estatus de compra de la tarjeta
+    setMostrandoOpcionB(prev => ({
+      ...prev,
+      [itemId]: !prev[itemId]
+    }));
   };
 
   /**
@@ -206,6 +203,9 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
           const contenidoBase = item.producto?.contenido || 1;
           const totalNeto = item.cantidad * contenidoBase;
           
+          // Evalúa si este item específico debe conmutar su texto para mostrar los datos de la opción B
+          const verOpcionB = !!mostrandoOpcionB[item.id];
+          
           return (
             <div 
               key={item.id} 
@@ -219,7 +219,7 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
                 padding: '12px 14px',
                 borderRadius: '10px',
                 backgroundColor: esComprado ? 'var(--color-surface-lowest)' : 'white',
-                borderLeft: esComprado ? '4px solid #999' : '4px solid var(--color-primary)',
+                borderLeft: esComprado ? '4px solid #999' : (verOpcionB ? '4px solid #ba1a1a' : '4px solid var(--color-primary)'),
                 opacity: esComprado ? 0.7 : 1,
                 cursor: puedeEditar ? 'pointer' : 'default',
                 minHeight: '64px',
@@ -237,40 +237,65 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
                 {esComprado && <span className="material-symbols-outlined" style={{ color: 'white', fontSize: '1rem' }}>done</span>}
               </div>
 
-              {/* Información del Insumo */}
+              {/* Información Dinámica Alternable del Insumo */}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <h4 style={{ 
-                  margin: 0,
-                  fontSize: '0.9rem', 
-                  fontWeight: 'bold', 
-                  textDecoration: esComprado ? 'line-through' : 'none',
-                  color: esComprado ? 'var(--text-muted)' : 'var(--text-main)',
-                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
-                }}>
-                  {item.producto?.nombre} - {item.producto?.marca && `  ${item.producto.marca}`}
-                </h4>
-                
-                <p style={{ marginTop: '2px', marginBottom: 0, fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '800' }}>
-                  <span style={{ fontWeight: '800', color: esComprado ? 'inherit' : 'var(--text-main)' }}>
-                    {item.cantidad} {item.producto?.presentacion || 'PIEZA'} ({totalNeto} {item.producto?.um?.abreviatura})
-                  </span>
-                </p>
+                {!verOpcionB ? (
+                  /* VISTA NORMAL: OPCIÓN A */
+                  <>
+                    <h4 style={{ 
+                      margin: 0,
+                      fontSize: '0.9rem', 
+                      fontWeight: 'bold', 
+                      textDecoration: esComprado ? 'line-through' : 'none',
+                      color: esComprado ? 'var(--text-muted)' : 'var(--text-main)',
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                    }}>
+                      {item.producto?.nombre} - {item.producto?.marca && `  ${item.producto.marca}`}
+                    </h4>
+                    
+                    <p style={{ marginTop: '2px', marginBottom: 0, fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '800' }}>
+                      <span style={{ fontWeight: '800', color: esComprado ? 'inherit' : 'var(--text-main)' }}>
+                        {item.cantidad} {item.producto?.presentacion || 'PIEZA'} ({totalNeto} {item.producto?.um?.abreviatura})
+                      </span>
+                    </p>
+                  </>
+                ) : (
+                  /* VISTA INFORMATIVA ALTERNA: OPCIÓN B (Muestra el nombre comercial del proveedor alterno) */
+                  <>
+                    <h4 style={{ 
+                      margin: 0,
+                      fontSize: '0.85rem', 
+                      fontWeight: '800', 
+                      color: '#ba1a1a',
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                    }}>
+                      [OPCIÓN B]: PROVEEDOR SECUNDARIO
+                    </h4>
+                    
+                    <p style={{ marginTop: '2px', marginBottom: 0, fontSize: '0.75rem', color: 'var(--text-main)', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      Comprar con: <span style={{ color: 'var(--color-primary)', textTransform: 'uppercase' }}>{item.producto?.proveedor_secundario?.nombre || 'No asignado'}</span>
+                    </p>
+                  </>
+                )}
               </div>
 
               {/* Acciones del Item */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
                 {puedeEditar && !esComprado && item.producto?.proveedor_secundario_id && (
                   <button 
-                    onClick={(e) => handleNoHay(e, item)}
+                    onClick={(e) => handleNoHayInformativo(e, item.id)}
                     style={{ 
-                      backgroundColor: 'transparent', border: '1px solid #ba1a1a', color: '#ba1a1a',
+                      backgroundColor: verOpcionB ? 'var(--text-muted)' : 'transparent', 
+                      border: verOpcionB ? '1px solid var(--text-muted)' : '1px solid #ba1a1a', 
+                      color: verOpcionB ? 'white' : '#ba1a1a',
                       borderRadius: '6px', padding: '4px 8px',
                       fontSize: '0.65rem', fontWeight: '900',
-                      display: 'flex', alignItems: 'center', gap: '4px'
+                      display: 'flex', alignItems: 'center', gap: '4px',
+                      transition: 'all 0.15s ease'
                     }}
                   >
                     <span className="material-symbols-outlined" style={{ fontSize: '0.9rem' }}></span>
-                    NO HAY
+                    {verOpcionB ? 'VER ORIGINAL' : 'NO HAY'}
                   </button>
                 )}
               </div>

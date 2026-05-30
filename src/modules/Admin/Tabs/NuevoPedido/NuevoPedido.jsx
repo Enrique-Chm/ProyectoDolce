@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import styles from '../../../../assets/styles/EstilosGenerales.module.css';
 import { useNuevoPedido } from './2useNuevoPedido';
+import { AuthService } from '../../../Auth/Auth.service'; 
 import toast from 'react-hot-toast';
 
 export default function NuevoPedido({ onVolver }) {
@@ -13,7 +14,9 @@ export default function NuevoPedido({ onVolver }) {
     carrito,
     agregarAlCarrito,
     eliminarDelCarrito,
-    procesarOrden
+    procesarOrden,
+    turno,
+    setTurno
   } = useNuevoPedido(onVolver);
 
   const [paso, setPaso] = useState(1); 
@@ -21,6 +24,9 @@ export default function NuevoPedido({ onVolver }) {
   const [catActiva, setCatActiva] = useState('Todas');
   const [cantidadesLocales, setCantidadesLocales] = useState({});
   const [revisadosLocales, setRevisadosLocales] = useState([]);
+
+  // Recuperamos la sesión activa para validar restricciones visuales de turno
+  const sesion = AuthService.getSesion();
 
   // Memorizamos las categorías basadas en los productos que sí están disponibles hoy
   const categorias = useMemo(() => {
@@ -118,6 +124,65 @@ export default function NuevoPedido({ onVolver }) {
 
           {/* Filtros y Buscador */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px', flexShrink: 0 }}>
+            
+            {/* selector de turno operativo am / pm con bloqueo visual */}
+            <div style={{ display: 'flex', gap: '8px', padding: '4px', backgroundColor: 'var(--color-surface-low)', borderRadius: '10px' }}>
+              <button
+                type="button"
+                onClick={() => { setTurno('AM'); setCatActiva('Todas'); }}
+                disabled={sesion?.turno === 'PM'}
+                style={{
+                  flex: 1,
+                  height: '38px',
+                  borderRadius: '7px',
+                  fontSize: '0.75rem',
+                  fontWeight: 'bold',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  border: 'none',
+                  backgroundColor: turno === 'AM' ? 'var(--color-primary)' : 'transparent',
+                  color: turno === 'AM' ? 'white' : 'var(--text-main)',
+                  cursor: sesion?.turno === 'PM' ? 'not-allowed' : 'pointer',
+                  opacity: sesion?.turno === 'PM' ? 0.4 : 1,
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>
+                  {sesion?.turno === 'PM' ? 'lock' : 'light_mode'}
+                </span>
+                TURNOS MAÑANA (AM)
+              </button>
+              <button
+                type="button"
+                onClick={() => { setTurno('PM'); setCatActiva('Todas'); }}
+                disabled={sesion?.turno === 'AM'}
+                style={{
+                  flex: 1,
+                  height: '38px',
+                  borderRadius: '7px',
+                  fontSize: '0.75rem',
+                  fontWeight: 'bold',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  border: 'none',
+                  backgroundColor: turno === 'PM' ? 'var(--color-primary)' : 'transparent',
+                  color: turno === 'PM' ? 'white' : 'var(--text-main)',
+                  cursor: sesion?.turno === 'AM' ? 'not-allowed' : 'pointer',
+                  opacity: sesion?.turno === 'AM' ? 0.4 : 1,
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>
+                  {sesion?.turno === 'AM' ? 'lock' : 'dark_mode'}
+                </span>
+                TURNOS TARDE/NOCHE (PM)
+              </button>
+            </div>
+
             <div style={{ position: 'relative' }}>
               <span className="material-symbols-outlined" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }}>search</span>
               <input 
@@ -193,6 +258,7 @@ export default function NuevoPedido({ onVolver }) {
                       <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                         <input 
                           type="number" 
+                          min="0"
                           placeholder="0" 
                           className={styles.inputEditorial} 
                           style={{ 
@@ -205,7 +271,16 @@ export default function NuevoPedido({ onVolver }) {
                             border: '1px solid var(--border-ghost)'
                           }} 
                           value={qtyInput} 
-                          onChange={(e) => setCantidadesLocales(prev => ({ ...prev, [prod.id]: e.target.value }))} 
+                          onKeyDown={(e) => {
+                            if (e.key === '-' || e.key === 'e' || e.key === 'E') {
+                              e.preventDefault();
+                            }
+                          }}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (Number(val) < 0) return;
+                            setCantidadesLocales(prev => ({ ...prev, [prod.id]: val }));
+                          }} 
                         />
                         <button 
                           onClick={() => handleAdd(prod)} 

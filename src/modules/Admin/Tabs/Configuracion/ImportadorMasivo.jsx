@@ -12,8 +12,8 @@ export default function ImportadorMasivo({ onVolver }) {
   const plantillas = {
     productos: {
       titulo: 'Productos e Insumos',
-      headers: 'nombre,marca,categoria,presentacion,contenido,unidad_medida,proveedor,proveedor_secundario,sucursales,activo',
-      descripcion: 'Carga masiva de insumos operativos. Recuerda que las categorías, unidades de medida y proveedores deben existir previamente para que el vínculo sea exitoso.'
+      headers: 'nombre,marca,categoria,presentacion,contenido,unidad_medida,proveedor,proveedor_secundario,sucursales,turno_uso,activo',
+      descripcion: 'Carga masiva de insumos operativos. Recuerda que las categorías, unidades de medida y proveedores deben existir previamente para que el vínculo sea exitoso. Puedes definir el turno usando "AM", "PM" o dejarlo vacío (se asignará "Ambos" de manera automática).'
     },
     proveedores: {
       titulo: 'Proveedores',

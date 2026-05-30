@@ -12,6 +12,28 @@ export const useNuevoPedido = (onVolver) => {
   const [productosDisponibles, setProductosDisponibles] = useState([]);
   const [carrito, setCarrito] = useState([]);
 
+  // --- ESTADO DE TURNO CON PERMISOS BIOMÉTRICOS/PERFIL (AM / PM) ---
+  // Evalúa si el usuario tiene un turno restringido por contrato. Si no, usa la hora del sistema.
+  const [turno, setTurnoInternal] = useState(() => {
+    const turnoTrabajador = sesion?.turno;
+    if (turnoTrabajador && turnoTrabajador !== 'Ambos') {
+      return turnoTrabajador; // Bloqueado a su turno asignado (AM o PM)
+    }
+    const horaActual = new Date().getHours();
+    return horaActual < 13 ? 'AM' : 'PM';
+  });
+
+  // Manejador seguro para cambiar turno (Se inhabilita si el trabajador está restringido)
+  const setTurno = useCallback((nuevoTurno) => {
+    const turnoTrabajador = sesion?.turno;
+    if (turnoTrabajador && turnoTrabajador !== 'Ambos') {
+      // Si el trabajador tiene un turno asignado fijo, no puede alternar entre pestañas
+      toast.error(`Tu perfil está limitado exclusivamente al turno ${turnoTrabajador}`);
+      return;
+    }
+    setTurnoInternal(nuevoTurno);
+  }, [sesion?.turno]);
+
   // --- ESTADO DE LA CABECERA ---
   const [header, setHeader] = useState({
     solicitante_id: sesion?.id || '',
@@ -32,12 +54,34 @@ export const useNuevoPedido = (onVolver) => {
     return dias[hoy.getDay()];
   };
 
+  /**
+   * FUNCIÓN AUXILIAR DE SEGURIDAD: Valida si el horario real es compatible con el perfil.
+   * Si es un usuario AM fijo pero ya es la 1:00 PM o más tarde, deniega el acceso.
+   */
+  const validarHorarioTurnoReal = useCallback(() => {
+    const turnoTrabajador = sesion?.turno;
+    if (turnoTrabajador === 'AM') {
+      const horaReal = new Date().getHours();
+      if (horaReal >= 13) {
+        return false;
+      }
+    }
+    return true;
+  }, [sesion?.turno]);
+
   // ==========================================
-  // 1. CARGA Y FILTRADO POR DÍA Y PERMISOS
+  // 1. CARGA Y FILTRADO POR DÍA, PERMISOS Y TURNO
   // ==========================================
   const cargarProductos = useCallback(async () => {
     setLoading(true);
     try {
+      // Validación preventiva al cargar el catálogo de insumos
+      if (!validarHorarioTurnoReal()) {
+        toast.error('Tu horario operativo AM ha expirado. No puedes realizar solicitudes después de la 1:00 PM.', { duration: 5000 });
+        setProductosDisponibles([]);
+        return;
+      }
+
       const diaHoy = obtenerDiaActual();
       
       // Llamada al servicio enviando el día actual para el filtro de proveedores
@@ -45,12 +89,12 @@ export const useNuevoPedido = (onVolver) => {
       
       if (error) throw error;
 
-      const categoriasPermitidas = JSON.parse(categoriasPermitidasStr);
+      const categoriesPermitidas = JSON.parse(categoriasPermitidasStr);
       const sucursalUsuario = sesion?.sucursal_id;
 
       /**
        * NORMALIZACIÓN Y FILTRADO LOCAL:
-       * Además del filtro de día en el servidor, validamos sucursal y categorías permitidas.
+       * Además del filtro de día en el servidor, validamos sucursal, categorías y TURNO.
        */
       const procesados = (data || [])
         .map(p => ({
@@ -61,20 +105,23 @@ export const useNuevoPedido = (onVolver) => {
         }))
         .filter(p => {
           // 1. Filtro por permisos de categoría del trabajador
-          const cumpleCat = categoriasPermitidas.length === 0 || categoriasPermitidas.includes(p.categoria_id);
+          const cumpleCat = categoriesPermitidas.length === 0 || categoriesPermitidas.includes(p.categoria_id);
           
           // 2. Filtro por visibilidad de sucursal del producto
           const cumpleSuc = !p.sucursales_ids || 
-                           p.sucursales_ids.length === 0 || 
-                           p.sucursales_ids.includes(sucursalUsuario);
+                            p.sucursales_ids.length === 0 || 
+                            p.sucursales_ids.includes(sucursalUsuario);
           
-          return cumpleCat && cumpleSuc;
+          // 3. Filtro por Turno de Uso (Insumos asignados a su turno o insumos universales 'Ambos')
+          const cumpleTurno = !p.turno_uso || p.turno_uso === 'Ambos' || p.turno_uso === turno;
+          
+          return cumpleCat && cumpleSuc && cumpleTurno;
         });
 
       setProductosDisponibles(procesados);
       
       if (procesados.length === 0) {
-        toast('No hay insumos disponibles para surtir el día de hoy.', { icon: '🗓️' });
+        toast(`No hay insumos disponibles para el turno ${turno} el día de hoy.`, { icon: '🗓️' });
       }
 
     } catch (err) {
@@ -83,7 +130,7 @@ export const useNuevoPedido = (onVolver) => {
     } finally {
       setLoading(false);
     }
-  }, [categoriasPermitidasStr, sesion?.sucursal_id]);
+  }, [categoriasPermitidasStr, sesion?.sucursal_id, turno, validarHorarioTurnoReal]);
 
   useEffect(() => {
     cargarProductos();
@@ -94,6 +141,12 @@ export const useNuevoPedido = (onVolver) => {
   // ==========================================
   
   const agregarAlCarrito = useCallback((producto, cantidad = 1) => {
+    // Verificación de horario real al momento de intentar meter un producto a la lista
+    if (!validarHorarioTurnoReal()) {
+      toast.error('Operación denegada: Tu horario asignado de mañana (AM) concluyó a las 1:00 PM.');
+      return;
+    }
+
     const numCant = Number(cantidad);
     if (isNaN(numCant) || numCant <= 0) return;
 
@@ -113,6 +166,7 @@ export const useNuevoPedido = (onVolver) => {
         nombre: producto.nombre,
         marca: producto.marca,
         abreviatura_um: producto.um_abreviatura,
+        quantity: numCant, // Mantenemos compatibilidad si se requiere en un sub-map
         cantidad: numCant,
         proveedor_id: producto.proveedor_id,
         categoria_nombre: producto.categoria_nombre,
@@ -122,7 +176,7 @@ export const useNuevoPedido = (onVolver) => {
     });
 
     toast.success(`${producto.nombre} agregado`, { duration: 1500, icon: '🛒' });
-  }, []);
+  }, [validarHorarioTurnoReal]);
 
   const eliminarDelCarrito = (id) => {
     setCarrito(prev => prev.filter(item => item.producto_id !== id));
@@ -137,6 +191,12 @@ export const useNuevoPedido = (onVolver) => {
     if (carrito.length === 0) return toast.error('El carrito está vacío');
     if (!header.solicitante_id || !header.sucursal_id) {
       return toast.error('Error de sesión: Usuario o sucursal no identificados');
+    }
+
+    // Doble verificación estricta de tiempo real antes de guardar en el servidor
+    if (!validarHorarioTurnoReal()) {
+      toast.error('Bloqueo de seguridad: No puedes transmitir requisiciones AM después de la 1:00 PM.');
+      return;
     }
 
     setLoading(true);
@@ -158,12 +218,19 @@ export const useNuevoPedido = (onVolver) => {
         const randomStr = Math.random().toString(36).substring(7).toUpperCase();
         const folio = `REQ-${new Date().getFullYear()}-${randomStr}`;
 
+        // Pasamos el texto ingresado en las observaciones de forma limpia. 
+        // El servicio se encargará de estampar la firma estructural de coautores al inicio.
+        const notasConTurno = header.observaciones && header.observaciones.trim() !== ''
+          ? `[Turno ${turno}]: ${header.observaciones.trim()}`
+          : `Pedido generado en Turno ${turno}`;
+
         const payloadCabecera = {
           folio,
           solicitante_id: header.solicitante_id,
           sucursal_id: header.sucursal_id,
           proveedor_id: pId === 'SIN-PROVEEDOR' ? null : pId,
-          notas: header.observaciones,
+          notes: notasConTurno,
+          notas: notasConTurno,
           estatus: 'Pendiente'
         };
 
@@ -191,6 +258,8 @@ export const useNuevoPedido = (onVolver) => {
     carrito,
     agregarAlCarrito,
     eliminarDelCarrito,
-    procesarOrden
+    procesarOrden,
+    turno,
+    setTurno
   };
 };

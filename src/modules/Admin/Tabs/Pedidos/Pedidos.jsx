@@ -23,6 +23,20 @@ export default function Pedidos({ onNuevoPedido, onVerLista }) {
     cargarOrdenesActivas();
   }, [cargarOrdenesActivas]);
 
+  /**
+   * FUNCIÓN AUXILIAR: Extrae los nombres de la coautoría guardados en las notas.
+   * Si no se encuentra la etiqueta estructurada, retorna el nombre del solicitante original.
+   */
+  const obtenerTextoSolicitantes = (orden) => {
+    if (orden.notas && orden.notas.includes('[Solicitantes]:')) {
+      const match = orden.notas.match(/\[Solicitantes\]:\s*([^\n]+)/);
+      if (match && match[1].trim() !== '') {
+        return match[1].trim();
+      }
+    }
+    return orden.solicitante?.nombre_completo || 'Admin';
+  };
+
   return (
     <div className={styles.fadeIN} style={{ width: '100%', maxWidth: '100%', paddingBottom: '100px' }}>
       {/* --- ENCABEZADO --- */}
@@ -60,8 +74,8 @@ export default function Pedidos({ onNuevoPedido, onVerLista }) {
 
       {/* --- ESTADO DE CARGA --- */}
       {loading && ordenesActivas.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '2rem 0' }}>
-          <div className={styles.labelTop} style={{ animation: 'pulse 1.5s infinite' }}>Sincronizando...</div>
+        <div style={{ texttextAling: 'center', padding: '2rem 0' }}>
+          <div className={styles.labelTop} style={{ animation: 'pulse 1.5s infinite', textAlign: 'center' }}>Sincronizando...</div>
         </div>
       )}
 
@@ -134,7 +148,7 @@ export default function Pedidos({ onNuevoPedido, onVerLista }) {
                     textOverflow: 'ellipsis',
                     lineHeight: '1.1'
                   }}>
-                  {orden.sucursal?.nombre || 'General'}
+                    {orden.sucursal?.nombre || 'General'}
                   </span>
 
                   {/* Nombre del Proveedor */}
@@ -151,18 +165,18 @@ export default function Pedidos({ onNuevoPedido, onVerLista }) {
                     {orden.proveedor?.nombre || 'Proveedor Pendiente'}
                   </h2>
 
-                  {/* Solicitante */}
+                  {/* Solicitantes Unificados */}
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    <span style={{ color: 'var(--text-light)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      Por: {orden.solicitante?.nombre_completo || 'Admin'}
+                    <span style={{ color: 'var(--text-light)', overflow: 'hidden', textOverflow: 'ellipsis' }} title={obtenerTextoSolicitantes(orden)}>
+                      Por: {obtenerTextoSolicitantes(orden)}
                     </span>
                   </div>
                 </div>
                 
                 {/* Botones de acción mini */}
                 <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                  {/* Botón cancelar si cumple permisos y es el creador */}
-                  {permisosPedidos.borrar && sesion?.id === orden.solicitante_id && (
+                  {/* Botón cancelar si cumple permisos y es el creador o administrador global */}
+                  {permisosPedidos.borrar && (sesion?.id === orden.solicitante_id || esAdmin) && (
                     <button 
                       onClick={() => cancelarPedido(orden.id)}
                       className={`${styles.btnBase} ${styles.btnSecondary}`}

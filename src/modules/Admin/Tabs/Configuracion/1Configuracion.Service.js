@@ -229,6 +229,12 @@ export const ConfiguracionService = {
           sucsIds = String(row.sucursales).split(',').map(s => mapSucs[normalizar(s)]).filter(Boolean);
         }
 
+        // Mapeo y validación de la columna de turno ingresada en el CSV/Excel
+        const turnoTexto = normalizar(row.turno_uso || row.turno);
+        let turnoFinal = 'Ambos';
+        if (turnoTexto === 'am') turnoFinal = 'AM';
+        if (turnoTexto === 'pm') turnoFinal = 'PM';
+
         return {
           nombre: row.nombre ? String(row.nombre).trim() : null,
           marca: row.marca ? String(row.marca).trim() : null,
@@ -236,10 +242,10 @@ export const ConfiguracionService = {
           um_id: mapUms[normalizar(row.unidad_medida)] || null,
           presentacion: row.presentacion || null,
           contenido: Number(row.contenido) || null,
-          // LIMPIEZA: Se eliminó costo_actual para coincidir con la nueva tabla
           proveedor_id: mapProv[normalizar(row.proveedor)] || null,
           proveedor_secundario_id: mapProv[normalizar(row.proveedor_secundario)] || null,
           sucursales_ids: sucsIds,
+          turno_uso: turnoFinal,
           activo: true
         };
       }).filter(p => p.nombre);

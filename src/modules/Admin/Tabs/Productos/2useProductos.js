@@ -85,11 +85,12 @@ export const useProductos = () => {
       // Filtro 1: Por Pestaña/Categoría
       const coincideCat = catActiva === 'Todas' || p.categoria_nombre === catActiva;
 
-      // Filtro 2: Por Texto (Nombre, Marca o Categoría)
+      // Filtro 2: Por Texto (Nombre, Marca, Categoría o Turno de uso)
       const search = filtroBusqueda.toLowerCase();
       const coincideTexto = 
         p.nombre.toLowerCase().includes(search) ||
         (p.marca || '').toLowerCase().includes(search) ||
+        (p.turno_uso || '').toLowerCase().includes(search) || // Permite buscar insumos escribiendo "AM", "PM" o "Ambos"
         p.categoria_nombre.toLowerCase().includes(search);
 
       return coincideCat && coincideTexto;
