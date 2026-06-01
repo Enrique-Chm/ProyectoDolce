@@ -4,7 +4,6 @@ import styles from '../../../../assets/styles/EstilosGenerales.module.css';
 import { usePedidos } from './2usePedidos';
 import { AuthService } from '../../../Auth/Auth.service';
 import toast from 'react-hot-toast';
-
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -96,13 +95,19 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
       doc.line(14, 68, 196, 68);
 
       const columnas = ['Producto', 'Marca', 'Cant.', 'Presentación', 'Contenido Total'];
-      const filas = detalleOrdenActual.detalles.map(item => [
-        item.producto?.nombre || 'Insumo',
-        item.producto?.marca || 'S/M',
-        item.cantidad,
-        item.producto?.presentacion || 'PIEZA',
-        `${item.cantidad * (item.producto?.contenido || 1)} ${item.producto?.um?.abreviatura || ''}`
-      ]);
+      const filas = detalleOrdenActual.detalles.map(item => {
+        // Para el PDF también desdoblamos si vienen arreglos
+        const rawEquiv = item.producto?.producto_equivalente;
+        const prodEquivalente = Array.isArray(rawEquiv) ? rawEquiv[0] : rawEquiv;
+        
+        return [
+          item.producto?.nombre || 'Insumo',
+          item.producto?.marca || 'S/M',
+          item.cantidad,
+          item.producto?.presentacion || 'PIEZA',
+          `${item.cantidad * (item.producto?.contenido || 1)} ${item.producto?.um?.abreviatura || ''}`
+        ];
+      });
 
       autoTable(doc, {
         head: [columnas],
@@ -147,7 +152,7 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
           <button onClick={descargarPdf} className={styles.btnSecondary} style={{ width: '38px', height: '38px', padding: 0, borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>download</span>
           </button>
-          <button onClick={onVolver} className={styles.btnSecondary} style={{ width: '38px', height: '38px', padding: 0, borderRadius: '8px', display: 'flex', alignItems: 'center', center: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button onClick={onVolver} className={styles.btnSecondary} style={{ width: '38px', height: '38px', padding: 0, borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>close</span>
           </button>
         </div>
@@ -167,66 +172,108 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
         {detalleOrdenActual.detalles.map((item) => {
           const esComprado = item.estatus === 'Comprado';
           const verOpcionB = !!mostrandoOpcionB[item.id];
-          const prodEquivalente = item.producto?.producto_equivalente;
           const tieneOpcionB = !!item.producto?.producto_equivalente_id;
           
+          // EXTRACCIÓN SEGURA (Si Supabase devuelve un arreglo porque la relación le pareció de M-a-N, tomamos el elemento 0)
+          const rawEquiv = item.producto?.producto_equivalente;
+          const prodEquivalente = Array.isArray(rawEquiv) ? rawEquiv[0] : rawEquiv;
+          const rawProvOrig = item.producto?.proveedor;
+          const provOriginal = Array.isArray(rawProvOrig) ? rawProvOrig[0] : rawProvOrig;
+          const rawProvEquiv = prodEquivalente?.proveedor;
+          const provEquivalente = Array.isArray(rawProvEquiv) ? rawProvEquiv[0] : rawProvEquiv;
+
           return (
-            <div 
-              key={item.id} 
-              onClick={() => puedeEditar && !verOpcionB && toggleEstatusItem(item.id, item.estatus)}
+            <div
+              key={item.id}
               className={styles.card}
-              style={{ 
-                display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-                padding: '12px 14px', borderRadius: '10px', backgroundColor: esComprado ? 'var(--color-surface-lowest)' : 'white',
+              style={{
+                display: 'flex',
+                flexDirection: 'column',         // ← CAMBIADO: columna para permitir expansión
+                padding: '12px 14px',
+                borderRadius: '10px',
+                backgroundColor: esComprado ? 'var(--color-surface-lowest)' : 'white',
                 borderLeft: esComprado ? '4px solid #999' : (verOpcionB ? '4px solid #ba1a1a' : '4px solid var(--color-primary)'),
-                opacity: esComprado ? 0.7 : 1, cursor: puedeEditar && !verOpcionB ? 'pointer' : 'default',
-                minHeight: '64px', gap: '12px', transition: 'all 0.2s ease'
+                opacity: esComprado ? 0.7 : 1,
+                minHeight: '64px',
+                transition: 'all 0.2s ease'
               }}
             >
-              <div style={{ width: '24px', height: '24px', borderRadius: '6px', border: esComprado ? 'none' : '2px solid var(--border-ghost)', backgroundColor: esComprado ? 'var(--color-primary)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                {esComprado && <span className="material-symbols-outlined" style={{ color: 'white', fontSize: '1rem' }}>done</span>}
+              {/* ── FILA PRINCIPAL (siempre visible) ── */}
+              <div
+                onClick={() => puedeEditar && !verOpcionB && toggleEstatusItem(item.id, item.estatus)}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: '12px',
+                  cursor: puedeEditar && !verOpcionB ? 'pointer' : 'default',
+                }}
+              >
+                {/* Checkbox */}
+                <div style={{ width: '24px', height: '24px', borderRadius: '6px', border: esComprado ? 'none' : '2px solid var(--border-ghost)', backgroundColor: esComprado ? 'var(--color-primary)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  {esComprado && <span className="material-symbols-outlined" style={{ color: 'white', fontSize: '1rem' }}>done</span>}
+                </div>
+
+                {/* Info del producto ORIGINAL — siempre visible */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 'bold', textDecoration: esComprado ? 'line-through' : 'none', color: esComprado ? 'var(--text-muted)' : 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {item.producto?.nombre} {item.producto?.marca && `- ${item.producto.marca}`}
+                  </h4>
+                  <p style={{ marginTop: '2px', marginBottom: 0, fontSize: '0.7rem', color: esComprado ? 'var(--text-muted)' : 'var(--text-main)', fontWeight: '800' }}>
+                    {item.cantidad} {item.producto?.presentacion || 'PIEZA'}
+                  </p>
+                  <p style={{ marginTop: '1px', marginBottom: 0, fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>
+                    Comprar con: <span style={{ color: 'var(--color-primary)', textTransform: 'uppercase' }}>{provOriginal?.nombre || 'No asignado'}</span>
+                  </p>
+                </div>
+
+                {/* Botón VER OPCIÓN B */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+                  {puedeEditar && !esComprado && tieneOpcionB && (
+                    <button 
+                      onClick={(e) => handleNoHayInformativo(e, item.id)}
+                      style={{ 
+                        backgroundColor: verOpcionB ? 'var(--text-muted)' : 'transparent', 
+                        border: verOpcionB ? '1px solid var(--text-muted)' : '1px solid #ba1a1a', 
+                        color: verOpcionB ? 'white' : '#ba1a1a', 
+                        borderRadius: '6px', padding: '6px 10px', fontSize: '0.65rem', fontWeight: '900', transition: 'all 0.15s ease'
+                      }}
+                    >
+                      {verOpcionB ? 'VER ORIGINAL' : 'VER OPCIÓN B'}
+                    </button>
+                  )}
+                </div>
               </div>
 
-              <div style={{ flex: 1, minWidth: 0 }}>
-                {!verOpcionB ? (
-                  <>
-                    <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 'bold', textDecoration: esComprado ? 'line-through' : 'none', color: esComprado ? 'var(--text-muted)' : 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {item.producto?.nombre} {item.producto?.marca && `- ${item.producto.marca}`}
-                    </h4>
-                    <p style={{ marginTop: '2px', marginBottom: 0, fontSize: '0.7rem', color: esComprado ? 'var(--text-muted)' : 'var(--text-main)', fontWeight: '800' }}>
-                      {item.cantidad} {item.producto?.presentacion || 'PIEZA'}
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: '800', color: '#ba1a1a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      [OPCIÓN B]: {prodEquivalente?.nombre || 'S/N'} {prodEquivalente?.marca && `- ${prodEquivalente.marca}`}
-                    </h4>
-                    <p style={{ marginTop: '2px', marginBottom: 0, fontSize: '0.7rem', color: 'var(--text-main)', fontWeight: 'bold' }}>
-                      Formato: {item.cantidad} {prodEquivalente?.presentacion || 'PIEZA'} ({item.cantidad * (prodEquivalente?.contenido || 1)} {item.producto?.um?.abreviatura || ''})
-                    </p>
-                    <p style={{ marginTop: '1px', marginBottom: 0, fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>
-                      Comprar con: <span style={{ color: 'var(--color-primary)', textTransform: 'uppercase' }}>{prodEquivalente?.proveedor?.nombre || 'No asignado'}</span>
-                    </p>
-                  </>
-                )}
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
-                {puedeEditar && !esComprado && tieneOpcionB && (
-                  <button 
-                    onClick={(e) => handleNoHayInformativo(e, item.id)}
-                    style={{ 
-                      backgroundColor: verOpcionB ? 'var(--text-muted)' : 'transparent', 
-                      border: verOpcionB ? '1px solid var(--text-muted)' : '1px solid #ba1a1a', 
-                      color: verOpcionB ? 'white' : '#ba1a1a', 
-                      borderRadius: '6px', padding: '6px 10px', fontSize: '0.65rem', fontWeight: '900', transition: 'all 0.15s ease'
-                    }}
-                  >
-                    {verOpcionB ? 'VER ORIGINAL' : 'VER OPCIÓN B'}
-                  </button>
-                )}
-              </div>
+              {/* ── PANEL EXPANDIDO: OPCIÓN B (aparece debajo al picar el botón) ── */}
+              {verOpcionB && tieneOpcionB && (
+                <div style={{
+                  marginTop: '12px',
+                  paddingTop: '12px',
+                  borderTop: '1px dashed #ba1a1a',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                  animation: 'slideUp 0.2s ease'
+                }}>
+                  <span style={{ fontSize: '0.6rem', fontWeight: '900', textTransform: 'uppercase', color: '#ba1a1a', letterSpacing: '0.5px' }}>
+                    ⚠ Insumo alternativo disponible
+                  </span>
+                  <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 'bold', color: '#ba1a1a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {prodEquivalente?.nombre || 'Sin nombre'} {prodEquivalente?.marca && `- ${prodEquivalente.marca}`}
+                  </h4>
+                  <p style={{ marginTop: '2px', marginBottom: 0, fontSize: '0.7rem', color: 'var(--text-main)', fontWeight: '800' }}>
+                    {item.cantidad} {prodEquivalente?.presentacion || 'PIEZA'}
+                    {prodEquivalente?.contenido
+                      ? ` • ${item.cantidad * prodEquivalente.contenido} ${item.producto?.um?.abreviatura || ''} total`
+                      : ''}
+                  </p>
+                  <p style={{ marginTop: '1px', marginBottom: 0, fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>
+                    Comprar con: <span style={{ color: 'var(--color-primary)', textTransform: 'uppercase' }}>{provEquivalente?.nombre || 'No asignado'}</span>
+                  </p>
+                </div>
+              )}
             </div>
           );
         })}

@@ -1,5 +1,5 @@
 // src/modules/Admin/Tabs/Productos/Productos.jsx
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import styles from '../../../../assets/styles/EstilosGenerales.module.css';
 import { useProductos } from './2useProductos';
 import toast from 'react-hot-toast';
@@ -15,6 +15,22 @@ export default function Productos({ onVolver }) {
   const [filtroBusqueda, setFiltroBusqueda] = useState('');
   const [catActiva, setCatActiva] = useState('Todas');
   
+  // --- ESTADOS Y REFERENCIAS PARA EL SELECTOR BUSCABLE (OPCIÓN B) ---
+  const [busquedaOpcionB, setBusquedaOpcionB] = useState('');
+  const [mostrarOpcionesB, setMostrarOpcionesB] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Escuchar clics fuera del dropdown para cerrarlo automáticamente
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setMostrarOpcionesB(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const estadoInicialFormulario = {
     id: null,
     nombre: '',
@@ -190,20 +206,107 @@ export default function Productos({ onVolver }) {
                   {catalogos.proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
                 </select>
               </div>
-              <div>
+              
+              {/* --- SELECTOR BUSCABLE DE OPCIÓN B --- */}
+              <div ref={dropdownRef}>
                 <label className={styles.labelTop} style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>INSUMO EQUIVALENTE (OPCIÓN B)</label>
-                <select name="producto_equivalente_id" value={formData.producto_equivalente_id} onChange={handleInputChange} className={styles.selectEditorial} style={{ border: '1px solid var(--color-primary)' }}>
-                  <option value="">Ninguno</option>
-                  {catalogos.productosAlternos
-                    .filter(p => p.id !== formData.id) // Excluimos el artículo en edición de la lista global de catálogos fijos
-                    .map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.nombre.toUpperCase()} {p.marca ? `(${p.marca.toUpperCase()})` : ''}
-                      </option>
-                    ))
-                  }
-                </select>
+                <div style={{ position: 'relative', marginTop: '2px' }}>
+                  
+                  {/* Pseudo-Input (Caja que se ve) */}
+                  <div 
+                    onClick={() => setMostrarOpcionesB(!mostrarOpcionesB)}
+                    className={styles.inputEditorial}
+                    style={{ 
+                      border: '1px solid var(--color-primary)', 
+                      cursor: 'pointer', 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center',
+                      userSelect: 'none',
+                      backgroundColor: 'var(--color-surface-lowest)'
+                    }}
+                  >
+                    <span style={{ color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.9rem' }}>
+                      {formData.producto_equivalente_id 
+                        ? (() => {
+                            const p = catalogos.productosAlternos.find(x => x.id === formData.producto_equivalente_id);
+                            return p ? `${p.nombre.toUpperCase()} ${p.marca ? `(${p.marca.toUpperCase()})` : ''}` : 'Ninguno';
+                          })()
+                        : 'Ninguno'}
+                    </span>
+                    <span className="material-symbols-outlined" style={{ fontSize: '1.2rem', color: 'var(--color-primary)' }}>
+                      {mostrarOpcionesB ? 'arrow_drop_up' : 'arrow_drop_down'}
+                    </span>
+                  </div>
+
+                  {/* Panel Desplegable */}
+                  {mostrarOpcionesB && (
+                    <div style={{ 
+                      position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, 
+                      background: 'var(--color-surface-lowest)', 
+                      border: '1px solid var(--color-primary)', 
+                      borderRadius: '8px', marginTop: '4px', 
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                      overflow: 'hidden'
+                    }}>
+                      <div style={{ padding: '8px', borderBottom: '1px solid var(--border-ghost)', background: 'var(--color-surface-low)' }}>
+                        <input 
+                          type="text" 
+                          placeholder="Buscar insumo (nombre o marca)..." 
+                          value={busquedaOpcionB}
+                          onChange={(e) => setBusquedaOpcionB(e.target.value)}
+                          className={styles.inputEditorial}
+                          style={{ height: '36px', fontSize: '0.85rem', padding: '0 10px' }}
+                          onClick={(e) => e.stopPropagation()}
+                          autoFocus
+                        />
+                      </div>
+                      <div style={{ maxHeight: '180px', overflowY: 'auto' }}>
+                        <div 
+                          onClick={() => { setFormData({...formData, producto_equivalente_id: ''}); setMostrarOpcionesB(false); setBusquedaOpcionB(''); }}
+                          style={{ 
+                            padding: '10px 12px', cursor: 'pointer', fontSize: '0.85rem', 
+                            borderBottom: '1px solid var(--border-ghost)',
+                            fontWeight: !formData.producto_equivalente_id ? 'bold' : 'normal',
+                            color: !formData.producto_equivalente_id ? 'var(--color-primary)' : 'var(--text-main)'
+                          }}
+                        >
+                          Ninguno
+                        </div>
+                        {catalogos.productosAlternos
+                          .filter(p => p.id !== formData.id) // Excluimos el producto actual de su propia lista
+                          .filter(p => {
+                            if(!busquedaOpcionB) return true;
+                            // Filtro seguro: quita acentos y convierte a minúsculas
+                            const query = busquedaOpcionB.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                            const target = (p.nombre + " " + (p.marca||'')).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                            return target.includes(query);
+                          })
+                          .map(p => {
+                            const isSelected = formData.producto_equivalente_id === p.id;
+                            return (
+                              <div 
+                                key={p.id}
+                                onClick={() => { setFormData({...formData, producto_equivalente_id: p.id}); setMostrarOpcionesB(false); setBusquedaOpcionB(''); }}
+                                style={{ 
+                                  padding: '10px 12px', cursor: 'pointer', fontSize: '0.85rem', 
+                                  borderBottom: '1px solid var(--border-ghost)', 
+                                  backgroundColor: isSelected ? 'var(--color-primary-fixed)' : 'transparent',
+                                  color: isSelected ? 'var(--color-on-primary-fixed)' : 'var(--text-main)',
+                                  fontWeight: isSelected ? 'bold' : 'normal'
+                                }}
+                              >
+                                {p.nombre.toUpperCase()} {p.marca ? `(${p.marca.toUpperCase()})` : ''}
+                              </div>
+                            )
+                          })
+                        }
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
+
             </div>
 
             <div>
