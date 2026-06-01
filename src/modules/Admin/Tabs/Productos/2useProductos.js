@@ -15,7 +15,8 @@ export const useProductos = () => {
     proveedores: [],
     sucursales: [],
     unidades: [],
-    categorias: [] 
+    categorias: [],
+    productosAlternos: [] // <--- Colección de apoyo añadida para alimentar el selector de Opción B
   });
 
   // ==========================================
@@ -34,7 +35,7 @@ export const useProductos = () => {
       const procesados = (data || []).map(p => ({
         ...p,
         categoria_nombre: p.categoria?.nombre || 'Sin Categoría',
-        um_abreviatura: p.unidad_medida?.abreviatura || 'pz'
+        um_abreviatura: p.unidad_medida?.abreviatura || p.um?.abreviatura || 'pz'
       }));
 
       setProductos(procesados);
@@ -60,7 +61,8 @@ export const useProductos = () => {
         proveedores: data.proveedores || [],
         sucursales: data.sucursales || [],
         unidades: data.unidades || [],
-        categorias: data.categorias || []
+        categorias: data.categorias || [],
+        productosAlternos: data.productosAlternos || [] // <--- Sincronización del catálogo de equivalentes
       });
     } catch (err) {
       console.error("Error inesperado al cargar catálogos:", err);
@@ -111,13 +113,9 @@ export const useProductos = () => {
       return false;
     }
 
-    // Validación de paracaídas (Proveedor Secundario)
-    if (
-      productoData.proveedor_id && 
-      productoData.proveedor_secundario_id && 
-      productoData.proveedor_id === productoData.proveedor_secundario_id
-    ) {
-      toast.error('El proveedor secundario debe ser distinto al principal.');
+    // Validación de seguridad para la Opción B: Un artículo no puede ser su propio equivalente
+    if (productoData.id && productoData.producto_equivalente_id && productoData.id === productoData.producto_equivalente_id) {
+      toast.error('Un producto no puede ser su propio equivalente de Opción B.');
       return false;
     }
 

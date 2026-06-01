@@ -7,17 +7,23 @@ export const ProductosService = {
   // ==========================================
   /**
    * Recupera el catálogo de productos con sus relaciones descriptivas.
-   * Cruza datos con UM, Categorías y ambos proveedores (Titular y Respaldo).
+   * Cruza datos con UM, Categorías y el producto equivalente autoreferenciado (Opción B).
    */
   async getProductos() {
-    // 1. Cargamos todos los productos con sus nombres de catálogos
+    // 1. Cargamos todos los productos con sus nombres de catálogos e insumo equivalente anidado
     const { data: productos, error } = await supabase
       .from('BD_Productos')
       .select(`
         *,
         unidad_medida:Cat_UM(id, nombre, abreviatura),
-        proveedor:Cat_Proveedores!proveedor_id(id, nombre),
-        proveedor_secundario:Cat_Proveedores!proveedor_secundario_id(id, nombre),
+        proveedor:Cat_Proveedores(id, nombre),
+        producto_equivalente:BD_Productos!producto_equivalente_id(
+          id, 
+          nombre, 
+          marca, 
+          presentacion,
+          proveedor:Cat_Proveedores(nombre)
+        ),
         categoria:Cat_Categorias(id, nombre)
       `)
       .order('nombre', { ascending: true });
@@ -49,7 +55,7 @@ export const ProductosService = {
         ...p,
         // Propiedades aplanadas para búsqueda instantánea
         categoria_nombre: p.categoria?.nombre || 'Sin Categoría',
-        um_abreviatura: p.unidad_medida?.abreviatura || 'pz',
+        um_abreviatura: p.unidad_medida?.abreviatura || p.um?.abreviatura || 'pz',
         // Información de sucursales para etiquetas en la UI
         sucursales_info: ids.map(id => ({ id, nombre: sucursalesMap[id] || 'Desconocida' }))
       };
@@ -78,11 +84,11 @@ export const ProductosService = {
         um_id: rawData.um_id || null,
         categoria_id: rawData.categoria_id || null,
         proveedor_id: rawData.proveedor_id || null,
-        proveedor_secundario_id: rawData.proveedor_secundario_id || null,
+        producto_equivalente_id: rawData.producto_equivalente_id || null,
         
         activo: rawData.activo ?? true,
         sucursales_ids: Array.isArray(rawData.sucursales_ids) ? rawData.sucursales_ids : [],
-        turno_uso: rawData.turno_uso || 'Ambos' // Almacena el turno asignado ('AM', 'PM' o 'Ambos')
+        turno_uso: rawData.turno_uso || 'Ambos'
       };
 
       let query;
@@ -121,15 +127,17 @@ export const ProductosService = {
   // ==========================================
   /**
    * Carga las opciones para los selectores del formulario.
+   * FIJACIÓN: Se añade la extracción de productos activos para poder mapearlos como Opciones B.
    */
   async getCatalogosFormulario() {
     try {
-      const [proveedores, sucursales, unidades, categorias] = await Promise.all([
+      const [proveedores, sucursales, unidades, categorias, productosAlternos] = await Promise.all([
         supabase.from('Cat_Proveedores').select('id, nombre').eq('estatus', 'Activo').order('nombre'),
         supabase.from('Cat_sucursales').select('id, nombre').eq('estatus', 'Activo').order('nombre'),
         supabase.from('Cat_UM').select('id, nombre, abreviatura').eq('estatus', 'Activo').order('nombre'),
-        // Sincronizamos con el estatus 'Activo' (o 'activo' según tu BD)
-        supabase.from('Cat_Categorias').select('id, nombre').order('nombre')
+        supabase.from('Cat_Categorias').select('id, nombre').order('nombre'),
+        // Cargamos la lista de productos para el Select de equivalentes
+        supabase.from('BD_Productos').select('id, nombre, marca').eq('activo', true).order('nombre')
       ]);
 
       return {
@@ -137,11 +145,12 @@ export const ProductosService = {
         sucursales: sucursales.data || [],
         unidades: unidades.data || [],
         categorias: categorias.data || [],
-        error: proveedores.error || sucursales.error || unidades.error || categorias.error
+        productosAlternos: productosAlternos.data || [],
+        error: proveedores.error || sucursales.error || unidades.error || categorias.error || productosAlternos.error
       };
     } catch (err) {
       console.error("Error al cargar catálogos:", err);
-      return { proveedores: [], sucursales: [], unidades: [], categorias: [], error: err };
+      return { proveedores: [], sucursales: [], unidades: [], categorias: [], productosAlternos: [], error: err };
     }
   }
 };

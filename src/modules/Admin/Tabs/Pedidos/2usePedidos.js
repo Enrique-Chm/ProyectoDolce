@@ -27,9 +27,6 @@ export const usePedidos = () => {
   // OBTENCIÓN DE DATOS (READ)
   // ==========================================
 
-  /**
-   * Carga las órdenes para la pestaña "Activos" aplicando filtros por sucursal.
-   */
   const cargarOrdenesActivas = useCallback(async () => {
     setLoading(true);
     try {
@@ -43,7 +40,6 @@ export const usePedidos = () => {
 
       let datosFinales = data || [];
 
-      // Si el usuario no es administrador global, solo ve lo de su sucursal
       if (!tieneAccesoGlobal && sucursalId) {
           datosFinales = datosFinales.filter(orden => orden.sucursal_id === sucursalId);
       }
@@ -56,9 +52,6 @@ export const usePedidos = () => {
     }
   }, [sucursalId, tieneAccesoGlobal]);
 
-  /**
-   * Carga el detalle profundo de una orden (Cabecera + Partidas)
-   */
   const cargarDetalleDeOrden = useCallback(async (ordenId) => {
     if (!ordenId) return;
     setLoading(true);
@@ -79,79 +72,32 @@ export const usePedidos = () => {
   // ACCIONES DEL CHECKLIST (OPERACIONES DE PRODUCTOS)
   // ==========================================
 
-  /**
-   * Cambia el estado de un item (Pendiente <-> Comprado).
-   * Implementa Optimistic UI para que el check sea instantáneo.
-   */
   const toggleEstatusItem = async (detalleId, estatusActual) => {
     const nuevoEstatus = estatusActual === 'Comprado' ? 'Pendiente' : 'Comprado';
     
     if (detalleOrdenActual) {
-      // 1. Backup de seguridad
       const backup = { ...detalleOrdenActual };
       
-      // 2. Actualización optimista
       const nuevosDetalles = detalleOrdenActual.detalles.map(det => 
         det.id === detalleId ? { ...det, estatus: nuevoEstatus } : det
       );
       setDetalleOrdenActual({ ...detalleOrdenActual, detalles: nuevosDetalles });
 
-      // 3. Petición real
       const { error } = await PedidosService.actualizarEstatusItem(detalleId, nuevoEstatus);
       
       if (error) {
         toast.error('Error de conexión al actualizar ítem');
-        setDetalleOrdenActual(backup); // Revertimos cambios si falla
+        setDetalleOrdenActual(backup);
         return false;
       }
     }
     return true;
   };
 
-  /**
-   * Gestiona el traspaso de un insumo al segundo proveedor por falta de stock.
-   * Remueve el ítem del checklist actual tras la transferencia exitosa.
-   */
-  const pasarASegundoProveedor = async (detalleId, productoId) => {
-    if (!detalleId || !productoId) return false;
-    
-    // Preguntamos al usuario para evitar reasignaciones accidentales
-    const confirmar = window.confirm('¿Confirmas que no hay stock? Se creará un nuevo pedido con el proveedor secundario.');
-    if (!confirmar) return false;
-
-    setLoading(true);
-    try {
-      const { success, nuevoFolio, error } = await PedidosService.cambiarAlSegundoProveedor(detalleId, productoId);
-
-      if (!success) {
-        toast.error(error || 'No se pudo transferir el insumo');
-        return false;
-      }
-
-      // LIMPIEZA LOCAL (UI): Eliminamos el ítem del checklist actual
-      if (detalleOrdenActual) {
-        const nuevosDetalles = detalleOrdenActual.detalles.filter(det => det.id !== detalleId);
-        setDetalleOrdenActual({ ...detalleOrdenActual, detalles: nuevosDetalles });
-      }
-
-      toast.success(`Insumo reasignado al pedido: ${nuevoFolio}`, { duration: 5000 });
-      return true;
-    } catch (err) {
-      console.error('Error en pasarASegundoProveedor:', err);
-      toast.error('Ocurrió un error inesperado');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // ==========================================
   // ACCIONES DE LA ORDEN (CIERRE Y GESTIÓN)
   // ==========================================
 
-  /**
-   * Cambia el estatus global de la orden
-   */
   const cambiarEstatusOrden = async (ordenId, nuevoEstatus) => {
     setLoading(true);
     const { error } = await PedidosService.actualizarEstatusOrden(ordenId, nuevoEstatus);
@@ -174,9 +120,6 @@ export const usePedidos = () => {
     return true;
   };
 
-  /**
-   * Cancela la orden completa.
-   */
   const cancelarPedido = async (ordenId) => {
     if (!window.confirm('¿Seguro que deseas cancelar este pedido?')) return;
 
@@ -203,7 +146,6 @@ export const usePedidos = () => {
     cargarOrdenesActivas,
     cargarDetalleDeOrden,
     toggleEstatusItem,
-    pasarASegundoProveedor,
     cambiarEstatusOrden,
     cancelarPedido
   };

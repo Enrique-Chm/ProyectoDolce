@@ -13,7 +13,7 @@ export default function Productos({ onVolver }) {
 
   const [mostrandoFormulario, setMostrandoFormulario] = useState(false);
   const [filtroBusqueda, setFiltroBusqueda] = useState('');
-  const [catActiva, setCatActiva] = useState('Todas'); // Nueva lógica de filtro por pestaña
+  const [catActiva, setCatActiva] = useState('Todas');
   
   const estadoInicialFormulario = {
     id: null,
@@ -23,7 +23,7 @@ export default function Productos({ onVolver }) {
     presentacion: '',
     contenido: '',
     proveedor_id: '',
-    proveedor_secundario_id: '',
+    producto_equivalente_id: '',
     um_id: '',
     sucursales_ids: [], 
     activo: true,
@@ -69,7 +69,8 @@ export default function Productos({ onVolver }) {
     setFormData({
       ...producto,
       sucursales_ids: Array.isArray(producto.sucursales_ids) ? producto.sucursales_ids : [],
-      turno_uso: producto.turno_uso || 'Ambos'
+      turno_uso: producto.turno_uso || 'Ambos',
+      producto_equivalente_id: producto.producto_equivalente_id || ''
     });
     setMostrandoFormulario(true);
   };
@@ -79,13 +80,18 @@ export default function Productos({ onVolver }) {
     if (!formData.categoria_id) return toast.error('La categoría es obligatoria');
     if (!formData.um_id) return toast.error('La unidad de medida es obligatoria');
     
+    // Evita que un producto se elija a sí mismo como opción B de emergencia
+    if (formData.id && formData.producto_equivalente_id === formData.id) {
+      return toast.error('Un producto no puede ser su propio equivalente de Opción B');
+    }
+
     const exito = await guardarProducto(formData);
     if (exito) setMostrandoFormulario(false);
   };
 
   /**
-   * CORRECCIÓN: Búsqueda Multicriterio
-   * Ahora filtra por categoría seleccionada Y por texto (nombre, marca, categoría o turno)
+   * Búsqueda Multicriterio
+   * Filtra por categoría seleccionada Y por texto (nombre, marca, categoría o turno)
    */
   const productosFiltrados = productos.filter(p => {
     // 1. Filtro por Pestaña de Categoría
@@ -185,10 +191,17 @@ export default function Productos({ onVolver }) {
                 </select>
               </div>
               <div>
-                <label className={styles.labelTop} style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>PROVEEDOR SECUNDARIO</label>
-                <select name="proveedor_secundario_id" value={formData.proveedor_secundario_id} onChange={handleInputChange} className={styles.selectEditorial} style={{ border: '1px solid var(--color-primary)' }}>
+                <label className={styles.labelTop} style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>INSUMO EQUIVALENTE (OPCIÓN B)</label>
+                <select name="producto_equivalente_id" value={formData.producto_equivalente_id} onChange={handleInputChange} className={styles.selectEditorial} style={{ border: '1px solid var(--color-primary)' }}>
                   <option value="">Ninguno</option>
-                  {catalogos.proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                  {catalogos.productosAlternos
+                    .filter(p => p.id !== formData.id) // Excluimos el artículo en edición de la lista global de catálogos fijos
+                    .map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.nombre.toUpperCase()} {p.marca ? `(${p.marca.toUpperCase()})` : ''}
+                      </option>
+                    ))
+                  }
                 </select>
               </div>
             </div>
@@ -239,7 +252,7 @@ export default function Productos({ onVolver }) {
             />
           </div>
 
-          {/* NUEVO: Barra de Categorías (Searchable via UI) */}
+          {/* Barra de Categorías (Searchable via UI) */}
           <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '12px', scrollbarWidth: 'none', marginBottom: '8px' }}>
             {listaCategoriasFiltro.map(cat => (
               <button 
@@ -284,15 +297,15 @@ export default function Productos({ onVolver }) {
                         <h4 style={{ fontSize: '0.875rem', margin: 0, fontWeight: 'bold', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {prod.nombre}
                         </h4>
-                        {prod.proveedor_secundario_id && (
-                           <span title="Tiene proveedor de respaldo" className="material-symbols-outlined" style={{ fontSize: '0.9rem', color: 'var(--color-primary)' }}>verified_user</span>
+                        {prod.producto_equivalente_id && (
+                           <span title="Tiene insumo equivalente de respaldo (Opción B)" className="material-symbols-outlined" style={{ fontSize: '0.9rem', color: 'var(--color-primary)' }}>swap_horiz</span>
                         )}
                       </div>
 
                       <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <span style={{ fontWeight: 'bold', color: 'var(--color-primary)' }}>{prod.categoria?.nombre || 'S/C'}</span>
                         <span>•</span>
-                        <span>{prod.presentacion || 'PZ'} ({prod.contenido || 1} {prod.um_abreviatura})</span>
+                        <span>{prod.presentacion || 'PZ'} ({prod.contenido || 1} {prod.um_abreviatura || prod.um?.abreviatura || 'pz'})</span>
                         <span>•</span>
                         <span style={{ fontWeight: 'bold', color: prod.turno_uso === 'AM' ? '#e67e22' : prod.turno_uso === 'PM' ? '#9b59b6' : 'var(--text-muted)' }}>
                           {prod.turno_uso === 'AM' ? 'AM' : prod.turno_uso === 'PM' ? 'PM' : 'Ambos'}
