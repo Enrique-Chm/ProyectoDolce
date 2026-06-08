@@ -7,23 +7,23 @@ export const useConfiguracion = () => {
   const [loading, setLoading] = useState(false);
 
   // --- ESTADOS DE DATOS (LISTADOS) ---
-  const [sucursales,    setSucursales]    = useState([]);
-  const [proveedores,   setProveedores]   = useState([]);
-  const [trabajadores,  setTrabajadores]  = useState([]);
-  const [unidadesMedida, setUnidadesMedida] = useState([]);
-  const [roles,         setRoles]         = useState([]);
-  const [categorias,    setCategorias]    = useState([]);
-  // CORRECCIÓN P1: Eliminado 'areasUso' — estado muerto que llamaba a
-  // ConfiguracionService.getAreasUso() que no existe en el service.
+  const [sucursales,      setSucursales]      = useState([]);
+  const [proveedores,     setProveedores]     = useState([]);
+  const [trabajadores,    setTrabajadores]    = useState([]);
+  const [unidadesMedida,  setUnidadesMedida]  = useState([]);
+  const [roles,           setRoles]           = useState([]);
+  const [categorias,      setCategorias]      = useState([]);
+
+  // Estado para asignaciones Sucursal × Proveedor (calendario de pedidos)
+  const [asignacionesSucProv, setAsignacionesSucProv] = useState([]);
 
   // Estado unificado para formularios (Selects en cascada o auxiliares)
-  // CORRECCIÓN P1: Eliminado 'areas' del estado — siempre era undefined
   const [catalogosSelectores, setCatalogosSelectores] = useState({
-    unidades:   [],
-    sucursales: [],
+    unidades:    [],
+    sucursales:  [],
     proveedores: [],
-    roles:      [],
-    categorias: []
+    roles:       [],
+    categorias:  []
   });
 
   // ==========================================
@@ -84,9 +84,6 @@ export const useConfiguracion = () => {
     setUnidadesMedida(data || []);
   }, []);
 
-  // CORRECCIÓN P1: Eliminado cargarAreasUso — llamaba a
-  // ConfiguracionService.getAreasUso() que no existe en el service.
-
   const cargarRoles = useCallback(async () => {
     setLoading(true);
     const { data, error } = await ConfiguracionService.getRoles();
@@ -114,7 +111,6 @@ export const useConfiguracion = () => {
       return res;
     }
 
-    // CORRECCIÓN P1: Eliminado 'areas' — nunca existió en el service
     setCatalogosSelectores({
       unidades:    res.unidades    || [],
       sucursales:  res.sucursales  || [],
@@ -197,9 +193,6 @@ export const useConfiguracion = () => {
   // IMPORTACIÓN MASIVA
   // ==========================================
 
-  /**
-   * Wrapper genérico para importaciones masivas.
-   */
   const importarMasivoGenerico = async (metodo, datos, callbackCarga, nombreEntidad) => {
     if (!Array.isArray(datos) || datos.length === 0) {
       toast.error('Datos de importación inválidos.');
@@ -220,10 +213,6 @@ export const useConfiguracion = () => {
     }
   };
 
-  // CORRECCIÓN P1: Eliminados importarProveedores, importarSucursales
-  // e importarCategorias — llamaban a métodos inexistentes en el service
-  // (importarProveedoresMasivo, importarSucursalesMasivo, importarCategoriasMasivo).
-  // Solo se mantiene importarProductos cuyo método SÍ existe en el service.
   const importarProductos = (datos) =>
     importarMasivoGenerico(
       ConfiguracionService.importarProductosMasivo,
@@ -231,6 +220,67 @@ export const useConfiguracion = () => {
       null,
       'productos'
     );
+
+  // ==========================================
+  // CALENDARIO SUCURSAL × PROVEEDOR
+  // ==========================================
+
+  /**
+   * Carga todas las asignaciones de días para una sucursal específica.
+   */
+  const cargarAsignaciones = useCallback(async (sucursalId) => {
+    if (!sucursalId) return;
+    setLoading(true);
+    const { data, error } = await ConfiguracionService.getAsignacionesPorSucursal(sucursalId);
+    setLoading(false);
+    if (error) {
+      toast.error('Error al cargar el calendario de proveedores');
+      return;
+    }
+    setAsignacionesSucProv(data || []);
+  }, []);
+
+  /**
+   * Crea o actualiza una asignación sucursal-proveedor.
+   * Valida que tenga sucursal, proveedor y al menos un día seleccionado.
+   */
+  const guardarAsignacion = async (asignacionData) => {
+    if (!asignacionData.sucursal_id || !asignacionData.proveedor_id) {
+      toast.error('Debe seleccionar una sucursal y un proveedor');
+      return false;
+    }
+    if (!asignacionData.dias_permitidos || asignacionData.dias_permitidos.length === 0) {
+      toast.error('Debe seleccionar al menos un día permitido');
+      return false;
+    }
+    setLoading(true);
+    const { error } = await ConfiguracionService.guardarAsignacion(asignacionData);
+    setLoading(false);
+    if (error) {
+      toast.error(`Error al guardar asignación: ${error.message}`);
+      return false;
+    }
+    toast.success('Calendario de proveedor actualizado');
+    await cargarAsignaciones(asignacionData.sucursal_id);
+    return true;
+  };
+
+  /**
+   * Elimina una asignación — el proveedor vuelve a su comportamiento
+   * global (dias_abierto) para esa sucursal.
+   */
+  const eliminarAsignacion = async (asignacionId, sucursalId) => {
+    setLoading(true);
+    const { error } = await ConfiguracionService.eliminarAsignacion(asignacionId);
+    setLoading(false);
+    if (error) {
+      toast.error('Error al eliminar la asignación');
+      return false;
+    }
+    toast.success('Asignación eliminada — el proveedor usará sus días globales');
+    if (sucursalId) await cargarAsignaciones(sucursalId);
+    return true;
+  };
 
   return {
     loading,
@@ -255,6 +305,11 @@ export const useConfiguracion = () => {
     guardarRol,
     guardarCategoria,
     cambiarEstatus,
-    importarProductos
+    importarProductos,
+    // Calendario Sucursal × Proveedor
+    asignacionesSucProv,
+    cargarAsignaciones,
+    guardarAsignacion,
+    eliminarAsignacion
   };
 };

@@ -14,7 +14,7 @@ export const useNuevoPedido = (onVolver) => {
   const [carrito, setCarrito] = useState([]);
 
   /**
-   * NUEVO: Estado de bloqueo por día de pedido.
+   * Estado de bloqueo por día de pedido.
    * Si la sucursal no tiene permitido pedir hoy, se almacena un objeto con:
    * - bloqueado: true
    * - mensaje: texto descriptivo para la UI
@@ -91,6 +91,7 @@ export const useNuevoPedido = (onVolver) => {
   const cargarProductos = useCallback(async () => {
     setLoading(true);
     try {
+      // ── VALIDACIÓN 1: Horario de turno ──
       if (!validarHorarioTurnoReal()) {
         const esPM = usuario?.turno === 'PM';
         toast.error(
@@ -106,7 +107,7 @@ export const useNuevoPedido = (onVolver) => {
       const diaHoy = obtenerDiaActual();
       const sucursalId = usuario?.sucursal_id;
 
-      // ── VALIDACIÓN 2 (NUEVO): Día permitido de pedido por sucursal ──
+      // ── VALIDACIÓN 2: Día permitido de pedido por sucursal (global) ──
       if (sucursalId) {
         const { data: sucursalData, error: errorSuc } = await NuevoPedidoService.getDiasPedidoSucursal(sucursalId);
 
@@ -114,7 +115,6 @@ export const useNuevoPedido = (onVolver) => {
           const diasPermitidos = sucursalData.dias_pedido || [];
 
           if (diasPermitidos.length > 0 && !diasPermitidos.includes(diaHoy)) {
-            // Hoy NO es día permitido para esta sucursal
             setRestriccionDia({
               bloqueado:       true,
               mensaje:         `${sucursalData.nombre} no tiene autorizado pedir los días ${diaHoy}.`,
@@ -131,10 +131,23 @@ export const useNuevoPedido = (onVolver) => {
         }
       }
 
-      // Si llegamos aquí, el día está permitido — limpiamos cualquier restricción previa
+      // Si llegamos aquí, el día está permitido globalmente
       setRestriccionDia(null);
 
-      // Llamada al servicio enviando el día actual para el filtro de proveedores
+      // ── VALIDACIÓN 3: Calendario cruzado Sucursal × Proveedor ──
+      // Obtenemos las asignaciones personalizadas ANTES de cargar productos
+      // para poder filtrar por proveedor después.
+      let mapaAsignaciones = {};
+      if (sucursalId) {
+        const { data: asignaciones } = await NuevoPedidoService.getAsignacionesSucursal(sucursalId);
+        // Construimos un mapa proveedor_id → dias_permitidos para búsqueda O(1)
+        mapaAsignaciones = (asignaciones || []).reduce((acc, a) => {
+          acc[a.proveedor_id] = a.dias_permitidos || [];
+          return acc;
+        }, {});
+      }
+
+      // Llamada al servicio — filtra por dias_abierto del proveedor (global)
       const { data, error } = await NuevoPedidoService.getProductosDisponibles(diaHoy);
 
       if (error) throw error;
@@ -144,7 +157,11 @@ export const useNuevoPedido = (onVolver) => {
 
       /**
        * NORMALIZACIÓN Y FILTRADO LOCAL:
-       * Además del filtro de día en el servidor, validamos sucursal, categorías y TURNO.
+       * Además del filtro de día en el servidor, validamos:
+       * - Categorías permitidas del trabajador
+       * - Visibilidad por sucursal del producto
+       * - Turno de uso
+       * - Calendario cruzado Sucursal × Proveedor
        */
       const procesados = (data || [])
         .map(p => ({
@@ -166,7 +183,17 @@ export const useNuevoPedido = (onVolver) => {
           // 3. Filtro por Turno de Uso
           const cumpleTurno = !p.turno_uso || p.turno_uso === 'Ambos' || p.turno_uso === turno;
 
-          return cumpleCat && cumpleSuc && cumpleTurno;
+          // 4. Filtro por calendario cruzado Sucursal × Proveedor
+          //    Si el proveedor de este producto tiene una asignación personalizada
+          //    para esta sucursal, verificamos que hoy esté en sus días permitidos.
+          //    Si NO tiene asignación personalizada, pasa sin restricción adicional.
+          let cumpleCalendario = true;
+          if (p.proveedor_id && mapaAsignaciones[p.proveedor_id]) {
+            const diasProv = mapaAsignaciones[p.proveedor_id];
+            cumpleCalendario = diasProv.includes(diaHoy);
+          }
+
+          return cumpleCat && cumpleSuc && cumpleTurno && cumpleCalendario;
         });
 
       setProductosDisponibles(procesados);
@@ -180,7 +207,7 @@ export const useNuevoPedido = (onVolver) => {
     } finally {
       setLoading(false);
     }
-  }, [categoriasPermitidasStr, usuario?.sucursal_id, turno, validarHorarioTurnoReal]);
+  }, [categoriasPermitidasStr, usuario?.sucursal_id, usuario?.turno, turno, validarHorarioTurnoReal]);
 
   useEffect(() => {
     cargarProductos();
@@ -192,7 +219,7 @@ export const useNuevoPedido = (onVolver) => {
 
   const agregarAlCarrito = useCallback((producto, cantidad = 1) => {
     // Verificación de horario real
-     if (!validarHorarioTurnoReal()) {
+    if (!validarHorarioTurnoReal()) {
       const esPM = usuario?.turno === 'PM';
       toast.error(
         esPM
@@ -231,7 +258,7 @@ export const useNuevoPedido = (onVolver) => {
     });
 
     toast.success(`${producto.nombre} agregado`, { duration: 1500, icon: '🛒' });
-  }, [validarHorarioTurnoReal]);
+  }, [validarHorarioTurnoReal, usuario?.turno]);
 
   const eliminarDelCarrito = (id) => {
     setCarrito(prev => prev.filter(item => item.producto_id !== id));
@@ -260,7 +287,7 @@ export const useNuevoPedido = (onVolver) => {
       return;
     }
 
-    // NUEVO: Doble verificación de día permitido antes de guardar
+    // Doble verificación de día permitido
     if (restriccionDia?.bloqueado) {
       toast.error(`Bloqueo de calendario: ${restriccionDia.mensaje}`);
       return;
@@ -325,6 +352,6 @@ export const useNuevoPedido = (onVolver) => {
     procesarOrden,
     turno,
     setTurno,
-    restriccionDia  // NUEVO: exportado para que el componente muestre el bloqueo visual
+    restriccionDia
   };
 };

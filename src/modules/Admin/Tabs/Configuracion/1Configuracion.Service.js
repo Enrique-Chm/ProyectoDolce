@@ -483,5 +483,75 @@ export const ConfiguracionService = {
     } catch (err) {
       return { data: null, error: { message: 'Error al exportar productos.' } };
     }
+  },
+    // ==========================================
+  // 12. CALENDARIO SUCURSAL × PROVEEDOR
+  // ==========================================
+
+  /**
+   * Obtiene todas las asignaciones de días para una sucursal específica.
+   * Incluye el nombre del proveedor para la UI.
+   */
+  async getAsignacionesPorSucursal(sucursalId) {
+    const { data, error } = await supabase
+      .from('Cat_Sucursal_Proveedor')
+      .select(`
+        id,
+        sucursal_id,
+        proveedor_id,
+        dias_permitidos,
+        estatus,
+        created_at,
+        proveedor:Cat_Proveedores(id, nombre)
+      `)
+      .eq('sucursal_id', sucursalId)
+      .order('created_at', { ascending: true });
+    return { data, error };
+  },
+
+  /**
+   * Crea o actualiza una asignación sucursal-proveedor.
+   * Usa upsert con conflicto en (sucursal_id, proveedor_id).
+   */
+  async guardarAsignacion(asignacionData) {
+    const dataLimpia = {
+      sucursal_id:     asignacionData.sucursal_id,
+      proveedor_id:    asignacionData.proveedor_id,
+      dias_permitidos: asignacionData.dias_permitidos || [],
+      estatus:         asignacionData.estatus || 'Activo'
+    };
+
+    // Si trae id, lo incluimos para update directo
+    if (asignacionData.id && String(asignacionData.id).trim()) {
+      dataLimpia.id = asignacionData.id;
+    }
+
+    const { data, error } = await supabase
+      .from('Cat_Sucursal_Proveedor')
+      .upsert([dataLimpia], { onConflict: 'sucursal_id, proveedor_id' })
+      .select(`
+        id,
+        sucursal_id,
+        proveedor_id,
+        dias_permitidos,
+        estatus,
+        proveedor:Cat_Proveedores(id, nombre)
+      `)
+      .single();
+
+    return { data, error };
+  },
+
+  /**
+   * Elimina una asignación — la sucursal vuelve al comportamiento
+   * por defecto para ese proveedor (dias_abierto del proveedor).
+   */
+  async eliminarAsignacion(asignacionId) {
+    const { data, error } = await supabase
+      .from('Cat_Sucursal_Proveedor')
+      .delete()
+      .eq('id', asignacionId)
+      .select();
+    return { data, error };
   }
 };
