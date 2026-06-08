@@ -225,7 +225,7 @@ export default function NuevoPedido({ onVolver }) {
                 <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>
                   {usuario?.turno === 'PM' ? 'lock' : 'light_mode'}
                 </span>
-                TURNOS MAÑANA (AM)
+                TURNO AM
               </button>
               <button
                 type="button"
@@ -245,7 +245,7 @@ export default function NuevoPedido({ onVolver }) {
                 <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>
                   {usuario?.turno === 'AM' ? 'lock' : 'dark_mode'}
                 </span>
-                TURNOS TARDE/NOCHE (PM)
+                TURNO PM
               </button>
             </div>
 

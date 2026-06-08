@@ -165,7 +165,7 @@ export default function Sucursales({ onVolver }) {
                   <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>
                     {formData.turnos_permitidos?.includes('AM') ? 'check_box' : 'light_mode'}
                   </span>
-                  MAÑANA (AM)
+                  TURNO AM
                 </div>
                 <div
                   onClick={() => toggleTurnoPermitido('PM')}
@@ -181,7 +181,7 @@ export default function Sucursales({ onVolver }) {
                   <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>
                     {formData.turnos_permitidos?.includes('PM') ? 'check_box' : 'dark_mode'}
                   </span>
-                  TARDE/NOCHE (PM)
+                  TURNO PM
                 </div>
               </div>
             </div>
