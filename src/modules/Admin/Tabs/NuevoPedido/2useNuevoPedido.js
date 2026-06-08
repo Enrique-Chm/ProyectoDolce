@@ -66,15 +66,21 @@ export const useNuevoPedido = (onVolver) => {
 
   /**
    * FUNCIÓN AUXILIAR DE SEGURIDAD: Valida si el horario real es compatible con el perfil.
+   * - AM fijo: bloqueado después de la 1:00 PM
+   * - PM fijo: bloqueado antes de la 1:00 PM
+   * - Ambos: sin restricción horaria
    */
   const validarHorarioTurnoReal = useCallback(() => {
     const turnoTrabajador = usuario?.turno;
-    if (turnoTrabajador === 'AM') {
-      const horaReal = new Date().getHours();
-      if (horaReal >= 13) {
-        return false;
-      }
+    const horaReal = new Date().getHours();
+
+    if (turnoTrabajador === 'AM' && horaReal >= 13) {
+      return false;
     }
+    if (turnoTrabajador === 'PM' && horaReal < 13) {
+      return false;
+    }
+
     return true;
   }, [usuario?.turno]);
 
@@ -85,10 +91,12 @@ export const useNuevoPedido = (onVolver) => {
   const cargarProductos = useCallback(async () => {
     setLoading(true);
     try {
-      // ── VALIDACIÓN 1: Horario de turno ──
       if (!validarHorarioTurnoReal()) {
+        const esPM = usuario?.turno === 'PM';
         toast.error(
-          'Tu horario operativo AM ha expirado. No puedes realizar solicitudes después de la 1:00 PM.',
+          esPM
+            ? 'Tu turno PM inicia a partir de la 1:00 PM. No puedes realizar solicitudes antes de esa hora.'
+            : 'Tu horario operativo AM ha expirado. No puedes realizar solicitudes después de la 1:00 PM.',
           { duration: 5000 }
         );
         setProductosDisponibles([]);
@@ -184,8 +192,13 @@ export const useNuevoPedido = (onVolver) => {
 
   const agregarAlCarrito = useCallback((producto, cantidad = 1) => {
     // Verificación de horario real
-    if (!validarHorarioTurnoReal()) {
-      toast.error('Operación denegada: Tu horario asignado de mañana (AM) concluyó a las 1:00 PM.');
+     if (!validarHorarioTurnoReal()) {
+      const esPM = usuario?.turno === 'PM';
+      toast.error(
+        esPM
+          ? 'Operación denegada: Tu turno PM no ha comenzado aún (inicia a la 1:00 PM).'
+          : 'Operación denegada: Tu horario asignado de mañana (AM) concluyó a las 1:00 PM.'
+      );
       return;
     }
 
@@ -238,7 +251,12 @@ export const useNuevoPedido = (onVolver) => {
 
     // Doble verificación de turno
     if (!validarHorarioTurnoReal()) {
-      toast.error('Bloqueo de seguridad: No puedes transmitir requisiciones AM después de la 1:00 PM.');
+      const esPM = usuario?.turno === 'PM';
+      toast.error(
+        esPM
+          ? 'Bloqueo de seguridad: No puedes transmitir requisiciones PM antes de la 1:00 PM.'
+          : 'Bloqueo de seguridad: No puedes transmitir requisiciones AM después de la 1:00 PM.'
+      );
       return;
     }
 
