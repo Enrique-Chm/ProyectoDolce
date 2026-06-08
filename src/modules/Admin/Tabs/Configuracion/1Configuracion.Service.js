@@ -553,5 +553,95 @@ export const ConfiguracionService = {
       .eq('id', asignacionId)
       .select();
     return { data, error };
+  },
+    // ==========================================
+  // 13. IMPORTACIÓN MASIVA (CALENDARIO SUCURSAL × PROVEEDOR)
+  // ==========================================
+  /**
+   * Importa asignaciones de días desde CSV con soporte upsert.
+   * Resuelve nombres de sucursal y proveedor a sus UUIDs.
+   */
+  async importarAsignacionesMasivo(rows) {
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return { data: null, error: { message: "No hay asignaciones para importar." } };
+    }
+    try {
+      const [sucursales, proveedores] = await Promise.all([
+        supabase.from('Cat_sucursales').select('id, nombre'),
+        supabase.from('Cat_Proveedores').select('id, nombre')
+      ]);
+
+      const normalizar = (str) => {
+        if (!str) return '';
+        return String(str).toLowerCase().normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]/g, '');
+      };
+
+      const mapSucs = (sucursales.data || []).reduce((acc, s) => ({ ...acc, [normalizar(s.nombre)]: s.id }), {});
+      const mapProv = (proveedores.data || []).reduce((acc, p) => ({ ...acc, [normalizar(p.nombre)]: p.id }), {});
+
+      const registros = rows.map(row => {
+        const obj = {
+          sucursal_id:     mapSucs[normalizar(row.sucursal)]  || null,
+          proveedor_id:    mapProv[normalizar(row.proveedor)] || null,
+          dias_permitidos: row.dias_permitidos
+            ? String(row.dias_permitidos).split(',').map(d => d.trim()).filter(Boolean)
+            : [],
+          estatus: 'Activo'
+        };
+        if (row.id && String(row.id).trim()) obj.id = String(row.id).trim();
+        return obj;
+      }).filter(r => r.sucursal_id && r.proveedor_id && r.dias_permitidos.length > 0);
+
+      if (registros.length === 0) {
+        return { data: null, error: { message: "No se pudieron resolver los nombres de sucursales/proveedores. Verifica que existan en el sistema." } };
+      }
+
+      const { data, error } = await supabase
+        .from('Cat_Sucursal_Proveedor')
+        .upsert(registros, { onConflict: 'sucursal_id, proveedor_id' })
+        .select();
+
+      return { data, error };
+    } catch (err) {
+      return { data: null, error: { message: "Fallo en la pre-carga de catálogos." } };
+    }
+  },
+
+  // ==========================================
+  // 14. EXPORTACIÓN (CALENDARIO SUCURSAL × PROVEEDOR)
+  // ==========================================
+  /**
+   * Exporta todas las asignaciones con nombres resueltos para CSV.
+   */
+  async exportarAsignaciones() {
+    try {
+      const { data, error } = await supabase
+        .from('Cat_Sucursal_Proveedor')
+        .select(`
+          id,
+          dias_permitidos,
+          estatus,
+          sucursal:Cat_sucursales(nombre),
+          proveedor:Cat_Proveedores(nombre)
+        `)
+        .eq('estatus', 'Activo')
+        .order('created_at');
+
+      if (error) return { data: null, error };
+
+      const exportData = (data || []).map(a => ({
+        id:               a.id,
+        sucursal:         a.sucursal?.nombre  || '',
+        proveedor:        a.proveedor?.nombre || '',
+        dias_permitidos:  (a.dias_permitidos || []).join(', ')
+      }));
+
+      return { data: exportData, error: null };
+    } catch (err) {
+      return { data: null, error: { message: 'Error al exportar asignaciones.' } };
+    }
   }
+  
 };

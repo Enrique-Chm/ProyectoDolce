@@ -33,6 +33,12 @@ const PLANTILLAS = {
     headers: 'nombre,descripcion,estatus',
     headersExport: 'id,nombre,descripcion,estatus',
     descripcion: 'Carga masiva de familias o categorías de insumos (ej: Barra, Cocina, Limpieza).'
+  },
+  calendario: {
+    titulo: 'Calendario Sucursal × Proveedor',
+    headers: 'sucursal,proveedor,dias_permitidos',
+    headersExport: 'id,sucursal,proveedor,dias_permitidos',
+    descripcion: 'Configura qué días puede pedir cada sucursal a cada proveedor. Los días se separan con comas: "Lunes, Miércoles, Viernes". Los nombres de sucursales y proveedores deben coincidir exactamente con los registrados en el sistema.'
   }
 };
 
@@ -61,7 +67,7 @@ const arrayToCSV = (data, columnas) => {
 
 /** Dispara la descarga de un string como archivo .csv */
 const descargarArchivo = (contenido, nombreArchivo) => {
-  const BOM = '\uFEFF'; // Para que Excel interprete acentos correctamente
+  const BOM = '\uFEFF';
   const blob = new Blob([BOM + contenido], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -158,11 +164,11 @@ export default function ImportadorMasivo({ onVolver }) {
           const res = await ConfiguracionService.getSucursales();
           if (res.error) throw res.error;
           data = (res.data || []).map(s => ({
-            id:       s.id,
-            nombre:   s.nombre   || '',
+            id:        s.id,
+            nombre:    s.nombre    || '',
             direccion: s.direccion || '',
-            horario:  s.horario  || '',
-            estatus:  s.estatus  || 'Activo'
+            horario:   s.horario   || '',
+            estatus:   s.estatus   || 'Activo'
           }));
           columnas = ['id', 'nombre', 'direccion', 'horario', 'estatus'];
           break;
@@ -177,6 +183,13 @@ export default function ImportadorMasivo({ onVolver }) {
             estatus:     c.estatus     || 'activo'
           }));
           columnas = ['id', 'nombre', 'descripcion', 'estatus'];
+          break;
+        }
+        case 'calendario': {
+          const res = await ConfiguracionService.exportarAsignaciones();
+          if (res.error) throw res.error;
+          data = res.data || [];
+          columnas = ['id', 'sucursal', 'proveedor', 'dias_permitidos'];
           break;
         }
         default:
@@ -224,6 +237,9 @@ export default function ImportadorMasivo({ onVolver }) {
             break;
           case 'categorias':
             res = await ConfiguracionService.importarCategoriasMasivo(rows);
+            break;
+          case 'calendario':
+            res = await ConfiguracionService.importarAsignacionesMasivo(rows);
             break;
           default:
             break;
@@ -288,6 +304,7 @@ export default function ImportadorMasivo({ onVolver }) {
               <option value="proveedores">Proveedores</option>
               <option value="sucursales">Sucursales</option>
               <option value="categorias">Categorías</option>
+              <option value="calendario">Calendario Sucursal × Proveedor</option>
             </select>
           </div>
 
@@ -324,7 +341,7 @@ export default function ImportadorMasivo({ onVolver }) {
           </div>
 
           <p style={{ margin: 0, fontSize: '0.65rem', color: 'var(--text-light)', lineHeight: '1.3', padding: '0 4px' }}>
-            💡 <b>Flujo recomendado:</b> Exporta los datos actuales → modifica el CSV → re-importa para aplicar cambios. 
+            💡 <b>Flujo recomendado:</b> Exporta los datos actuales → modifica el CSV → re-importa para aplicar cambios.
             Los registros con <b>id</b> se actualizan; los que no tienen id se crean como nuevos.
           </p>
         </section>
