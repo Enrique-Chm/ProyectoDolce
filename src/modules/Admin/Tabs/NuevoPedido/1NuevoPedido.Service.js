@@ -3,6 +3,24 @@ import { supabase } from '../../../../lib/supabaseClient';
 
 export const NuevoPedidoService = {
   /**
+   * 0. VALIDACIÓN: DÍAS PERMITIDOS DE PEDIDO POR SUCURSAL
+   * Consulta los días en los que la sucursal tiene autorizado generar requisiciones.
+   * @param {string} sucursalId - UUID de la sucursal del trabajador
+   * @returns {{ data: { dias_pedido: string[] }, error }}
+   */
+  async getDiasPedidoSucursal(sucursalId) {
+    if (!sucursalId) return { data: null, error: { message: 'ID de sucursal no proporcionado' } };
+
+    const { data, error } = await supabase
+      .from('Cat_sucursales')
+      .select('id, nombre, dias_pedido')
+      .eq('id', sucursalId)
+      .single();
+
+    return { data, error };
+  },
+
+  /**
    * 1. OBTENER PRODUCTOS DISPONIBLES (FILTRADO POR DÍA)
    * Recupera los insumos activos cuyos proveedores estén abiertos el día solicitado.
    * @param {string} diaSemana - Día actual en español (ej. "Lunes", "Martes")
@@ -37,7 +55,6 @@ export const NuevoPedidoService = {
     if (error) {
       console.error("Error técnico al recuperar catálogo:", error.message);
     }
-
     return { data, error };
   },
 
@@ -76,6 +93,7 @@ export const NuevoPedidoService = {
         .maybeSingle();
 
       if (errorTrabajador) throw errorTrabajador;
+
       const nombreSolicitanteActual = trabajadorActual?.nombre_completo || 'Usuario';
 
       let ordenFinal = null;
@@ -101,7 +119,6 @@ export const NuevoPedidoService = {
           notasActualizadas = notasActualizadas.replace(regexSolicitantes, nuevaLinea);
         } else {
           // Si por alguna razón la orden existente no tenía la etiqueta estructurada, la añadimos de forma limpia
-          // Intentamos recuperar el nombre del primer solicitante si la relación está guardada
           let nombrePrimerSolicitante = 'Admin';
           if (ordenExistente.solicitante_id) {
             const { data: t1 } = await supabase
@@ -111,17 +128,14 @@ export const NuevoPedidoService = {
               .maybeSingle();
             if (t1?.nombre_completo) nombrePrimerSolicitante = t1.nombre_completo;
           }
-
           const nombresUnificados = nombrePrimerSolicitante === nombreSolicitanteActual 
             ? nombreSolicitanteActual 
             : `${nombrePrimerSolicitante}, ${nombreSolicitanteActual}`;
-
           notasActualizadas = `[Solicitantes]: ${nombresUnificados}\n${notasActualizadas}`.trim();
         }
 
         // Si el segundo turno ingresó observaciones, las anexamos de forma limpia abajo del bloque de firmas
         if (ordenCabecera.notas && ordenCabecera.notas.trim() !== '') {
-          // Quitamos posibles redundancias si el hook ya le pegó un prefijo temporal de turno
           const limpiaNotasNuevas = ordenCabecera.notas.replace(/\[Solicitantes\]:[^\n]+\n?/, '').trim();
           if (limpiaNotasNuevas !== '') {
             notasActualizadas = `${notasActualizadas}\n[Obs. Adicionales]: ${limpiaNotasNuevas}`;
@@ -157,7 +171,6 @@ export const NuevoPedidoService = {
               .eq('id', detalleIgual.id)
               .select()
               .single();
-
             if (errorUpdateDetalle) throw errorUpdateDetalle;
             detallesFinales.push(detalleActualizado);
           } else {
@@ -172,7 +185,6 @@ export const NuevoPedidoService = {
               }])
               .select()
               .single();
-
             if (errorInsertDetalle) throw errorInsertDetalle;
             detallesFinales.push(nuevoDetalle);
           }
@@ -184,7 +196,6 @@ export const NuevoPedidoService = {
             detallesFinales.push(d);
           }
         });
-
       } else {
         // --- ESCENARIO B: REGISTRO NORMAL (PRIMER PEDIDO REALIZADO EN EL DÍA) ---
         let notasIniciales = ordenCabecera.notas || '';
@@ -209,6 +220,7 @@ export const NuevoPedidoService = {
           .single();
 
         if (errorCabecera) throw errorCabecera;
+
         ordenFinal = nuevaOrden;
 
         // Formateamos los detalles para inserción masiva
@@ -226,6 +238,7 @@ export const NuevoPedidoService = {
           .select();
 
         if (errorDetalles) throw errorDetalles;
+
         detallesFinales = detalles;
       }
 
@@ -233,7 +246,6 @@ export const NuevoPedidoService = {
         data: { orden: ordenFinal, detalles: detallesFinales }, 
         error: null 
       };
-
     } catch (err) {
       console.error("Error en flujo guardarOrdenCompleta:", err);
       return { 

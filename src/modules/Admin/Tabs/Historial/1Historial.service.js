@@ -2,17 +2,19 @@
 import { supabase } from '../../../../lib/supabaseClient';
 
 export const HistorialService = {
-
   // ==========================================
   // 1. OBTENER TODAS LAS ÓRDENES FINALIZADAS
   // ==========================================
   /**
    * Trae las órdenes con estatus Completado o Cancelado.
    * Incluye la información del solicitante, sucursal y proveedor.
-   * Se eliminó cualquier referencia a campos de costo o totales.
+   * CORRECCIÓN P1: Se agregó sucursal_id al select (antes era undefined en el hook)
+   * y se reciben parámetros para filtrar en BD con .in() en lugar de en memoria.
+   * @param {boolean}  tieneAccesoGlobal - Si true no aplica filtro de sucursal
+   * @param {string[]} sucursalesIds     - UUIDs de sucursales del trabajador
    */
-  async getHistorial() {
-    const { data, error } = await supabase
+  async getHistorial(tieneAccesoGlobal = true, sucursalesIds = []) {
+    let query = supabase
       .from('BD_Ordenes_Compra')
       .select(`
         id,
@@ -20,19 +22,25 @@ export const HistorialService = {
         estatus,
         prioridad,
         notas,
+        sucursal_id,
         created_at,
         proveedor:Cat_Proveedores(nombre),
         solicitante:Cat_Trabajadores(nombre_completo),
         sucursal:Cat_sucursales(nombre)
       `)
-      // Traemos tanto lo surtido con éxito como lo que se descartó
-      .in('estatus', ['Completado', 'Cancelado']) 
+      .in('estatus', ['Completado', 'Cancelado'])
       .order('created_at', { ascending: false });
 
+    // CORRECCIÓN P1: Filtro aplicado en BD con .in() sobre el arreglo completo
+    // de sucursales del trabajador — elimina el filtrado en memoria del hook.
+    if (!tieneAccesoGlobal && sucursalesIds.length > 0) {
+      query = query.in('sucursal_id', sucursalesIds);
+    }
+
+    const { data, error } = await query;
     if (error) {
       console.error("Error al cargar historial:", error.message);
     }
-    
     return { data, error };
   },
 
@@ -41,10 +49,13 @@ export const HistorialService = {
   // ==========================================
   /**
    * Permite buscar órdenes específicas en el pasado por su folio.
-   * @param {string} termino - El folio o parte del folio a buscar.
+   * CORRECCIÓN P1: Se agregó sucursal_id al select y filtro por sucursal en BD.
+   * @param {string}   termino           - El folio o parte del folio a buscar
+   * @param {boolean}  tieneAccesoGlobal - Si true no aplica filtro de sucursal
+   * @param {string[]} sucursalesIds     - UUIDs de sucursales del trabajador
    */
-  async buscarEnHistorial(termino) {
-    const { data, error } = await supabase
+  async buscarEnHistorial(termino, tieneAccesoGlobal = true, sucursalesIds = []) {
+    let query = supabase
       .from('BD_Ordenes_Compra')
       .select(`
         id,
@@ -52,19 +63,24 @@ export const HistorialService = {
         estatus,
         prioridad,
         notas,
+        sucursal_id,
         created_at,
         proveedor:Cat_Proveedores(nombre),
         solicitante:Cat_Trabajadores(nombre_completo),
         sucursal:Cat_sucursales(nombre)
       `)
-      .ilike('folio', `%${termino}%`) // Búsqueda flexible
+      .ilike('folio', `%${termino}%`)
       .in('estatus', ['Completado', 'Cancelado'])
       .order('created_at', { ascending: false });
 
+    if (!tieneAccesoGlobal && sucursalesIds.length > 0) {
+      query = query.in('sucursal_id', sucursalesIds);
+    }
+
+    const { data, error } = await query;
     if (error) {
       console.error("Error en búsqueda de historial:", error.message);
     }
-
     return { data, error };
   },
 
@@ -73,14 +89,17 @@ export const HistorialService = {
   // ==========================================
   /**
    * Recupera las órdenes con estatus Completado o Cancelado dentro de un rango de fechas.
-   * @param {string} fechaInicio - Fecha inicial en formato YYYY-MM-DD
-   * @param {string} fechaFin - Fecha final en formato YYYY-MM-DD
+   * CORRECCIÓN P1: Se agregó sucursal_id al select y filtro por sucursal en BD.
+   * @param {string}   fechaInicio       - Fecha inicial en formato YYYY-MM-DD
+   * @param {string}   fechaFin          - Fecha final en formato YYYY-MM-DD
+   * @param {boolean}  tieneAccesoGlobal - Si true no aplica filtro de sucursal
+   * @param {string[]} sucursalesIds     - UUIDs de sucursales del trabajador
    */
-  async getHistorialPorFechas(fechaInicio, fechaFin) {
+  async getHistorialPorFechas(fechaInicio, fechaFin, tieneAccesoGlobal = true, sucursalesIds = []) {
     const inicioIso = `${fechaInicio}T00:00:00.000Z`;
-    const finIso = `${fechaFin}T23:59:59.999Z`;
+    const finIso    = `${fechaFin}T23:59:59.999Z`;
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('BD_Ordenes_Compra')
       .select(`
         id,
@@ -88,6 +107,7 @@ export const HistorialService = {
         estatus,
         prioridad,
         notas,
+        sucursal_id,
         created_at,
         proveedor:Cat_Proveedores(nombre),
         solicitante:Cat_Trabajadores(nombre_completo),
@@ -98,10 +118,15 @@ export const HistorialService = {
       .lte('created_at', finIso)
       .order('created_at', { ascending: false });
 
+    // CORRECCIÓN P1: Filtro en BD — soporta múltiples sucursales por trabajador
+    if (!tieneAccesoGlobal && sucursalesIds.length > 0) {
+      query = query.in('sucursal_id', sucursalesIds);
+    }
+
+    const { data, error } = await query;
     if (error) {
       console.error("Error al cargar historial por fechas:", error.message);
     }
-
     return { data, error };
   }
 };

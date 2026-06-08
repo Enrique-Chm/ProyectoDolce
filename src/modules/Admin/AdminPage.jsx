@@ -1,20 +1,17 @@
 // src/modules/Admin/AdminPage.jsx
 import React, { useState, useEffect } from 'react';
 import styles from '../../assets/styles/EstilosGenerales.module.css';
-
 // Importamos Auth
 import Login from '../Auth/Login';
 import { useAuth } from '../Auth/useAuth';
 import { AuthService } from '../Auth/Auth.service';
 import { supabase } from '../../lib/supabaseClient';
-
 // Importamos las pestañas de Admin
 import Pedidos from './Tabs/Pedidos/Pedidos';
 import NuevoPedido from './Tabs/NuevoPedido/NuevoPedido'; 
 import ChecklistPedido from './Tabs/Pedidos/ChecklistPedido'; 
 import Historial from './Tabs/Historial/Historial';
 import Productos from './Tabs/Productos/Productos'; 
-
 // Sub-pestañas de Configuración
 import Configuracion from './Tabs/Configuracion/Configuracion';
 import Proveedores from './Tabs/Configuracion/Proveedores';
@@ -29,15 +26,12 @@ export default function AdminPage() {
   // Estado de navegación
   const [tabActiva, setTabActiva] = useState('pedidos');
   const [ordenIdSeleccionada, setOrdenIdSeleccionada] = useState(null);
-
   // Estados locales para simulación
   const [rolesSimulacion, setRolesSimulacion] = useState([]);
   const [rolA_Simular, setRolA_Simular] = useState('');
-
   // Identificación de permisos de Administrador
   const esAdminReal = AuthService.getSesionReal()?.rol_nombre === 'Administrador';
   const simulandoActivo = AuthService.estaSimulando();
-
   // Cargamos los roles disponibles únicamente si somos administradores reales
   useEffect(() => {
     if (esAdminReal && rolesSimulacion.length === 0) {
@@ -57,8 +51,11 @@ export default function AdminPage() {
   }, [esAdminReal, rolesSimulacion.length]);
 
   // --- ESCUDO DE SEGURIDAD ---
+  // Cuando usuario es null (logout o sesión inexistente), mostramos Login.
+  // Al iniciar sesión, el Context actualiza 'usuario' y este componente
+  // re-renderiza automáticamente mostrando el panel — sin reload().
   if (!usuario) {
-    return <Login onLoginSuccess={() => window.location.reload()} />;
+    return <Login />;
   }
 
   // Extraemos los permisos para facilitar la lectura en el código
@@ -98,19 +95,15 @@ export default function AdminPage() {
       
       case 'productos':
         return <Productos onVolver={() => setTabActiva('configuracion')} />;
-
       case 'proveedores':
         return <Proveedores onVolver={() => setTabActiva('configuracion')} />;
-
       case 'trabajadores':
         return <Trabajadores onVolver={() => setTabActiva('configuracion')} />;
-
       case 'sucursales':
         return <Sucursales onVolver={() => setTabActiva('configuracion')} />;
       
       case 'roles': 
         return <Roles onVolver={() => setTabActiva('configuracion')} />;
-
       case 'categorias':
         return <Categorias onVolver={() => setTabActiva('configuracion')} />;
       
@@ -149,7 +142,6 @@ export default function AdminPage() {
                 <span style={{ fontSize: '0.65rem', opacity: 0.8, color: simulandoActivo ? '#ba1a1a' : 'var(--color-primary)', fontWeight: 'bold', textTransform: 'uppercase' }}>
                   {usuario.rol_nombre || 'Usuario'}
                 </span>
-
                 {/* Selección de rol rápida (Solo visible para el Admin Real) */}
                 {esAdminReal && !simulandoActivo && (
                   <select 
@@ -177,7 +169,6 @@ export default function AdminPage() {
                     ))}
                   </select>
                 )}
-
                 {/* Botón de salida del rol simulado */}
                 {simulandoActivo && (
                   <button 
@@ -203,14 +194,12 @@ export default function AdminPage() {
               </div>
             </div>
           </div>
-
           {tabActiva !== 'configuracion' && (
             <button onClick={cerrarSesion} style={{ background: 'none', border: 'none', color: 'var(--color-tertiary)', display: 'flex', cursor: 'pointer' }}>
               <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>logout</span>
             </button>
           )}
         </header>
-
         {renderizarTab()}
       </main>
 
@@ -227,7 +216,6 @@ export default function AdminPage() {
           <span className="material-symbols-outlined">format_list_bulleted</span>
           <span>Activos</span>
         </button>
-
         <button 
           className={`${styles.navItem} ${tabActiva === 'historial' ? styles.active : ''}`}
           onClick={() => setTabActiva('historial')}
@@ -235,7 +223,6 @@ export default function AdminPage() {
           <span className="material-symbols-outlined">history</span>
           <span>Historial</span>
         </button>
-
         {/* El botón de Ajustes ahora es dinámico por permiso JSON */}
         {puedeConfigurar && (
           <button 
@@ -246,7 +233,6 @@ export default function AdminPage() {
             <span>Ajustes</span>
           </button>
         )}
-
       </nav>
     </div>
   );

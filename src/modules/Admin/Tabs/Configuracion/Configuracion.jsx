@@ -4,49 +4,49 @@ import styles from '../../../../assets/styles/EstilosGenerales.module.css';
 import { useConfiguracion } from './2useConfiguracion';
 import ImportadorMasivo from './ImportadorMasivo';
 
-export default function Configuracion({ 
-  onAbrirProductos, 
-  onAbrirProveedores, 
+// Token semántico — fallback incluido hasta agregarlo a variables.css
+const COLOR_DANGER = 'var(--color-danger, #ba1a1a)';
+
+export default function Configuracion({
+  onAbrirProductos,
+  onAbrirProveedores,
   onAbrirTrabajadores,
   onAbrirSucursales,
-  onAbrirRoles, 
-  onAbrirCategorias, // <-- Nueva prop para gestionar categorías
-  onLogout      
+  onAbrirRoles,
+  onAbrirCategorias,
+  onLogout
 }) {
-  // Extraemos la lógica y el estado de nuestro Custom Hook actualizado
-  const { 
-    loading, 
-    sucursales, 
-    proveedores, 
-    trabajadores, 
-    roles, 
-    categorias, // <-- Nuevo estado para categorías
-    cargarSucursales, 
-    cargarProveedores, 
+  const {
+    loading,
+    sucursales,
+    proveedores,
+    trabajadores,
+    roles,
+    categorias,
+    cargarSucursales,
+    cargarProveedores,
     cargarTrabajadores,
     cargarRoles,
-    cargarCategorias // <-- Nuevo método para cargar categorías
+    cargarCategorias
   } = useConfiguracion();
 
-  // Estado para controlar la vista del importador masivo
   const [mostrandoImportador, setMostrandoImportador] = useState(false);
 
-  // Cargamos todos los catálogos al montar la pantalla para mostrar métricas reales
   useEffect(() => {
     cargarSucursales();
     cargarProveedores();
     cargarTrabajadores();
-    cargarRoles(); 
-    cargarCategorias(); // Sincronizamos las categorías también
+    cargarRoles();
+    cargarCategorias();
   }, [cargarSucursales, cargarProveedores, cargarTrabajadores, cargarRoles, cargarCategorias]);
 
-  // Si el usuario activa el importador masivo, mostramos esa pantalla
   if (mostrandoImportador) {
     return <ImportadorMasivo onVolver={() => setMostrandoImportador(false)} />;
   }
 
   return (
     <div className={styles.fadeIN}>
+
       {/* --- ENCABEZADO --- */}
       <header style={{ marginBottom: 'var(--space-lg)' }}>
         <span className={styles.labelTop} style={{ display: 'block', marginBottom: 'var(--space-xs)' }}>
@@ -61,17 +61,15 @@ export default function Configuracion({
           <span className="material-symbols-outlined" style={{ color: 'var(--color-primary)', fontSize: '1.5rem' }}>storefront</span>
           <h2 className={styles.subtitle} style={{ fontSize: '1.25rem' }}>Perfil del Negocio</h2>
         </div>
-        
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '16px' }}>
-          {loading 
-            ? `Gestionando sucursal(es) activa(s) en el sistema.`
+          {loading
+            ? 'Cargando sucursales del sistema...'
             : `Gestionando ${sucursales.length} sucursal(es) activa(s) en el sistema.`
           }
         </p>
-
-        <button 
+        <button
           onClick={onAbrirSucursales}
-          className={`${styles.btnBase} ${styles.btnSecondary}`} 
+          className={`${styles.btnBase} ${styles.btnSecondary}`}
           style={{ width: 'fit-content' }}
         >
           <span className="material-symbols-outlined" style={{ fontSize: '1.125rem' }}>location_on</span>
@@ -85,28 +83,24 @@ export default function Configuracion({
           <span className="material-symbols-outlined" style={{ color: 'var(--text-main)', fontSize: '1.5rem' }}>folder_managed</span>
           <h2 className={styles.subtitle} style={{ fontSize: '1.25rem' }}>Catálogos del Sistema</h2>
         </div>
-
+        {/* CORRECCIÓN: Card 2 era inconsistente — mostraba proveedores.length
+            pero no categorias.length cuando loading=true. Ahora muestra
+            todos los conteos o ninguno, igual que el Card 1. */}
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '16px' }}>
-          {loading 
-            ? `Tienes ${proveedores.length} proveedores registrados, categorías de insumos y un catálogo de productos listo para operar.`
+          {loading
+            ? 'Cargando catálogos del sistema...'
             : `Tienes ${proveedores.length} proveedores registrados, ${categorias.length} categorías de insumos y un catálogo de productos listo para operar.`
           }
         </p>
-
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          {/* BOTÓN: PRODUCTOS */}
           <button onClick={onAbrirProductos} className={`${styles.btnBase} ${styles.btnSecondary}`}>
             <span className="material-symbols-outlined" style={{ fontSize: '1.125rem' }}>inventory</span>
             Productos
           </button>
-          
-          {/* BOTÓN: PROVEEDORES */}
           <button onClick={onAbrirProveedores} className={`${styles.btnBase} ${styles.btnSecondary}`}>
             <span className="material-symbols-outlined" style={{ fontSize: '1.125rem' }}>local_shipping</span>
             Proveedores
           </button>
-
-          {/* BOTÓN: CATEGORÍAS */}
           <button onClick={onAbrirCategorias} className={`${styles.btnBase} ${styles.btnSecondary}`}>
             <span className="material-symbols-outlined" style={{ fontSize: '1.125rem' }}>category</span>
             Categorías
@@ -120,22 +114,20 @@ export default function Configuracion({
           <span className="material-symbols-outlined" style={{ color: 'var(--color-primary)', fontSize: '1.5rem' }}>shield_person</span>
           <h2 className={styles.subtitle} style={{ fontSize: '1.25rem' }}>Personal y Seguridad</h2>
         </div>
-
+        {/* CORRECCIÓN: Card 3 era inconsistente — mostraba trabajadores.length
+            pero no roles.length cuando loading=true. Ahora muestra
+            todos los conteos o ninguno, igual que el Card 1. */}
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '16px' }}>
-          {loading 
-            ? `Contamos con ${trabajadores.length} trabajadores distribuidos en niveles de acceso (roles).`
+          {loading
+            ? 'Cargando información de personal...'
             : `Contamos con ${trabajadores.length} trabajadores distribuidos en ${roles.length} niveles de acceso (roles).`
           }
         </p>
-
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          {/* BOTÓN: TRABAJADORES */}
           <button onClick={onAbrirTrabajadores} className={`${styles.btnBase} ${styles.btnSecondary}`}>
             <span className="material-symbols-outlined" style={{ fontSize: '1.125rem' }}>badge</span>
             Trabajadores
           </button>
-
-          {/* BOTÓN: ROLES */}
           <button onClick={onAbrirRoles} className={`${styles.btnBase} ${styles.btnSecondary}`}>
             <span className="material-symbols-outlined" style={{ fontSize: '1.125rem' }}>admin_panel_settings</span>
             Roles y Permisos
@@ -143,20 +135,18 @@ export default function Configuracion({
         </div>
       </section>
 
-      {/* --- NUEVA TARJETA: ADMINISTRACIÓN AVANZADA (HERRAMIENTAS DE DATOS) --- */}
+      {/* --- TARJETA: ADMINISTRACIÓN AVANZADA --- */}
       <section className={styles.card} style={{ marginBottom: 'var(--space-md)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
           <span className="material-symbols-outlined" style={{ color: 'var(--color-primary)', fontSize: '1.5rem' }}>database</span>
           <h2 className={styles.subtitle} style={{ fontSize: '1.25rem' }}>Administración Avanzada</h2>
         </div>
-
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '16px' }}>
           Carga de forma masiva proveedores, sucursales y productos mediante plantillas CSV optimizadas para tu negocio.
         </p>
-
-        <button 
-          onClick={() => setMostrandoImportador(true)} 
-          className={`${styles.btnBase} ${styles.btnSecondary}`} 
+        <button
+          onClick={() => setMostrandoImportador(true)}
+          className={`${styles.btnBase} ${styles.btnSecondary}`}
           style={{ width: 'fit-content' }}
         >
           <span className="material-symbols-outlined" style={{ fontSize: '1.125rem' }}>upload_file</span>
@@ -167,23 +157,23 @@ export default function Configuracion({
       {/* --- TARJETA: CUENTA --- */}
       <section className={styles.card}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-          <span className="material-symbols-outlined" style={{ color: '#ba1a1a', fontSize: '1.5rem' }}>logout</span>
+          {/* CORRECCIÓN: era '#ba1a1a' hardcodeado */}
+          <span className="material-symbols-outlined" style={{ color: COLOR_DANGER, fontSize: '1.5rem' }}>logout</span>
           <h2 className={styles.subtitle} style={{ fontSize: '1.25rem' }}>Sesión</h2>
         </div>
-
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '16px' }}>
           Finaliza tu sesión actual para salir del panel administrativo de forma segura.
         </p>
-
-        <button 
-          onClick={onLogout} 
-          className={`${styles.btnBase} ${styles.btnDanger}`} 
+        <button
+          onClick={onLogout}
+          className={`${styles.btnBase} ${styles.btnDanger}`}
           style={{ width: 'fit-content' }}
         >
           <span className="material-symbols-outlined" style={{ fontSize: '1.125rem' }}>power_settings_new</span>
           Cerrar Sesión
         </button>
       </section>
+
     </div>
   );
 }

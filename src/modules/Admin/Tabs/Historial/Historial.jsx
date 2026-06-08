@@ -2,28 +2,28 @@
 import React, { useEffect, useState } from 'react';
 import styles from '../../../../assets/styles/EstilosGenerales.module.css';
 import { useHistorial } from './2useHistorial';
-import { AuthService } from '../../../Auth/Auth.service';
+import { useAuth } from '../../../Auth/useAuth'; // CORRECCIÓN P1: reemplaza AuthService
 
 export default function Historial({ onVerDetalle }) {
-  const { 
-    loading, 
-    ordenesHistorial, 
-    cargarHistorialPorFechas, 
-    buscarFolio 
+  const {
+    loading,
+    ordenesHistorial,
+    cargarHistorialPorFechas,
+    buscarFolio
   } = useHistorial();
 
   const [busqueda, setBusqueda] = useState('');
-  const [haFiltrado, setHaFiltrado] = useState(false); // Controla si ya se hizo clic en Buscar
+  const [haFiltrado, setHaFiltrado] = useState(false);
 
   // Rango de fechas inicial: últimos 30 días
   const [fechas, setFechas] = useState({
     inicio: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
     fin: new Date().toISOString().split('T')[0]
   });
-  
-  // Obtenemos la sesión para validar permisos
-  const sesion = AuthService.getSesion();
-  const esAdmin = sesion?.permisos?.configuracion?.leer || false;
+
+  // CORRECCIÓN P1: Consumimos el Context centralizado
+  const { usuario } = useAuth();
+  const esAdmin = usuario?.permisos?.configuracion?.leer || false;
 
   // Manejador del botón Filtrar
   const manejarBusquedaHistorial = () => {
@@ -51,25 +51,27 @@ export default function Historial({ onVerDetalle }) {
 
   return (
     <div className={styles.fadeIN} style={{ width: '100%', maxWidth: '100%', paddingBottom: '100px' }}>
+
       {/* --- ENCABEZADO --- */}
       <header style={{ marginBottom: 'var(--space-md)' }}>
         <span className={styles.labelTop} style={{ display: 'block', marginBottom: '2px', fontSize: '0.65rem' }}>
-          {esAdmin ? 'AUDITORÍA GLOBAL' : `REGISTROS ${sesion?.sucursal_nombre || ''}`}
+          {esAdmin ? 'AUDITORÍA GLOBAL' : `REGISTROS ${usuario?.sucursal_nombre || ''}`}
+          {/* CORRECCIÓN P1: era sesion?.sucursal_nombre */}
         </span>
         <h1 className={styles.title} style={{ fontSize: '2rem', lineHeight: '1.1', marginBottom: 'var(--space-md)' }}>
           Órdenes<br />Finalizadas
         </h1>
 
-        {/* --- FILTROS DE RANGO DE FECHAS OPTIMIZADO PARA MÓVIL --- */}
-        <div style={{ 
-          marginBottom: '12px', 
-          display: 'flex', 
-          flexDirection: 'column', 
-          gap: '10px', 
-          padding: '12px', 
-          backgroundColor: 'var(--color-surface-lowest)', 
-          borderRadius: '12px', 
-          border: '1px solid var(--border-ghost)' 
+        {/* --- FILTROS DE RANGO DE FECHAS --- */}
+        <div style={{
+          marginBottom: '12px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+          padding: '12px',
+          backgroundColor: 'var(--color-surface-lowest)',
+          borderRadius: '12px',
+          border: '1px solid var(--border-ghost)'
         }}>
           {/* Inputs de fechas en 2 columnas iguales */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -77,10 +79,10 @@ export default function Historial({ onVerDetalle }) {
               <label className={styles.labelTop} style={{ fontSize: '0.65rem', opacity: 0.8, margin: 0 }}>
                 DESDE
               </label>
-              <input 
-                type="date" 
-                value={fechas.inicio} 
-                onChange={(e) => setFechas({ ...fechas, inicio: e.target.value })} 
+              <input
+                type="date"
+                value={fechas.inicio}
+                onChange={(e) => setFechas({ ...fechas, inicio: e.target.value })}
                 className={styles.inputEditorial}
                 style={{ width: '100%', height: '36px', padding: '0 8px', fontSize: '0.85rem', borderRadius: '8px' }}
               />
@@ -89,30 +91,30 @@ export default function Historial({ onVerDetalle }) {
               <label className={styles.labelTop} style={{ fontSize: '0.65rem', opacity: 0.8, margin: 0 }}>
                 HASTA
               </label>
-              <input 
-                type="date" 
-                value={fechas.fin} 
-                onChange={(e) => setFechas({ ...fechas, fin: e.target.value })} 
+              <input
+                type="date"
+                value={fechas.fin}
+                onChange={(e) => setFechas({ ...fechas, fin: e.target.value })}
                 className={styles.inputEditorial}
                 style={{ width: '100%', height: '36px', padding: '0 8px', fontSize: '0.85rem', borderRadius: '8px' }}
               />
             </div>
           </div>
 
-          {/* Botón Filtrar abajo a lo ancho */}
-          <button 
-            onClick={manejarBusquedaHistorial} 
-            className={`${styles.btnBase} ${styles.btnPrimary}`} 
-            style={{ 
-              height: '36px', 
-              padding: '0', 
-              fontSize: '0.85rem', 
-              borderRadius: '8px', 
-              width: '100%', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              gap: '6px' 
+          {/* Botón Filtrar */}
+          <button
+            onClick={manejarBusquedaHistorial}
+            className={`${styles.btnBase} ${styles.btnPrimary}`}
+            style={{
+              height: '36px',
+              padding: '0',
+              fontSize: '0.85rem',
+              borderRadius: '8px',
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px'
             }}
           >
             <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>search</span>
@@ -123,12 +125,12 @@ export default function Historial({ onVerDetalle }) {
         {/* BUSCADOR EDITORIAL */}
         {haFiltrado && (
           <div style={{ position: 'relative', marginTop: '10px' }}>
-            <span 
-              className="material-symbols-outlined" 
-              style={{ 
-                position: 'absolute', 
-                left: '12px', 
-                top: '50%', 
+            <span
+              className="material-symbols-outlined"
+              style={{
+                position: 'absolute',
+                left: '12px',
+                top: '50%',
                 transform: 'translateY(-50%)',
                 color: 'var(--text-muted)',
                 fontSize: '1.2rem'
@@ -136,7 +138,7 @@ export default function Historial({ onVerDetalle }) {
             >
               search
             </span>
-            <input 
+            <input
               type="text"
               placeholder="Buscar por folio..."
               value={busqueda}
@@ -159,14 +161,14 @@ export default function Historial({ onVerDetalle }) {
       {haFiltrado && (
         <section style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
           {ordenesHistorial.map((orden) => (
-            <div 
-              key={orden.id} 
+            <div
+              key={orden.id}
               className={styles.card}
               onClick={() => onVerDetalle(orden.id)}
-              style={{ 
+              style={{
                 cursor: 'pointer',
-                borderLeft: orden.estatus === 'Completado' 
-                  ? '4px solid var(--color-primary)' 
+                borderLeft: orden.estatus === 'Completado'
+                  ? '4px solid var(--color-primary)'
                   : '4px solid #ba1a1a',
                 borderTop: 'none',
                 display: 'flex',
@@ -183,8 +185,8 @@ export default function Historial({ onVerDetalle }) {
             >
               {/* --- FILA SUPERIOR: FOLIO Y STATUS --- */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                <span className={styles.labelTop} style={{ 
-                  fontSize: '0.625rem', 
+                <span className={styles.labelTop} style={{
+                  fontSize: '0.625rem',
                   color: 'var(--text-muted)',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
@@ -193,7 +195,7 @@ export default function Historial({ onVerDetalle }) {
                 }}>
                   {orden.folio || 'S/F'}
                 </span>
-                
+
                 <span style={{
                   fontSize: '0.55rem',
                   fontWeight: '800',
@@ -211,27 +213,27 @@ export default function Historial({ onVerDetalle }) {
               {/* --- FILA INFERIOR: INFORMACIÓN --- */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', width: '100%', gap: '12px' }}>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
-                  
+
                   {/* Sucursal */}
-                  <span style={{ 
-                    fontSize: '0.65rem', 
-                    color: 'var(--text-light)', 
-                    whiteSpace: 'nowrap', 
-                    overflow: 'hidden', 
+                  <span style={{
+                    fontSize: '0.65rem',
+                    color: 'var(--text-light)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     lineHeight: '1.1'
                   }}>
-                  {orden.sucursal?.nombre || 'General'}
+                    {orden.sucursal?.nombre || 'General'}
                   </span>
 
                   {/* Nombre del Proveedor */}
-                  <h2 className={styles.subtitle} style={{ 
-                    fontSize: '0.875rem', 
-                    margin: '1px 0', 
-                    fontWeight: 'bold', 
-                    color: 'var(--text-main)', 
-                    whiteSpace: 'nowrap', 
-                    overflow: 'hidden', 
+                  <h2 className={styles.subtitle} style={{
+                    fontSize: '0.875rem',
+                    margin: '1px 0',
+                    fontWeight: 'bold',
+                    color: 'var(--text-main)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     lineHeight: '1.2'
                   }}>
@@ -249,22 +251,22 @@ export default function Historial({ onVerDetalle }) {
                     </span>
                   </div>
                 </div>
-                
+
                 {/* Botón de Acción Mini */}
                 <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                  <button 
+                  <button
                     onClick={(e) => { e.stopPropagation(); onVerDetalle(orden.id); }}
-                    className={`${styles.btnBase} ${styles.btnPrimary}`} 
-                    style={{ 
-                      padding: '0', 
-                      width: '34px', 
-                      height: '34px', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center', 
+                    className={`${styles.btnBase} ${styles.btnPrimary}`}
+                    style={{
+                      padding: '0',
+                      width: '34px',
+                      height: '34px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                       borderRadius: '8px',
                       backgroundColor: 'var(--color-primary)'
-                    }} 
+                    }}
                     title="Ver Detalle"
                   >
                     <span className="material-symbols-outlined" style={{ fontSize: '1.05rem', color: 'white' }}>visibility</span>

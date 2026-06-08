@@ -54,4 +54,18 @@
   /* Sombras */
   --shadow-nav: 0 -12px 32px -4px rgba(25, 28, 29, 0.06);
   --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+
+
+/* Semántica de peligro/alerta */
+--color-danger: #ba1a1a;
+
+/* Semántica de turnos operativos */
+--color-turno-am: #e67e22;   /* Naranja — turno mañana */
+--color-turno-pm: #9b59b6;   /* Morado  — turno tarde  */
+
+/* Sombra para elementos flotantes (dropdowns, modales) */
+--shadow-dropdown: 0 8px 24px rgba(0, 0, 0, 0.15);
+
+--color-turno-am-bg: #fff3e0;
+--color-turno-pm-bg: #f3e5f5;
 }

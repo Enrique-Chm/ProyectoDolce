@@ -10,18 +10,24 @@ export const useProductos = () => {
   // --- ESTADOS DE FILTRADO (UI) ---
   const [filtroBusqueda, setFiltroBusqueda] = useState('');
   const [catActiva, setCatActiva] = useState('Todas');
-
   const [catalogos, setCatalogos] = useState({
     proveedores: [],
     sucursales: [],
     unidades: [],
     categorias: [],
-    productosAlternos: [] // <--- Colección de apoyo añadida para alimentar el selector de Opción B
+    productosAlternos: []
   });
 
   // ==========================================
   // 1. CARGA DE DATOS Y NORMALIZACIÓN
   // ==========================================
+
+  /**
+   * Carga únicamente la lista de productos.
+   * Se llama después de guardar para refrescar la lista sin recargar catálogos.
+   * El service ya normaliza categoria_nombre, um_abreviatura y sucursales_info,
+   * por lo que no es necesario volver a mapear los datos aquí.
+   */
   const cargarProductos = useCallback(async () => {
     setLoading(true);
     try {
@@ -30,15 +36,9 @@ export const useProductos = () => {
         toast.error(`Error de carga: ${error.message || 'No se pudo obtener la lista'}`);
         return;
       }
-
-      // Normalizamos la data para que el filtrado sea más rápido y sencillo
-      const procesados = (data || []).map(p => ({
-        ...p,
-        categoria_nombre: p.categoria?.nombre || 'Sin Categoría',
-        um_abreviatura: p.unidad_medida?.abreviatura || p.um?.abreviatura || 'pz'
-      }));
-
-      setProductos(procesados);
+      // CORRECCIÓN: El service ya entrega los datos normalizados.
+      // Se eliminó el .map() redundante que recalculaba categoria_nombre y um_abreviatura.
+      setProductos(data || []);
     } catch (err) {
       console.error("Error inesperado al cargar productos:", err);
       toast.error("Error de conexión al cargar la lista.");
@@ -47,6 +47,10 @@ export const useProductos = () => {
     }
   }, []);
 
+  /**
+   * Carga los catálogos auxiliares para los selectores del formulario.
+   * Se mantiene como función independiente por si se necesita refrescar solo los catálogos.
+   */
   const cargarCatalogosFormulario = useCallback(async () => {
     setLoading(true);
     try {
@@ -56,16 +60,55 @@ export const useProductos = () => {
         console.error("Errores al sincronizar catálogos:", data.error);
         toast.error('Aviso: Algunos catálogos de apoyo no se cargaron correctamente.');
       }
-
       setCatalogos({
         proveedores: data.proveedores || [],
         sucursales: data.sucursales || [],
         unidades: data.unidades || [],
         categorias: data.categorias || [],
-        productosAlternos: data.productosAlternos || [] // <--- Sincronización del catálogo de equivalentes
+        productosAlternos: data.productosAlternos || []
       });
     } catch (err) {
       console.error("Error inesperado al cargar catálogos:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  /**
+   * Carga inicial: productos y catálogos en paralelo bajo un solo estado de loading.
+   * CORRECCIÓN: Reemplaza la doble llamada independiente del componente que causaba
+   * que loading se activara y desactivara dos veces de forma desincronizada (race condition).
+   */
+  const inicializar = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [productosResult, catalogosData] = await Promise.all([
+        ProductosService.getProductos(),
+        ProductosService.getCatalogosFormulario()
+      ]);
+
+      if (productosResult.error) {
+        toast.error(`Error de carga: ${productosResult.error.message || 'No se pudo obtener la lista'}`);
+      } else {
+        // El service ya normaliza: categoria_nombre, um_abreviatura y sucursales_info
+        setProductos(productosResult.data || []);
+      }
+
+      if (catalogosData.error) {
+        console.error("Errores al sincronizar catálogos:", catalogosData.error);
+        toast.error('Aviso: Algunos catálogos de apoyo no se cargaron correctamente.');
+      }
+
+      setCatalogos({
+        proveedores: catalogosData.proveedores || [],
+        sucursales: catalogosData.sucursales || [],
+        unidades: catalogosData.unidades || [],
+        categorias: catalogosData.categorias || [],
+        productosAlternos: catalogosData.productosAlternos || []
+      });
+    } catch (err) {
+      console.error("Error inesperado en inicialización:", err);
+      toast.error("Error de conexión al cargar los datos.");
     } finally {
       setLoading(false);
     }
@@ -86,15 +129,13 @@ export const useProductos = () => {
     return productos.filter(p => {
       // Filtro 1: Por Pestaña/Categoría
       const coincideCat = catActiva === 'Todas' || p.categoria_nombre === catActiva;
-
       // Filtro 2: Por Texto (Nombre, Marca, Categoría o Turno de uso)
       const search = filtroBusqueda.toLowerCase();
       const coincideTexto = 
         p.nombre.toLowerCase().includes(search) ||
         (p.marca || '').toLowerCase().includes(search) ||
-        (p.turno_uso || '').toLowerCase().includes(search) || // Permite buscar insumos escribiendo "AM", "PM" o "Ambos"
+        (p.turno_uso || '').toLowerCase().includes(search) ||
         p.categoria_nombre.toLowerCase().includes(search);
-
       return coincideCat && coincideTexto;
     });
   }, [productos, filtroBusqueda, catActiva]);
@@ -102,34 +143,30 @@ export const useProductos = () => {
   // ==========================================
   // 3. ACCIONES (GUARDAR / ESTATUS)
   // ==========================================
+
   const guardarProducto = useCallback(async (productoData) => {
     if (!productoData.nombre || productoData.nombre.trim() === '') {
       toast.error('El nombre del producto es obligatorio.');
       return false;
     }
-
     if (!productoData.categoria_id) {
       toast.error('Debes seleccionar una categoría.');
       return false;
     }
-
     // Validación de seguridad para la Opción B: Un artículo no puede ser su propio equivalente
     if (productoData.id && productoData.producto_equivalente_id && productoData.id === productoData.producto_equivalente_id) {
       toast.error('Un producto no puede ser su propio equivalente de Opción B.');
       return false;
     }
-
     setLoading(true);
     try {
       const { error } = await ProductosService.guardarProducto(productoData);
-
       if (error) {
         toast.error(`No se pudo guardar: ${error.message}`, { duration: 5000 });
         return false;
       }
-
       toast.success('¡Producto guardado exitosamente!');
-      await cargarProductos(); 
+      await cargarProductos();
       return true;
     } catch (err) {
       console.error("Error en guardarProducto:", err);
@@ -148,11 +185,9 @@ export const useProductos = () => {
         toast.error(`Error al actualizar estatus: ${error.message}`);
         return false;
       }
-
       setProductos(prev => 
         prev.map(prod => prod.id === id ? { ...prod, activo: !estatusActual } : prod)
       );
-      
       toast.success(estatusActual ? 'Producto desactivado' : 'Producto activado');
       return true;
     } catch (err) {
@@ -163,13 +198,14 @@ export const useProductos = () => {
 
   return {
     loading,
-    productos: productosFiltrados, // Entregamos la lista ya filtrada
+    productos: productosFiltrados,
     catalogos,
     filtroBusqueda,
     setFiltroBusqueda,
     catActiva,
     setCatActiva,
     listaCategoriasFiltro,
+    inicializar,           // ← Nuevo: carga inicial unificada
     cargarProductos,
     cargarCatalogosFormulario,
     guardarProducto,

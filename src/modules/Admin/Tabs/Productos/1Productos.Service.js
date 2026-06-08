@@ -8,19 +8,33 @@ export const ProductosService = {
   /**
    * Recupera el catálogo de productos con sus relaciones descriptivas.
    * Cruza datos con UM, Categorías y el producto equivalente autoreferenciado (Opción B).
+   * CORRECCIÓN P3: Se eliminó select('*') y se listan columnas explícitas,
+   * excluyendo la columna legacy 'Categoria' (texto libre sin uso activo).
    */
   async getProductos() {
-    // 1. Cargamos todos los productos con sus nombres de catálogos e insumo equivalente anidado
     const { data: productos, error } = await supabase
       .from('BD_Productos')
       .select(`
-        *,
+        id,
+        nombre,
+        marca,
+        presentacion,
+        contenido,
+        proveedor_id,
+        um_id,
+        activo,
+        sucursales_ids,
+        turno_uso,
+        categoria_id,
+        producto_equivalente_id,
+        created_at,
+        updated_at,
         unidad_medida:Cat_UM(id, nombre, abreviatura),
         proveedor:Cat_Proveedores(id, nombre),
         producto_equivalente:BD_Productos!producto_equivalente_id(
-          id, 
-          nombre, 
-          marca, 
+          id,
+          nombre,
+          marca,
           presentacion,
           proveedor:Cat_Proveedores(nombre)
         ),
@@ -33,14 +47,14 @@ export const ProductosService = {
       return { data: null, error };
     }
 
-    // 2. Cargamos las sucursales para el mapeo de nombres
+    // Cargamos las sucursales para el mapeo de nombres
     const { data: sucursales, error: errSucs } = await supabase
       .from('Cat_sucursales')
       .select('id, nombre');
 
     if (errSucs) {
       console.error("Error al obtener sucursales:", errSucs.message);
-      return { data: productos, error: null }; 
+      return { data: productos, error: null };
     }
 
     const sucursalesMap = (sucursales || []).reduce((acc, s) => {
@@ -48,7 +62,7 @@ export const ProductosService = {
       return acc;
     }, {});
 
-    // 3. Normalización de datos para que el motor de búsqueda del Hook sea infalible
+    // Normalización de datos para que el motor de búsqueda del Hook sea infalible
     const dataEnriquecida = (productos || []).map(p => {
       const ids = p.sucursales_ids || [];
       return {
@@ -80,12 +94,10 @@ export const ProductosService = {
         marca: rawData.marca || null,
         presentacion: rawData.presentacion || null,
         contenido: (rawData.contenido === "" || rawData.contenido === undefined) ? null : Number(rawData.contenido),
-        
         um_id: rawData.um_id || null,
         categoria_id: rawData.categoria_id || null,
         proveedor_id: rawData.proveedor_id || null,
         producto_equivalente_id: rawData.producto_equivalente_id || null,
-        
         activo: rawData.activo ?? true,
         sucursales_ids: Array.isArray(rawData.sucursales_ids) ? rawData.sucursales_ids : [],
         turno_uso: rawData.turno_uso || 'Ambos'
@@ -100,9 +112,7 @@ export const ProductosService = {
 
       const { data, error } = await query.select().single();
       if (error) throw error;
-
       return { data, error: null };
-
     } catch (err) {
       console.error("Error en guardarProducto:", err);
       return { data: null, error: err };
@@ -118,7 +128,6 @@ export const ProductosService = {
       .update({ activo: !estatusActual })
       .eq('id', id)
       .select();
-
     return { data, error };
   },
 
@@ -127,7 +136,6 @@ export const ProductosService = {
   // ==========================================
   /**
    * Carga las opciones para los selectores del formulario.
-   * FIJACIÓN: Se añade la extracción de productos activos para poder mapearlos como Opciones B.
    */
   async getCatalogosFormulario() {
     try {
