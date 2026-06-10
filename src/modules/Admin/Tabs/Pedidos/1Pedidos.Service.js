@@ -267,5 +267,17 @@ export const PedidosService = {
       .eq('id', ordenId)
       .select();
     return { data, error };
+  },
+    /**
+   * Actualiza únicamente las notas de una orden sin modificar su estatus.
+   * Usado para estampar la firma de finalización antes del cambio de estatus.
+   */
+  async actualizarNotasOrden(ordenId, notas) {
+    const { data, error } = await supabase
+      .from('BD_Ordenes_Compra')
+      .update({ notas })
+      .eq('id', ordenId)
+      .select();
+    return { data, error };
   }
 };

@@ -19,7 +19,24 @@ export const NuevoPedidoService = {
 
     return { data, error };
   },
+  /**
+   * 0B. CALENDARIO CRUZADO: ASIGNACIONES SUCURSAL × PROVEEDOR
+   * Obtiene las restricciones personalizadas de días de pedido
+   * que tiene una sucursal para proveedores específicos.
+   * Si un proveedor NO aparece en esta lista, se usa su dias_abierto global.
+   * @param {string} sucursalId - UUID de la sucursal
+   */
+  async getAsignacionesSucursal(sucursalId) {
+    if (!sucursalId) return { data: [], error: null };
 
+    const { data, error } = await supabase
+      .from('Cat_Sucursal_Proveedor')
+      .select('proveedor_id, dias_permitidos')
+      .eq('sucursal_id', sucursalId)
+      .eq('estatus', 'Activo');
+
+    return { data: data || [], error };
+  },
   /**
    * 1. OBTENER PRODUCTOS DISPONIBLES (FILTRADO POR DÍA)
    * Recupera los insumos activos cuyos proveedores estén abiertos el día solicitado.

@@ -60,7 +60,6 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
   const progreso       = totalItems > 0 ? (itemsComprados / totalItems) * 100 : 0;
 
   const handleFinalizarCompra = async () => {
-    // Si hay ítems pendientes y aún no se confirmó, mostramos el panel de confirmación
     if (itemsComprados < totalItems && !confirmarFinalizacion) {
       setConfirmarFinalizacion(true);
       return;
@@ -68,9 +67,7 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
 
     setConfirmarFinalizacion(false);
 
-    // ── NUEVO: Estampar quién finalizó el surtido en las notas ──
-    // Se agrega una línea estructurada al final de las notas existentes
-    // con el nombre del usuario que presionó "Finalizar Surtido" y la fecha/hora.
+    // ── Estampar quién finalizó el surtido en las notas ──
     try {
       const nombreFinalizador = usuario?.nombre_completo || usuario?.usuario || 'Usuario';
       const fechaHora         = new Date().toLocaleString('es-MX', {
@@ -89,11 +86,9 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
         ? notasActuales
         : `${notasActuales}\n${firmaFinalizacion}`.trim();
 
-      // Actualizamos las notas en BD antes de cambiar el estatus
-      await PedidosService.actualizarEstatusOrden(detalleOrdenActual.id, detalleOrdenActual.estatus);
-      await supabaseUpdateNotas(detalleOrdenActual.id, notasActualizadas);
+      // Actualizamos las notas en BD vía service antes de cambiar el estatus
+      await PedidosService.actualizarNotasOrden(detalleOrdenActual.id, notasActualizadas);
     } catch (err) {
-      // Si falla la estampa, no bloqueamos el flujo — es informativo
       console.error('Aviso: No se pudo estampar la firma de finalización:', err);
     }
 
@@ -416,20 +411,4 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
       )}
     </div>
   );
-}
-
-// ─────────────────────────────────────────────────────────────
-// Función auxiliar: Actualiza solo las notas de una orden.
-// Se usa internamente para estampar la firma de finalización
-// sin pasar por el hook (que cambiaría el estatus).
-// ─────────────────────────────────────────────────────────────
-async function supabaseUpdateNotas(ordenId, notas) {
-  const { createClient } = await import('@supabase/supabase-js');
-  // Reutilizamos el cliente existente importándolo directamente
-  const { supabase } = await import('../../../../lib/supabaseClient');
-
-  await supabase
-    .from('BD_Ordenes_Compra')
-    .update({ notas })
-    .eq('id', ordenId);
 }
