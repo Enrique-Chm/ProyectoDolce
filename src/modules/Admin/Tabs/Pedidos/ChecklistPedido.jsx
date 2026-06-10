@@ -2,19 +2,19 @@
 import React, { useEffect, useState } from 'react';
 import styles from '../../../../assets/styles/EstilosGenerales.module.css';
 import { usePedidos } from './2usePedidos';
-import { useAuth } from '../../../Auth/useAuth'; // CORRECCIÓN P1: reemplaza AuthService
+import { useAuth } from '../../../Auth/useAuth';
+import { PedidosService } from './1Pedidos.Service';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-// Token semántico — fallback incluido hasta agregarlo a variables.css
+// Token semántico
 const COLOR_DANGER = 'var(--color-danger, #ba1a1a)';
 
 // Color primario en RGB para el PDF — terracota #a23f27
-// CORRECCIÓN P1: era (0, 95, 86) — verde teal incorrecto para esta paleta
 const PDF_COLOR_PRIMARY = [162, 63, 39];
 const PDF_COLOR_WHITE   = [255, 255, 255];
-const PDF_COLOR_TEXTO   = [43, 36, 33];   // --text-main: #2b2421
+const PDF_COLOR_TEXTO   = [43, 36, 33];
 
 export default function ChecklistPedido({ ordenId, onVolver }) {
   const {
@@ -25,19 +25,13 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
     cambiarEstatusOrden
   } = usePedidos();
 
-  // CORRECCIÓN P1: Consumimos el Context centralizado
   const { usuario } = useAuth();
   const permisos = usuario?.permisos?.pedidos || {};
 
   // Estado local para alternar la visualización informativa de la Opción B
   const [mostrandoOpcionB, setMostrandoOpcionB] = useState({});
 
-  /**
-   * CORRECCIÓN P1: Estado para confirmación de finalización.
-   * Reemplaza window.confirm — cuando hay ítems sin marcar,
-   * mostramos un panel de confirmación inline en lugar de
-   * bloquear el hilo con el diálogo nativo del navegador.
-   */
+  // Estado para confirmación de finalización
   const [confirmarFinalizacion, setConfirmarFinalizacion] = useState(false);
 
   useEffect(() => {
@@ -71,8 +65,38 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
       setConfirmarFinalizacion(true);
       return;
     }
-    // Segunda llamada: ya confirmó, procedemos
+
     setConfirmarFinalizacion(false);
+
+    // ── NUEVO: Estampar quién finalizó el surtido en las notas ──
+    // Se agrega una línea estructurada al final de las notas existentes
+    // con el nombre del usuario que presionó "Finalizar Surtido" y la fecha/hora.
+    try {
+      const nombreFinalizador = usuario?.nombre_completo || usuario?.usuario || 'Usuario';
+      const fechaHora         = new Date().toLocaleString('es-MX', {
+        day:    '2-digit',
+        month:  'short',
+        year:   'numeric',
+        hour:   '2-digit',
+        minute: '2-digit'
+      });
+
+      const notasActuales     = detalleOrdenActual.notas || '';
+      const firmaFinalizacion = `[Surtido por]: ${nombreFinalizador} — ${fechaHora}`;
+
+      // Solo agregamos si no se ha estampado antes (safety net contra doble clic)
+      const notasActualizadas = notasActuales.includes('[Surtido por]')
+        ? notasActuales
+        : `${notasActuales}\n${firmaFinalizacion}`.trim();
+
+      // Actualizamos las notas en BD antes de cambiar el estatus
+      await PedidosService.actualizarEstatusOrden(detalleOrdenActual.id, detalleOrdenActual.estatus);
+      await supabaseUpdateNotas(detalleOrdenActual.id, notasActualizadas);
+    } catch (err) {
+      // Si falla la estampa, no bloqueamos el flujo — es informativo
+      console.error('Aviso: No se pudo estampar la firma de finalización:', err);
+    }
+
     const exito = await cambiarEstatusOrden(detalleOrdenActual.id, 'Completado');
     if (exito) onVolver();
   };
@@ -93,7 +117,6 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
     try {
       const doc = new jsPDF();
 
-      // CORRECCIÓN P1: Color del header — terracota en lugar de teal
       doc.setFillColor(...PDF_COLOR_PRIMARY);
       doc.rect(0, 0, 210, 35, 'F');
       doc.setTextColor(...PDF_COLOR_WHITE);
@@ -124,7 +147,7 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
 
       const columnas = ['Producto', 'Marca', 'Cant.', 'Presentación', 'Contenido Total'];
       const filas = detalleOrdenActual.detalles.map(item => {
-        const rawEquiv     = item.producto?.producto_equivalente;
+        const rawEquiv        = item.producto?.producto_equivalente;
         const prodEquivalente = Array.isArray(rawEquiv) ? rawEquiv[0] : rawEquiv;
         return [
           item.producto?.nombre || 'Insumo',
@@ -140,7 +163,6 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
         body: filas,
         startY: 74,
         styles: { fontSize: 9, cellPadding: 4 },
-        // CORRECCIÓN P1: Color de cabecera de tabla — terracota en lugar de teal
         headStyles: { fillColor: PDF_COLOR_PRIMARY, textColor: PDF_COLOR_WHITE },
         theme: 'striped'
       });
@@ -199,7 +221,7 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
         marginBottom: '20px',
         backgroundColor: 'var(--color-surface-lowest)',
         padding: '12px',
-        borderRadius: 'var(--radius-xl)',       // CORRECCIÓN: era '12px'
+        borderRadius: 'var(--radius-xl)',
         border: '1px solid var(--border-ghost)'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-sm)', fontSize: '0.65rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
@@ -214,16 +236,15 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
       {/* --- LISTADO DE ÍTEMS --- */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
         {detalleOrdenActual.detalles.map((item) => {
-          const esComprado  = item.estatus === 'Comprado';
-          const verOpcionB  = !!mostrandoOpcionB[item.id];
+          const esComprado   = item.estatus === 'Comprado';
+          const verOpcionB   = !!mostrandoOpcionB[item.id];
           const tieneOpcionB = !!item.producto?.producto_equivalente_id;
 
-          // EXTRACCIÓN SEGURA (Si Supabase devuelve un arreglo, tomamos el elemento 0)
-          const rawEquiv       = item.producto?.producto_equivalente;
+          const rawEquiv        = item.producto?.producto_equivalente;
           const prodEquivalente = Array.isArray(rawEquiv) ? rawEquiv[0] : rawEquiv;
-          const rawProvOrig    = item.producto?.proveedor;
-          const provOriginal   = Array.isArray(rawProvOrig) ? rawProvOrig[0] : rawProvOrig;
-          const rawProvEquiv   = prodEquivalente?.proveedor;
+          const rawProvOrig     = item.producto?.proveedor;
+          const provOriginal    = Array.isArray(rawProvOrig) ? rawProvOrig[0] : rawProvOrig;
+          const rawProvEquiv    = prodEquivalente?.proveedor;
           const provEquivalente = Array.isArray(rawProvEquiv) ? rawProvEquiv[0] : rawProvEquiv;
 
           return (
@@ -234,12 +255,10 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
                 display: 'flex',
                 flexDirection: 'column',
                 padding: '12px 14px',
-                borderRadius: 'var(--radius-xl)',                  // CORRECCIÓN: era '10px'
-                backgroundColor: esComprado
-                  ? 'var(--color-surface-lowest)'
-                  : 'var(--color-surface-lowest)',
+                borderRadius: 'var(--radius-xl)',
+                backgroundColor: 'var(--color-surface-lowest)',
                 borderLeft: esComprado
-                  ? `4px solid var(--text-light)`                   // CORRECCIÓN: era '#999'
+                  ? '4px solid var(--text-light)'
                   : verOpcionB
                     ? `4px solid ${COLOR_DANGER}`
                     : '4px solid var(--color-primary)',
@@ -248,35 +267,28 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
                 transition: 'all 0.2s ease'
               }}
             >
-              {/* ── FILA PRINCIPAL (siempre visible) ── */}
+              {/* ── FILA PRINCIPAL ── */}
               <div
                 onClick={() => puedeEditar && !verOpcionB && toggleEstatusItem(item.id, item.estatus)}
                 style={{
-                  display: 'flex',
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  gap: '12px',
+                  display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
+                  alignItems: 'center', gap: '12px',
                   cursor: puedeEditar && !verOpcionB ? 'pointer' : 'default'
                 }}
               >
                 {/* Checkbox */}
                 <div style={{
-                  width: '24px', height: '24px',
-                  borderRadius: 'var(--radius-lg)',                // CORRECCIÓN: era '6px'
+                  width: '24px', height: '24px', borderRadius: 'var(--radius-lg)',
                   border: esComprado ? 'none' : '2px solid var(--border-ghost)',
                   backgroundColor: esComprado ? 'var(--color-primary)' : 'transparent',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
                 }}>
                   {esComprado && (
-                    <span className="material-symbols-outlined" style={{ color: 'var(--color-surface-lowest)', fontSize: '1rem' }}>
-                      done
-                    </span>
+                    <span className="material-symbols-outlined" style={{ color: 'var(--color-surface-lowest)', fontSize: '1rem' }}>done</span>
                   )}
                 </div>
 
-                {/* Info del producto ORIGINAL */}
+                {/* Info del producto */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <h4 style={{
                     margin: 0, fontSize: '0.9rem', fontWeight: 'bold',
@@ -303,12 +315,8 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
                         backgroundColor: verOpcionB ? 'var(--text-muted)' : 'transparent',
                         border: verOpcionB ? '1px solid var(--text-muted)' : `1px solid ${COLOR_DANGER}`,
                         color: verOpcionB ? 'var(--color-surface-lowest)' : COLOR_DANGER,
-                        borderRadius: 'var(--radius-lg)',            // CORRECCIÓN: era '6px'
-                        padding: '6px 10px',
-                        fontSize: '0.65rem',
-                        fontWeight: '900',
-                        transition: 'all 0.15s ease',
-                        cursor: 'pointer'
+                        borderRadius: 'var(--radius-lg)', padding: '6px 10px',
+                        fontSize: '0.65rem', fontWeight: '900', transition: 'all 0.15s ease', cursor: 'pointer'
                       }}
                     >
                       {verOpcionB ? 'VER ORIGINAL' : 'VER OPCIÓN B'}
@@ -320,12 +328,9 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
               {/* ── PANEL EXPANDIDO: OPCIÓN B ── */}
               {verOpcionB && tieneOpcionB && (
                 <div style={{
-                  marginTop: '12px',
-                  paddingTop: '12px',
+                  marginTop: '12px', paddingTop: '12px',
                   borderTop: `1px dashed ${COLOR_DANGER}`,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '4px',
+                  display: 'flex', flexDirection: 'column', gap: '4px',
                   animation: 'slideUp 0.2s ease'
                 }}>
                   <span style={{ fontSize: '0.6rem', fontWeight: '900', textTransform: 'uppercase', color: COLOR_DANGER, letterSpacing: '0.5px' }}>
@@ -350,21 +355,37 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
         })}
       </div>
 
+      {/* --- INFORMACIÓN DE SURTIDO (visible en modo lectura) --- */}
+      {esSoloLectura && detalleOrdenActual.notas?.includes('[Surtido por]') && (
+        <div style={{
+          marginTop: 'var(--space-md)',
+          padding: '10px 14px',
+          backgroundColor: 'var(--color-primary-fixed)',
+          borderRadius: 'var(--radius-xl)',
+          border: '1px solid var(--color-primary)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 'var(--space-sm)'
+        }}>
+          <span className="material-symbols-outlined" style={{ fontSize: '1.1rem', color: 'var(--color-on-primary-fixed)' }}>verified</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-on-primary-fixed)', fontWeight: 'bold' }}>
+            {detalleOrdenActual.notas.match(/\[Surtido por\]:\s*(.+)/)?.[1] || 'Surtido registrado'}
+          </span>
+        </div>
+      )}
+
       {/* --- ÁREA FIJA INFERIOR: BOTÓN + CONFIRMACIÓN --- */}
       {puedeEditar && (
         <div style={{ position: 'fixed', bottom: '85px', left: '16px', right: '16px', zIndex: 100, display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
 
-          {/* Panel de confirmación — reemplaza window.confirm */}
+          {/* Panel de confirmación */}
           {confirmarFinalizacion && (
             <div style={{
               backgroundColor: 'var(--color-surface-lowest)',
               border: `1px solid ${COLOR_DANGER}`,
               borderRadius: 'var(--radius-xl)',
               padding: '12px 16px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              gap: '12px',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px',
               boxShadow: 'var(--shadow-dropdown, 0 8px 24px rgba(0,0,0,0.15))',
               animation: 'slideUp 0.2s ease'
             }}>
@@ -372,18 +393,10 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
                 Hay productos sin marcar. ¿Finalizar de todas formas?
               </p>
               <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                <button
-                  onClick={handleCancelarConfirmacion}
-                  className={`${styles.btnBase} ${styles.btnSecondary}`}
-                  style={{ height: '32px', padding: '0 12px', fontSize: '0.7rem', borderRadius: 'var(--radius-lg)' }}
-                >
+                <button onClick={handleCancelarConfirmacion} className={`${styles.btnBase} ${styles.btnSecondary}`} style={{ height: '32px', padding: '0 12px', fontSize: '0.7rem', borderRadius: 'var(--radius-lg)' }}>
                   Volver
                 </button>
-                <button
-                  onClick={handleFinalizarCompra}
-                  className={`${styles.btnBase} ${styles.btnDanger}`}
-                  style={{ height: '32px', padding: '0 12px', fontSize: '0.7rem', borderRadius: 'var(--radius-lg)' }}
-                >
+                <button onClick={handleFinalizarCompra} className={`${styles.btnBase} ${styles.btnDanger}`} style={{ height: '32px', padding: '0 12px', fontSize: '0.7rem', borderRadius: 'var(--radius-lg)' }}>
                   Finalizar
                 </button>
               </div>
@@ -394,13 +407,7 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
           <button
             onClick={handleFinalizarCompra}
             className={`${styles.btnBase} ${styles.btnPrimary}`}
-            style={{
-              width: '100%',
-              padding: '1rem',
-              borderRadius: 'var(--radius-xl)',
-              fontWeight: 'bold',
-              boxShadow: 'var(--shadow-card)'  // CORRECCIÓN P1: era rgba(0,95,86,0.3) — teal incorrecto
-            }}
+            style={{ width: '100%', padding: '1rem', borderRadius: 'var(--radius-xl)', fontWeight: 'bold', boxShadow: 'var(--shadow-card)' }}
           >
             <span className="material-symbols-outlined">check_circle</span>
             {confirmarFinalizacion ? 'CONFIRMAR FINALIZACIÓN' : 'FINALIZAR SURTIDO'}
@@ -409,4 +416,20 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
       )}
     </div>
   );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Función auxiliar: Actualiza solo las notas de una orden.
+// Se usa internamente para estampar la firma de finalización
+// sin pasar por el hook (que cambiaría el estatus).
+// ─────────────────────────────────────────────────────────────
+async function supabaseUpdateNotas(ordenId, notas) {
+  const { createClient } = await import('@supabase/supabase-js');
+  // Reutilizamos el cliente existente importándolo directamente
+  const { supabase } = await import('../../../../lib/supabaseClient');
+
+  await supabase
+    .from('BD_Ordenes_Compra')
+    .update({ notas })
+    .eq('id', ordenId);
 }
