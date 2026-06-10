@@ -2,35 +2,29 @@
 import React, { useState, useEffect } from 'react';
 import styles from '../../../../assets/styles/EstilosGenerales.module.css';
 import { usePedidos } from './2usePedidos';
-import { useAuth } from '../../../Auth/useAuth'; // CORRECCIÓN P1: reemplaza AuthService
+import { useAuth } from '../../../Auth/useAuth';
 
-// Token semántico — no existe aún en variables.css, fallback incluido
+// Token semántico
 const COLOR_DANGER = 'var(--color-danger, #ba1a1a)';
 
 export default function Pedidos({ onNuevoPedido, onVerLista }) {
   const {
     loading,
     ordenesActivas,
+    totalActivas,      // PAGINACIÓN: total en BD
+    hayMasActivas,     // PAGINACIÓN: flag para botón "Cargar más"
     cargarOrdenesActivas,
+    cargarMasActivas,  // PAGINACIÓN: función para siguiente bloque
     cancelarPedido
   } = usePedidos();
 
-  // CORRECCIÓN P1: Consumimos el Context centralizado
   const { usuario } = useAuth();
 
-  // Extraemos permisos específicos para este módulo
   const permisosPedidos = usuario?.permisos?.pedidos || {};
   const esAdmin         = usuario?.permisos?.configuracion?.leer || false;
 
-  /**
-   * CORRECCIÓN P1: Estado para confirmación de cancelación.
-   * Reemplaza window.confirm — cuando el usuario pulsa cancelar,
-   * guardamos el ID de la orden pendiente y mostramos una UI inline.
-   * Solo cuando confirma se ejecuta cancelarPedido().
-   */
   const [ordenPendienteCancelar, setOrdenPendienteCancelar] = useState(null);
 
-  // Sincronizamos automáticamente las órdenes activas al montar el componente
   useEffect(() => {
     cargarOrdenesActivas();
   }, [cargarOrdenesActivas]);
@@ -49,10 +43,6 @@ export default function Pedidos({ onNuevoPedido, onVerLista }) {
     setOrdenPendienteCancelar(null);
   };
 
-  /**
-   * FUNCIÓN AUXILIAR: Extrae los nombres de la coautoría guardados en las notas.
-   * Si no se encuentra la etiqueta estructurada, retorna el nombre del solicitante original.
-   */
   const obtenerTextoSolicitantes = (orden) => {
     if (orden.notas && orden.notas.includes('[Solicitantes]:')) {
       const match = orden.notas.match(/\[Solicitantes\]:\s*([^\n]+)/);
@@ -77,21 +67,21 @@ export default function Pedidos({ onNuevoPedido, onVerLista }) {
           </h1>
         </div>
 
-        {/* Contador de impacto visual mini */}
+        {/* Contador — ahora muestra total real de BD */}
         <div style={{
           backgroundColor: 'var(--color-primary)',
-          color: 'var(--color-surface-lowest)',   // CORRECCIÓN: era 'white'
+          color: 'var(--color-surface-lowest)',
           width: '44px',
           height: '44px',
-          borderRadius: 'var(--radius-xl)',        // CORRECCIÓN: era '12px'
+          borderRadius: 'var(--radius-xl)',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          boxShadow: 'var(--shadow-card)'          // CORRECCIÓN: era rgba(0,95,86,0.2) — color teal incorrecto
+          boxShadow: 'var(--shadow-card)'
         }}>
           <span style={{ fontSize: '1.1rem', fontWeight: '800', lineHeight: '1' }}>
-            {ordenesActivas.length}
+            {totalActivas}
           </span>
           <span style={{ fontSize: '0.525rem', textTransform: 'uppercase', fontWeight: 'bold', opacity: 0.85 }}>
             Total
@@ -99,20 +89,20 @@ export default function Pedidos({ onNuevoPedido, onVerLista }) {
         </div>
       </header>
 
-      {/* --- ESTADO DE CARGA --- */}
+      {/* --- ESTADO DE CARGA INICIAL --- */}
       {loading && ordenesActivas.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '2rem 0' }}> {/* CORRECCIÓN: typo texttextAling */}
+        <div style={{ textAlign: 'center', padding: '2rem 0' }}>
           <div className={styles.labelTop} style={{ animation: 'pulse 1.5s infinite', textAlign: 'center' }}>
             Sincronizando...
           </div>
         </div>
       )}
 
-      {/* --- LISTADO DE FILAS COMPACTAS PARA MÓVIL --- */}
+      {/* --- LISTADO DE FILAS COMPACTAS --- */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)', width: '100%' }}>
         {ordenesActivas.map((orden) => {
-          const esUrgente           = orden.prioridad === 'Urgente';
-          const pendienteCancelar   = ordenPendienteCancelar === orden.id;
+          const esUrgente         = orden.prioridad === 'Urgente';
+          const pendienteCancelar = ordenPendienteCancelar === orden.id;
 
           return (
             <section
@@ -127,9 +117,9 @@ export default function Pedidos({ onNuevoPedido, onVerLista }) {
                 flexDirection: 'column',
                 justifyContent: 'space-between',
                 padding: 'var(--space-sm) 12px',
-                borderRadius: 'var(--radius-xl)',            // CORRECCIÓN: era '10px'
-                backgroundColor: 'var(--color-surface-lowest)', // CORRECCIÓN: era 'white'
-                boxShadow: 'var(--shadow-card)',               // CORRECCIÓN: era rgba inline
+                borderRadius: 'var(--radius-xl)',
+                backgroundColor: 'var(--color-surface-lowest)',
+                boxShadow: 'var(--shadow-card)',
                 transition: 'all 0.15s ease',
                 minHeight: '64px',
                 gap: '6px'
@@ -153,7 +143,7 @@ export default function Pedidos({ onNuevoPedido, onVerLista }) {
                   style={{
                     fontSize: '0.55rem',
                     padding: '2px 6px',
-                    borderRadius: 'var(--radius-sm)',  // CORRECCIÓN: era '4px'
+                    borderRadius: 'var(--radius-sm)',
                     textTransform: 'uppercase',
                     fontWeight: 'bold',
                     whiteSpace: 'nowrap'
@@ -169,7 +159,6 @@ export default function Pedidos({ onNuevoPedido, onVerLista }) {
                   onClick={() => onVerLista(orden.id)}
                   style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0, cursor: 'pointer' }}
                 >
-                  {/* Sucursal */}
                   <span style={{
                     fontSize: '0.65rem',
                     color: 'var(--text-light)',
@@ -181,7 +170,6 @@ export default function Pedidos({ onNuevoPedido, onVerLista }) {
                     {orden.sucursal?.nombre || 'General'}
                   </span>
 
-                  {/* Nombre del Proveedor */}
                   <h2 className={styles.subtitle} style={{
                     fontSize: '0.875rem',
                     margin: '1px 0',
@@ -195,7 +183,6 @@ export default function Pedidos({ onNuevoPedido, onVerLista }) {
                     {orden.proveedor?.nombre || 'Proveedor Pendiente'}
                   </h2>
 
-                  {/* Solicitantes Unificados */}
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     <span
                       style={{ color: 'var(--text-light)', overflow: 'hidden', textOverflow: 'ellipsis' }}
@@ -206,7 +193,6 @@ export default function Pedidos({ onNuevoPedido, onVerLista }) {
                   </div>
                 </div>
 
-                {/* Botones de acción mini */}
                 <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                   {permisosPedidos.borrar && (usuario?.id === orden.solicitante_id || esAdmin) && (
                     <button
@@ -219,7 +205,7 @@ export default function Pedidos({ onNuevoPedido, onVerLista }) {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        borderRadius: 'var(--radius-lg)',     // CORRECCIÓN: era '8px'
+                        borderRadius: 'var(--radius-lg)',
                         color: COLOR_DANGER,
                         backgroundColor: 'var(--color-surface-low)'
                       }}
@@ -231,7 +217,7 @@ export default function Pedidos({ onNuevoPedido, onVerLista }) {
                 </div>
               </div>
 
-              {/* ── CONFIRMACIÓN INLINE — reemplaza window.confirm ── */}
+              {/* Confirmación inline */}
               {pendienteCancelar && (
                 <div style={{
                   marginTop: 'var(--space-sm)',
@@ -269,7 +255,39 @@ export default function Pedidos({ onNuevoPedido, onVerLista }) {
         })}
       </div>
 
-      {/* --- ESTADO VACÍO (Para Activos) --- */}
+      {/* ── PAGINACIÓN: Botón "Cargar más" ── */}
+      {hayMasActivas && !loading && (
+        <button
+          onClick={cargarMasActivas}
+          className={`${styles.btnBase} ${styles.btnOutlined}`}
+          style={{
+            width: '100%',
+            marginTop: 'var(--space-md)',
+            height: '42px',
+            fontSize: '0.8rem',
+            borderColor: 'var(--color-primary)',
+            color: 'var(--color-primary)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 'var(--space-sm)'
+          }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>expand_more</span>
+          Cargar más ({ordenesActivas.length} de {totalActivas})
+        </button>
+      )}
+
+      {/* Indicador de carga al cargar más */}
+      {loading && ordenesActivas.length > 0 && (
+        <div style={{ textAlign: 'center', padding: 'var(--space-md) 0' }}>
+          <div className={styles.labelTop} style={{ animation: 'pulse 1.5s infinite', textAlign: 'center' }}>
+            Cargando más pedidos...
+          </div>
+        </div>
+      )}
+
+      {/* --- ESTADO VACÍO --- */}
       {ordenesActivas.length === 0 && !loading && (
         <div style={{
           textAlign: 'center',
@@ -300,9 +318,9 @@ export default function Pedidos({ onNuevoPedido, onVerLista }) {
             right: '20px',
             width: '54px',
             height: '54px',
-            borderRadius: 'var(--radius-xl)',              // CORRECCIÓN: era '16px'
+            borderRadius: 'var(--radius-xl)',
             backgroundColor: 'var(--text-main)',
-            color: 'var(--color-surface-lowest)',          // CORRECCIÓN: era 'white'
+            color: 'var(--color-surface-lowest)',
             border: 'none',
             display: 'flex',
             alignItems: 'center',

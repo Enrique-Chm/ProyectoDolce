@@ -1,18 +1,20 @@
 // src/modules/Admin/Tabs/Pedidos/2usePedidos.js
 import { useState, useCallback } from 'react';
 import { PedidosService } from './1Pedidos.Service';
-import { useAuth } from '../../../Auth/useAuth'; // CORRECCIÓN P1: reemplaza AuthService.getSesion()
+import { useAuth } from '../../../Auth/useAuth';
 import toast from 'react-hot-toast';
 
 export const usePedidos = () => {
   const [loading, setLoading] = useState(false);
 
-  // CORRECCIÓN P1: Consumimos el Context centralizado en lugar de leer
-  // localStorage directamente con AuthService.getSesion()
   const { usuario } = useAuth();
 
   // Estado para el Dashboard (Pedidos en curso)
   const [ordenesActivas, setOrdenesActivas] = useState([]);
+
+  // PAGINACIÓN: total de registros en BD y flag de si hay más por cargar
+  const [totalActivas, setTotalActivas] = useState(0);
+  const [hayMasActivas, setHayMasActivas] = useState(false);
 
   // Estado para el Checklist (Datos de la orden seleccionada para surtir)
   const [detalleOrdenActual, setDetalleOrdenActual] = useState(null);
@@ -21,8 +23,6 @@ export const usePedidos = () => {
    * ESTABILIZACIÓN DE DEPENDENCIAS:
    * usuario.sucursales_ids es un arreglo — usarlo directo en useCallback
    * causaría re-renders infinitos porque cada render crea una nueva referencia.
-   * Lo convertimos a string para que React pueda compararlo por valor.
-   * El arreglo se reconstruye con JSON.parse dentro del callback cuando se necesita.
    */
   const sucursalesIdsStr   = JSON.stringify(usuario?.sucursales_ids || []);
   const tieneAccesoGlobal  = usuario?.permisos?.configuracion?.leer || false;
@@ -31,17 +31,19 @@ export const usePedidos = () => {
   // OBTENCIÓN DE DATOS (READ)
   // ==========================================
 
+  /**
+   * Carga inicial de pedidos activos (primera página).
+   * Resetea la lista y carga desde el inicio.
+   */
   const cargarOrdenesActivas = useCallback(async () => {
     setLoading(true);
     try {
-      // Reconstruimos el arreglo desde el string estabilizado
       const sucursalesIds = JSON.parse(sucursalesIdsStr);
 
-      // CORRECCIÓN P1: Pasamos los parámetros al servicio para que el filtro
-      // ocurra en BD con .in(), eliminando el filtrado en memoria del cliente.
-      const { data, error } = await PedidosService.getOrdenesActivas(
+      const { data, error, count } = await PedidosService.getOrdenesActivas(
         tieneAccesoGlobal,
-        sucursalesIds
+        sucursalesIds,
+        0  // PAGINACIÓN: siempre desde el inicio en carga inicial
       );
 
       if (error) {
@@ -50,13 +52,54 @@ export const usePedidos = () => {
         return;
       }
 
-      setOrdenesActivas(data || []);
+      const registros = data || [];
+      const total     = count || 0;
+
+      setOrdenesActivas(registros);
+      setTotalActivas(total);
+      setHayMasActivas(registros.length < total);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
   }, [sucursalesIdsStr, tieneAccesoGlobal]);
+
+  /**
+   * PAGINACIÓN: Carga el siguiente bloque de pedidos activos
+   * y los agrega al final de la lista existente.
+   */
+  const cargarMasActivas = useCallback(async () => {
+    if (loading || !hayMasActivas) return;
+
+    setLoading(true);
+    try {
+      const sucursalesIds = JSON.parse(sucursalesIdsStr);
+
+      const { data, error, count } = await PedidosService.getOrdenesActivas(
+        tieneAccesoGlobal,
+        sucursalesIds,
+        ordenesActivas.length  // PAGINACIÓN: offset = registros ya cargados
+      );
+
+      if (error) {
+        toast.error('Error al cargar más pedidos');
+        return;
+      }
+
+      const nuevosRegistros = data || [];
+      const total           = count || 0;
+      const listaActualizada = [...ordenesActivas, ...nuevosRegistros];
+
+      setOrdenesActivas(listaActualizada);
+      setTotalActivas(total);
+      setHayMasActivas(listaActualizada.length < total);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [loading, hayMasActivas, ordenesActivas, sucursalesIdsStr, tieneAccesoGlobal]);
 
   const cargarDetalleDeOrden = useCallback(async (ordenId) => {
     if (!ordenId) return;
@@ -117,6 +160,7 @@ export const usePedidos = () => {
     if (nuevoEstatus === 'Completado') {
       toast.success('¡Pedido surtido y archivado correctamente!');
       setOrdenesActivas(prev => prev.filter(o => o.id !== ordenId));
+      setTotalActivas(prev => prev - 1);
       setDetalleOrdenActual(null);
     } else {
       toast.success(`Pedido marcado como ${nuevoEstatus}`);
@@ -128,10 +172,7 @@ export const usePedidos = () => {
 
   /**
    * Cancela una orden directamente — sin window.confirm.
-   * CORRECCIÓN P1: La confirmación visual es responsabilidad del componente
-   * que llama a esta función (Pedidos.jsx). El hook solo ejecuta la acción.
-   * Esto mantiene la separación de responsabilidades del patrón de 3 capas:
-   * el hook no debe controlar UI, solo datos y lógica de negocio.
+   * La confirmación visual es responsabilidad del componente.
    */
   const cancelarPedido = async (ordenId) => {
     setLoading(true);
@@ -145,6 +186,7 @@ export const usePedidos = () => {
 
     toast.success('Pedido cancelado correctamente');
     setOrdenesActivas(prev => prev.filter(o => o.id !== ordenId));
+    setTotalActivas(prev => prev - 1);
     setDetalleOrdenActual(null);
     return true;
   };
@@ -152,9 +194,12 @@ export const usePedidos = () => {
   return {
     loading,
     ordenesActivas,
+    totalActivas,       // PAGINACIÓN: total de registros en BD
+    hayMasActivas,      // PAGINACIÓN: flag para mostrar/ocultar botón "Cargar más"
     detalleOrdenActual,
     setDetalleOrdenActual,
     cargarOrdenesActivas,
+    cargarMasActivas,   // PAGINACIÓN: función para cargar siguiente bloque
     cargarDetalleDeOrden,
     toggleEstatusItem,
     cambiarEstatusOrden,

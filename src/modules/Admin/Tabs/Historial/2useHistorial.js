@@ -1,7 +1,7 @@
 // src/modules/Admin/Tabs/Historial/2useHistorial.js
 import { useState, useCallback } from 'react';
 import { HistorialService } from './1Historial.service';
-import { useAuth } from '../../../Auth/useAuth'; // CORRECCIÓN P1: reemplaza AuthService
+import { useAuth } from '../../../Auth/useAuth';
 import toast from 'react-hot-toast';
 
 export const useHistorial = () => {
@@ -11,17 +11,15 @@ export const useHistorial = () => {
   // Lista de respaldo para búsquedas locales instantáneas respetando las fechas cargadas
   const [respaldoHistorial, setRespaldoHistorial] = useState([]);
 
-  // CORRECCIÓN P1: Consumimos el Context centralizado en lugar de leer
-  // localStorage directamente con AuthService.getSesion()
+  // PAGINACIÓN: total de registros en BD y flag de si hay más por cargar
+  const [totalHistorial, setTotalHistorial] = useState(0);
+  const [hayMasHistorial, setHayMasHistorial] = useState(false);
+
+  // Guardamos las fechas activas para poder reutilizarlas en "Cargar más"
+  const [fechasActivas, setFechasActivas] = useState({ inicio: '', fin: '' });
+
   const { usuario } = useAuth();
 
-  /**
-   * ESTABILIZACIÓN DE DEPENDENCIAS:
-   * usuario.sucursales_ids es un arreglo — usarlo directo en useCallback
-   * causaría re-renders infinitos porque cada render crea una nueva referencia.
-   * Lo convertimos a string para que React pueda compararlo por valor.
-   * El arreglo se reconstruye con JSON.parse dentro del callback cuando se necesita.
-   */
   const sucursalesIdsStr  = JSON.stringify(usuario?.sucursales_ids || []);
   const tieneAccesoGlobal = usuario?.permisos?.configuracion?.leer || false;
 
@@ -29,27 +27,30 @@ export const useHistorial = () => {
   // 1. CARGA DE DATOS CON FILTRO DE SEGURIDAD
   // ==========================================
   /**
-   * Recupera el historial general aplicando restricciones por sucursal.
-   * CORRECCIÓN P1: El filtro ahora ocurre en BD vía .in() — se eliminó
-   * el filtrado en memoria que era incorrecto porque sucursal_id llegaba
-   * undefined al no estar incluido en el select del service.
+   * Recupera el historial general (sin filtro de fechas).
+   * Carga la primera página y resetea la lista.
    */
   const cargarHistorial = useCallback(async () => {
     setLoading(true);
     try {
-      // Reconstruimos el arreglo desde el string estabilizado
       const sucursalesIds = JSON.parse(sucursalesIdsStr);
 
-      const { data, error } = await HistorialService.getHistorial(
+      const { data, error, count } = await HistorialService.getHistorial(
         tieneAccesoGlobal,
-        sucursalesIds
+        sucursalesIds,
+        0  // PAGINACIÓN: siempre desde el inicio
       );
 
       if (error) throw error;
 
-      const datosFiltrados = data || [];
-      setOrdenesHistorial(datosFiltrados);
-      setRespaldoHistorial(datosFiltrados);
+      const registros = data || [];
+      const total     = count || 0;
+
+      setOrdenesHistorial(registros);
+      setRespaldoHistorial(registros);
+      setTotalHistorial(total);
+      setHayMasHistorial(registros.length < total);
+      setFechasActivas({ inicio: '', fin: '' });
     } catch (err) {
       console.error("Error en cargarHistorial:", err);
       toast.error('No se pudo cargar el historial de órdenes');
@@ -62,9 +63,8 @@ export const useHistorial = () => {
   // 2. CARGA DE DATOS POR RANGO DE FECHAS
   // ==========================================
   /**
-   * Filtra las órdenes finalizadas por un periodo de tiempo específico.
-   * CORRECCIÓN P1: El filtro de sucursal ahora ocurre en BD — se eliminó
-   * el filtrado en memoria que nunca funcionó por el bug de sucursal_id.
+   * Filtra las órdenes finalizadas por un periodo de tiempo.
+   * Carga la primera página y resetea la lista.
    */
   const cargarHistorialPorFechas = useCallback(async (fechaInicio, fechaFin) => {
     if (!fechaInicio || !fechaFin) {
@@ -73,21 +73,27 @@ export const useHistorial = () => {
     }
     setLoading(true);
     try {
-      // Reconstruimos el arreglo desde el string estabilizado
       const sucursalesIds = JSON.parse(sucursalesIdsStr);
 
-      const { data, error } = await HistorialService.getHistorialPorFechas(
+      const { data, error, count } = await HistorialService.getHistorialPorFechas(
         fechaInicio,
         fechaFin,
         tieneAccesoGlobal,
-        sucursalesIds
+        sucursalesIds,
+        0  // PAGINACIÓN: siempre desde el inicio
       );
 
       if (error) throw error;
 
-      const datosFiltrados = data || [];
-      setOrdenesHistorial(datosFiltrados);
-      setRespaldoHistorial(datosFiltrados);
+      const registros = data || [];
+      const total     = count || 0;
+
+      setOrdenesHistorial(registros);
+      setRespaldoHistorial(registros);
+      setTotalHistorial(total);
+      setHayMasHistorial(registros.length < total);
+      // Guardamos las fechas para reutilizarlas en "Cargar más"
+      setFechasActivas({ inicio: fechaInicio, fin: fechaFin });
     } catch (err) {
       console.error("Error en cargarHistorialPorFechas:", err);
       toast.error('No se pudo cargar el historial por fechas');
@@ -97,20 +103,75 @@ export const useHistorial = () => {
   }, [sucursalesIdsStr, tieneAccesoGlobal]);
 
   // ==========================================
-  // 3. BUSCABLE CRUZADO EN MEMORIA LOCAL (INSENSIBLE A ACENTOS)
+  // 3. PAGINACIÓN: CARGAR MÁS REGISTROS
   // ==========================================
   /**
-   * Filtra en tiempo real los registros cargados por Folio, Proveedor o Sucursal
-   * de forma insensible a mayúsculas, minúsculas y acentos.
+   * Carga el siguiente bloque de registros y los agrega al final
+   * de la lista existente. Respeta el filtro de fechas activo.
+   */
+  const cargarMasHistorial = useCallback(async () => {
+    if (loading || !hayMasHistorial) return;
+
+    setLoading(true);
+    try {
+      const sucursalesIds = JSON.parse(sucursalesIdsStr);
+      const offset        = ordenesHistorial.length;
+
+      let resultado;
+
+      // Si hay fechas activas, usamos el método con filtro de fechas
+      if (fechasActivas.inicio && fechasActivas.fin) {
+        resultado = await HistorialService.getHistorialPorFechas(
+          fechasActivas.inicio,
+          fechasActivas.fin,
+          tieneAccesoGlobal,
+          sucursalesIds,
+          offset
+        );
+      } else {
+        resultado = await HistorialService.getHistorial(
+          tieneAccesoGlobal,
+          sucursalesIds,
+          offset
+        );
+      }
+
+      const { data, error, count } = resultado;
+
+      if (error) {
+        toast.error('Error al cargar más registros');
+        return;
+      }
+
+      const nuevosRegistros  = data || [];
+      const total            = count || 0;
+      const listaActualizada = [...ordenesHistorial, ...nuevosRegistros];
+
+      setOrdenesHistorial(listaActualizada);
+      setRespaldoHistorial(listaActualizada);
+      setTotalHistorial(total);
+      setHayMasHistorial(listaActualizada.length < total);
+    } catch (err) {
+      console.error("Error en cargarMasHistorial:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [loading, hayMasHistorial, ordenesHistorial, fechasActivas, sucursalesIdsStr, tieneAccesoGlobal]);
+
+  // ==========================================
+  // 4. BUSCABLE CRUZADO EN MEMORIA LOCAL (INSENSIBLE A ACENTOS)
+  // ==========================================
+  /**
+   * Filtra en tiempo real los registros YA CARGADOS por Folio, Proveedor o Sucursal.
+   * Nota: la búsqueda local solo opera sobre los registros paginados ya descargados.
+   * Para buscar en toda la BD, el usuario debe ampliar las fechas o cargar más.
    */
   const buscarFolio = useCallback((termino) => {
     if (!termino || !termino.trim()) {
-      // Si el buscador está vacío, restauramos el bloque de registros original
       setOrdenesHistorial(respaldoHistorial);
       return;
     }
 
-    // Función auxiliar interna para remover acentos y pasar a minúsculas de forma segura
     const limpiarTexto = (texto) => {
       if (!texto) return '';
       return texto
@@ -120,7 +181,6 @@ export const useHistorial = () => {
         .replace(/[\u0300-\u036f]/g, "");
     };
 
-    // Función de comparación para evitar redundancia de código
     const cumpleTexto = (campoOriginal, consultaLimpia) => {
       if (!campoOriginal) return false;
       return limpiarTexto(campoOriginal).includes(consultaLimpia);
@@ -141,8 +201,11 @@ export const useHistorial = () => {
   return {
     loading,
     ordenesHistorial,
+    totalHistorial,      // PAGINACIÓN: total de registros en BD
+    hayMasHistorial,     // PAGINACIÓN: flag para mostrar/ocultar botón "Cargar más"
     cargarHistorial,
     cargarHistorialPorFechas,
+    cargarMasHistorial,  // PAGINACIÓN: función para cargar siguiente bloque
     buscarFolio
   };
 };

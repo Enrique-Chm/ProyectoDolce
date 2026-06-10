@@ -1,6 +1,9 @@
 // src/modules/Admin/Tabs/Pedidos/1Pedidos.Service.js
 import { supabase } from '../../../../lib/supabaseClient';
 
+// Registros por página para pedidos activos
+const LIMITE_PEDIDOS = 50;
+
 export const PedidosService = {
 
   // ==========================================
@@ -8,14 +11,13 @@ export const PedidosService = {
   // ==========================================
   /**
    * Recupera las órdenes con estatus Pendiente o En Proceso.
-   * Incluye la relación con proveedor, solicitante y sucursal.
-   * CORRECCIÓN P1: Ahora recibe el arreglo completo de sucursalesIds para
-   * filtrar con .in() en lugar de un solo ID con .eq(), soportando
-   * trabajadores asignados a múltiples sucursales.
-   * @param {boolean} tieneAccesoGlobal - Si es true, no se aplica filtro de sucursal
-   * @param {string[]} sucursalesIds    - Arreglo de UUIDs de sucursales del trabajador
+   * PAGINACIÓN: Carga en bloques de LIMITE_PEDIDOS con offset.
+   * Retorna { data, count, error } donde count es el total sin paginar.
+   * @param {boolean}  tieneAccesoGlobal - Si true, no se aplica filtro de sucursal
+   * @param {string[]} sucursalesIds     - Arreglo de UUIDs de sucursales del trabajador
+   * @param {number}   desde             - Offset para paginación (default: 0)
    */
-  async getOrdenesActivas(tieneAccesoGlobal, sucursalesIds = []) {
+  async getOrdenesActivas(tieneAccesoGlobal, sucursalesIds = [], desde = 0) {
     let query = supabase
       .from('BD_Ordenes_Compra')
       .select(`
@@ -32,19 +34,18 @@ export const PedidosService = {
         proveedor:Cat_Proveedores(nombre),
         solicitante:Cat_Trabajadores(nombre_completo),
         sucursal:Cat_sucursales(nombre)
-      `)
+      `, { count: 'exact' })  // PAGINACIÓN: solicita el conteo total
       .in('estatus', ['Pendiente', 'En Proceso'])
       .order('prioridad', { ascending: false })
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(desde, desde + LIMITE_PEDIDOS - 1);  // PAGINACIÓN: rango de registros
 
-    // CORRECCIÓN P1: El filtro ahora se aplica en BD con .in() sobre el arreglo
-    // completo de sucursales del trabajador, eliminando el filtrado en memoria.
     if (!tieneAccesoGlobal && sucursalesIds.length > 0) {
       query = query.in('sucursal_id', sucursalesIds);
     }
 
-    const { data, error } = await query;
-    return { data, error };
+    const { data, error, count } = await query;
+    return { data, error, count };
   },
 
   // ==========================================
@@ -139,14 +140,11 @@ export const PedidosService = {
    * SOLUCIÓN AL JOIN AUTO-REFERENCIAL:
    * Supabase/PostgREST no resuelve correctamente un join de BD_Productos → BD_Productos
    * cuando está anidado a 4 niveles de profundidad (Orden → Detalle → Producto → Equivalente).
-   * El dato llega null aunque exista en BD.
    *
    * Estrategia en 2 pasos:
    *   PASO 1 — Query principal sin el join problemático (sí traemos producto_equivalente_id).
    *   PASO 2 — Query plana y directa a BD_Productos con los IDs equivalentes recolectados.
    *   PASO 3 — Fusión en memoria: inyectamos el objeto equivalente en cada detalle.
-   *
-   * CORRECCIÓN P1: select('*') reemplazado por columnas explícitas.
    */
   async getDetalleDeOrden(ordenId) {
     // ── PASO 1: Query principal (sin join auto-referencial) ──────────────────
@@ -186,18 +184,15 @@ export const PedidosService = {
       .eq('id', ordenId)
       .single();
 
-    // Si la query principal falla, retornamos el error de inmediato
     if (error) return { data, error };
 
     // ── PASO 2: Recolectar IDs de productos equivalentes ────────────────────
     const idsEquivalentes = (data.detalles || [])
       .map(d => d.producto?.producto_equivalente_id)
-      .filter(Boolean); // elimina nulls y undefined
+      .filter(Boolean);
 
-    // Si ningún producto tiene equivalente, retornamos sin hacer más queries
     if (idsEquivalentes.length === 0) return { data, error: null };
 
-    // Query plana y directa: trae los equivalentes con su proveedor sin anidamiento problemático
     const { data: productosEquivalentes, error: errorEquiv } = await supabase
       .from('BD_Productos')
       .select(`
@@ -211,7 +206,6 @@ export const PedidosService = {
       .in('id', idsEquivalentes);
 
     if (errorEquiv) {
-      // No es un error fatal: la orden carga correctamente, solo sin datos del equivalente
       console.error("Aviso: No se pudieron cargar los productos equivalentes:", errorEquiv.message);
       return { data, error: null };
     }
@@ -222,7 +216,6 @@ export const PedidosService = {
       return acc;
     }, {});
 
-    // Inyectamos el objeto equivalente resuelto dentro de cada detalle
     const dataEnriquecida = {
       ...data,
       detalles: (data.detalles || []).map(detalle => {
