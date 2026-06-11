@@ -185,22 +185,32 @@ export default function ImportadorMasivo({ onVolver }) {
     });
   };
 
-    const ejecutarImportacionFinal = async () => {
+// (Solo pego la función que cambió y los arreglos de errores para que no sea tan largo)
+// Asegúrate de reemplazar la función ejecutarImportacionFinal completa en tu archivo
+
+  const ejecutarImportacionFinal = async () => {
     setLoading(true);
     try {
-      // 1. Filtramos solo los registros que pasaron la validación
       const validos = filasAnalizadas.filter(f => f.__valido);
       if (validos.length === 0) return toast.error('No hay registros válidos para subir');
 
-      // 2. LIMPIEZA CRÍTICA: Eliminamos las etiquetas de control (__errores, __valido)
-      // para que Supabase no rechace el objeto por tener columnas inexistentes.
+      // LIMPIEZA ABSOLUTA DE OBJETOS
       const datosListosParaBD = validos.map(fila => {
-        const { __errores, __valido, ...datosReales } = fila;
-        return datosReales;
+        // Separamos las etiquetas de la UI
+        const { __errores, __valido, ...datosOriginales } = fila;
+        
+        // Creamos un objeto nuevo solo con los campos que tienen valor real
+        const cleanObj = {};
+        Object.entries(datosOriginales).forEach(([key, val]) => {
+          // Si el valor es un string vacío, no incluimos la propiedad
+          if (val !== "" && val !== null && val !== undefined) {
+            cleanObj[key] = val;
+          }
+        });
+        return cleanObj;
       });
 
       let res;
-      // 3. Enviamos los datos LIMPIOS al servicio
       if (tipoImportacion === 'productos') res = await ConfiguracionService.importarProductosMasivo(datosListosParaBD);
       else if (tipoImportacion === 'proveedores') res = await ConfiguracionService.importarProveedoresMasivo(datosListosParaBD);
       else if (tipoImportacion === 'sucursales') res = await ConfiguracionService.importarSucursalesMasivo(datosListosParaBD);
@@ -213,12 +223,11 @@ export default function ImportadorMasivo({ onVolver }) {
       onVolver();
     } catch (err) {
       console.error("Error en carga final:", err);
-      toast.error(`Error al guardar: ${err.message || 'Error de base de datos'}`);
+      toast.error(`Error al guardar: ${err.message || 'Error de base de datos'}`, { duration: 5000 });
     } finally {
       setLoading(false);
     }
   };
-
   return (
     <div style={{ width: '100%', maxWidth: paso === 2 ? '1200px' : '100%', margin: '0 auto', animation: 'slideUp 0.3s ease' }}>
       

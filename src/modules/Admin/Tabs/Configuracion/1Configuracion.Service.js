@@ -130,9 +130,7 @@ export const ConfiguracionService = {
   },
 
   async guardarTrabajador(trabajadorData) {
-    // Sanitizamos excluyendo 'password' — se hashea en el servidor tal cual llega
     const sanitizado = sanitizeObject(trabajadorData, ['password']);
-
     const {
       id, usuario, nombre_completo, puesto, password,
       rol_id, fecha_ingreso, estatus, sucursales_ids, turno
@@ -204,21 +202,11 @@ export const ConfiguracionService = {
 
   async getCatalogosParaSelectores() {
     const [unidades, sucursales, proveedores, roles, categorias] = await Promise.all([
-      supabase.from('Cat_UM')
-        .select('id, nombre, abreviatura')
-        .eq('estatus', 'Activo'),
-      supabase.from('Cat_sucursales')
-        .select('id, nombre')
-        .eq('estatus', 'Activo'),
-      supabase.from('Cat_Proveedores')
-        .select('id, nombre')
-        .eq('estatus', 'Activo'),
-      supabase.from('Cat_Roles')
-        .select('id, nombre')
-        .eq('estatus', 'Activo'),
-      supabase.from('Cat_Categorias')
-        .select('id, nombre')
-        .neq('estatus', 'Inactivo')
+      supabase.from('Cat_UM').select('id, nombre, abreviatura').eq('estatus', 'Activo'),
+      supabase.from('Cat_sucursales').select('id, nombre').eq('estatus', 'Activo'),
+      supabase.from('Cat_Proveedores').select('id, nombre').eq('estatus', 'Activo'),
+      supabase.from('Cat_Roles').select('id, nombre').eq('estatus', 'Activo'),
+      supabase.from('Cat_Categorias').select('id, nombre').neq('estatus', 'Inactivo')
     ]);
 
     return {
@@ -227,13 +215,12 @@ export const ConfiguracionService = {
       proveedores: proveedores.data || [],
       roles:       roles.data       || [],
       categorias:  categorias.data  || [],
-      error: unidades.error || sucursales.error || proveedores.error ||
-             roles.error    || categorias.error
+      error: unidades.error || sucursales.error || proveedores.error || roles.error || categorias.error
     };
   },
 
   // ==========================================
-  // 6. ACCIÓN GENÉRICA DE ESTATUS (Toggle) — VALIDADO EN SERVIDOR
+  // 6. ACCIÓN GENÉRICA DE ESTATUS (Toggle)
   // ==========================================
   async toggleEstatusGenerico(tabla, id, estatusActual) {
     const { data: resultado, error } = await supabase.rpc('toggle_estatus_seguro', {
@@ -243,13 +230,10 @@ export const ConfiguracionService = {
     });
 
     if (error) return { data: null, error };
-
-    if (resultado?.error) {
-      return { data: null, error: { message: resultado.mensaje } };
-    }
-
+    if (resultado?.error) return { data: null, error: { message: resultado.mensaje } };
     return { data: resultado, error: null };
   },
+
   // ==========================================
   // 7. IMPORTACIÓN MASIVA (PRODUCTOS OPERATIVOS)
   // ==========================================
@@ -275,10 +259,7 @@ export const ConfiguracionService = {
       const mapUms  = (unidades.data  || []).reduce((acc, u) => ({ ...acc, [normalizar(u.abreviatura)]: u.id, [normalizar(u.nombre)]: u.id }), {});
       const mapCats = (categorias.data || []).reduce((acc, c) => ({ ...acc, [normalizar(c.nombre)]: c.id }), {});
 
-      const nuevos = [];
-      const existentes = [];
-
-      productosExcel.forEach(row => {
+      const batchData = productosExcel.map(row => {
         let sucsIds = [];
         if (row.sucursales) {
           sucsIds = String(row.sucursales).split(',').map(s => mapSucs[normalizar(s)]).filter(Boolean);
@@ -295,31 +276,31 @@ export const ConfiguracionService = {
           categoria_id: mapCats[normalizar(row.categoria)] || null,
           um_id: mapUms[normalizar(row.unidad_medida)] || null,
           presentacion: row.presentacion || null,
-          contenido: Number(row.contenido) || null,
+          contenido: (row.contenido === "" || row.contenido === undefined) ? null : Number(row.contenido),
           proveedor_id: mapProv[normalizar(row.proveedor)] || null,
           sucursales_ids: sucsIds,
           turno_uso: turnoFinal,
           activo: row.activo === 'false' ? false : true
         };
 
-        // SEPARACIÓN CRÍTICA:
-        if (row.id && String(row.id).trim() !== '') {
-          existentes.push({ ...item, id: row.id.trim() });
-        } else {
-          nuevos.push(item);
+        // LÓGICA DE LIMPIEZA DE ID:
+        // Si el ID está vacío, es null, o es el texto "null", NO enviamos la propiedad 'id'
+        if (row.id && String(row.id).trim() !== '' && String(row.id).toLowerCase() !== 'null') {
+          item.id = String(row.id).trim();
         }
-      });
 
-      // Ejecutamos las dos operaciones
-      let resNuevos = { data: [] }, resExistentes = { data: [] };
-      if (nuevos.length > 0) resNuevos = await supabase.from('BD_Productos').insert(nuevos).select();
-      if (existentes.length > 0) resExistentes = await supabase.from('BD_Productos').upsert(existentes).select();
+        return item;
+      }).filter(p => p.nombre);
 
-      if (resNuevos.error) throw resNuevos.error;
-      if (resExistentes.error) throw resExistentes.error;
+      // Usamos un solo upsert masivo. Supabase maneja la creación de UUIDs para los que no tienen ID.
+      const { data, error } = await supabase
+        .from('BD_Productos')
+        .upsert(batchData, { onConflict: 'id' })
+        .select();
 
-      return { data: [...(resNuevos.data || []), ...(resExistentes.data || [])], error: null };
+      return { data, error };
     } catch (err) {
+      console.error("Error en importarProductosMasivo:", err);
       return { data: null, error: err };
     }
   },
@@ -328,8 +309,7 @@ export const ConfiguracionService = {
   // 8. IMPORTACIÓN MASIVA (PROVEEDORES)
   // ==========================================
   async importarProveedoresMasivo(rows) {
-    const nuevos = [], existentes = [];
-    rows.forEach(row => {
+    const batchData = rows.map(row => {
       const item = {
         nombre: row.nombre?.trim() || null,
         direccion: row.direccion?.trim() || null,
@@ -337,61 +317,64 @@ export const ConfiguracionService = {
         dias_abierto: row.dias_abierto ? String(row.dias_abierto).split(',').map(d => d.trim()).filter(Boolean) : null,
         estatus: row.estatus || 'Activo'
       };
-      if (row.id && String(row.id).trim() !== '') existentes.push({ ...item, id: row.id.trim() });
-      else nuevos.push(item);
-    });
-    const res1 = nuevos.length > 0 ? await supabase.from('Cat_Proveedores').insert(nuevos).select() : { data: [] };
-    const res2 = existentes.length > 0 ? await supabase.from('Cat_Proveedores').upsert(existentes).select() : { data: [] };
-    return { data: [...(res1.data || []), ...(res2.data || [])], error: res1.error || res2.error };
+      if (row.id && String(row.id).trim() !== '' && String(row.id).toLowerCase() !== 'null') {
+        item.id = String(row.id).trim();
+      }
+      return item;
+    }).filter(r => r.nombre);
+
+    const { data, error } = await supabase.from('Cat_Proveedores').upsert(batchData, { onConflict: 'id' }).select();
+    return { data, error };
   },
 
   // ==========================================
   // 9. IMPORTACIÓN MASIVA (SUCURSALES)
   // ==========================================
   async importarSucursalesMasivo(rows) {
-    const nuevos = [], existentes = [];
-    rows.forEach(row => {
+    const batchData = rows.map(row => {
       const item = {
         nombre: row.nombre?.trim() || null,
         direccion: row.direccion?.trim() || null,
         horario: row.horario?.trim() || null,
         estatus: row.estatus || 'Activo'
       };
-      if (row.id && String(row.id).trim() !== '') existentes.push({ ...item, id: row.id.trim() });
-      else nuevos.push(item);
-    });
-    const res1 = nuevos.length > 0 ? await supabase.from('Cat_sucursales').insert(nuevos).select() : { data: [] };
-    const res2 = existentes.length > 0 ? await supabase.from('Cat_sucursales').upsert(existentes).select() : { data: [] };
-    return { data: [...(res1.data || []), ...(res2.data || [])], error: res1.error || res2.error };
+      if (row.id && String(row.id).trim() !== '' && String(row.id).toLowerCase() !== 'null') {
+        item.id = String(row.id).trim();
+      }
+      return item;
+    }).filter(r => r.nombre);
+
+    const { data, error } = await supabase.from('Cat_sucursales').upsert(batchData, { onConflict: 'id' }).select();
+    return { data, error };
   },
 
   // ==========================================
   // 10. IMPORTACIÓN MASIVA (CATEGORÍAS)
   // ==========================================
   async importarCategoriasMasivo(rows) {
-    const nuevos = [], existentes = [];
-    rows.forEach(row => {
+    const batchData = rows.map(row => {
       const item = {
         nombre: row.nombre?.trim() || null,
         descripcion: row.descripcion?.trim() || null,
         estatus: row.estatus || 'activo'
       };
-      if (row.id && String(row.id).trim() !== '') existentes.push({ ...item, id: row.id.trim() });
-      else nuevos.push(item);
-    });
-    const res1 = nuevos.length > 0 ? await supabase.from('Cat_Categorias').insert(nuevos).select() : { data: [] };
-    const res2 = existentes.length > 0 ? await supabase.from('Cat_Categorias').upsert(existentes).select() : { data: [] };
-    return { data: [...(res1.data || []), ...(res2.data || [])], error: res1.error || res2.error };
+      if (row.id && String(row.id).trim() !== '' && String(row.id).toLowerCase() !== 'null') {
+        item.id = String(row.id).trim();
+      }
+      return item;
+    }).filter(r => r.nombre);
+
+    const { data, error } = await supabase.from('Cat_Categorias').upsert(batchData, { onConflict: 'id' }).select();
+    return { data, error };
   },
+
   // ==========================================
   // 11. EXPORTACIÓN DE PRODUCTOS (CON NOMBRES RESUELTOS)
   // ==========================================
   async exportarProductos() {
     try {
       const [productos, proveedores, sucursales, unidades, categorias] = await Promise.all([
-        supabase.from('BD_Productos')
-          .select('id, nombre, marca, presentacion, contenido, proveedor_id, um_id, categoria_id, sucursales_ids, turno_uso, activo')
-          .order('nombre'),
+        supabase.from('BD_Productos').select('id, nombre, marca, presentacion, contenido, proveedor_id, um_id, categoria_id, sucursales_ids, turno_uso, activo').order('nombre'),
         supabase.from('Cat_Proveedores').select('id, nombre'),
         supabase.from('Cat_sucursales').select('id, nombre'),
         supabase.from('Cat_UM').select('id, abreviatura'),
@@ -431,15 +414,7 @@ export const ConfiguracionService = {
   async getAsignacionesPorSucursal(sucursalId) {
     const { data, error } = await supabase
       .from('Cat_Sucursal_Proveedor')
-      .select(`
-        id,
-        sucursal_id,
-        proveedor_id,
-        dias_permitidos,
-        estatus,
-        created_at,
-        proveedor:Cat_Proveedores(id, nombre)
-      `)
+      .select(`id, sucursal_id, proveedor_id, dias_permitidos, estatus, created_at, proveedor:Cat_Proveedores(id, nombre)`)
       .eq('sucursal_id', sucursalId)
       .order('created_at', { ascending: true });
     return { data, error };
@@ -452,33 +427,19 @@ export const ConfiguracionService = {
       dias_permitidos: asignacionData.dias_permitidos || [],
       estatus:         asignacionData.estatus || 'Activo'
     };
-
     if (asignacionData.id && String(asignacionData.id).trim()) {
       dataLimpia.id = asignacionData.id;
     }
-
     const { data, error } = await supabase
       .from('Cat_Sucursal_Proveedor')
       .upsert([dataLimpia], { onConflict: 'sucursal_id, proveedor_id' })
-      .select(`
-        id,
-        sucursal_id,
-        proveedor_id,
-        dias_permitidos,
-        estatus,
-        proveedor:Cat_Proveedores(id, nombre)
-      `)
+      .select(`id, sucursal_id, proveedor_id, dias_permitidos, estatus, proveedor:Cat_Proveedores(id, nombre)`)
       .single();
-
     return { data, error };
   },
 
   async eliminarAsignacion(asignacionId) {
-    const { data, error } = await supabase
-      .from('Cat_Sucursal_Proveedor')
-      .delete()
-      .eq('id', asignacionId)
-      .select();
+    const { data, error } = await supabase.from('Cat_Sucursal_Proveedor').delete().eq('id', asignacionId).select();
     return { data, error };
   },
 
@@ -497,9 +458,7 @@ export const ConfiguracionService = {
 
       const normalizar = (str) => {
         if (!str) return '';
-        return String(str).toLowerCase().normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .replace(/[^a-z0-9]/g, '');
+        return String(str).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
       };
 
       const mapSucs = (sucursales.data || []).reduce((acc, s) => ({ ...acc, [normalizar(s.nombre)]: s.id }), {});
@@ -509,68 +468,38 @@ export const ConfiguracionService = {
         const obj = {
           sucursal_id:     mapSucs[normalizar(row.sucursal)]  || null,
           proveedor_id:    mapProv[normalizar(row.proveedor)] || null,
-          dias_permitidos: row.dias_permitidos
-            ? String(row.dias_permitidos).split(',').map(d => d.trim()).filter(Boolean)
-            : [],
+          dias_permitidos: row.dias_permitidos ? String(row.dias_permitidos).split(',').map(d => d.trim()).filter(Boolean) : [],
           estatus: 'Activo'
         };
-        if (row.id && String(row.id).trim()) obj.id = String(row.id).trim();
+        if (row.id && String(row.id).trim() !== '' && String(row.id).toLowerCase() !== 'null') {
+          obj.id = String(row.id).trim();
+        }
         return obj;
       }).filter(r => r.sucursal_id && r.proveedor_id && r.dias_permitidos.length > 0);
 
-      if (registros.length === 0) {
-        return { data: null, error: { message: "No se pudieron resolver los nombres de sucursales/proveedores." } };
-      }
-
-      const { data, error } = await supabase
-        .from('Cat_Sucursal_Proveedor')
-        .upsert(registros, { onConflict: 'sucursal_id, proveedor_id' })
-        .select();
-
+      const { data, error } = await supabase.from('Cat_Sucursal_Proveedor').upsert(registros, { onConflict: 'sucursal_id, proveedor_id' }).select();
       return { data, error };
     } catch (err) {
       return { data: null, error: { message: "Fallo en la pre-carga de catálogos." } };
     }
   },
 
-  // ==========================================
-  // 14. EXPORTACIÓN (CALENDARIO SUCURSAL × PROVEEDOR)
-  // ==========================================
   async exportarAsignaciones() {
     try {
-      const { data, error } = await supabase
-        .from('Cat_Sucursal_Proveedor')
-        .select(`
-          id,
-          dias_permitidos,
-          estatus,
-          sucursal:Cat_sucursales(nombre),
-          proveedor:Cat_Proveedores(nombre)
-        `)
-        .eq('estatus', 'Activo')
-        .order('created_at');
-
+      const { data, error } = await supabase.from('Cat_Sucursal_Proveedor').select(`id, dias_permitidos, estatus, sucursal:Cat_sucursales(nombre), proveedor:Cat_Proveedores(nombre)`).eq('estatus', 'Activo').order('created_at');
       if (error) return { data: null, error };
-
       const exportData = (data || []).map(a => ({
-        id:               a.id,
-        sucursal:         a.sucursal?.nombre  || '',
-        proveedor:        a.proveedor?.nombre || '',
-        dias_permitidos:  (a.dias_permitidos || []).join(', ')
+        id: a.id,
+        sucursal: a.sucursal?.nombre || '',
+        proveedor: a.proveedor?.nombre || '',
+        dias_permitidos: (a.dias_permitidos || []).join(', ')
       }));
-
       return { data: exportData, error: null };
     } catch (err) {
       return { data: null, error: { message: 'Error al exportar asignaciones.' } };
     }
   },
-    // ==========================================
-  // 15. SOPORTE PARA IMPORTACIÓN INTELIGENTE
-  // ==========================================
-  /**
-   * Trae todos los catálogos necesarios para validar nombres en el cliente
-   * antes de realizar una importación masiva.
-   */
+
   async getCatalogosParaValidacion() {
     try {
       const [proveedores, sucursales, unidades, categorias] = await Promise.all([
@@ -579,16 +508,7 @@ export const ConfiguracionService = {
         supabase.from('Cat_UM').select('id, nombre, abreviatura'),
         supabase.from('Cat_Categorias').select('id, nombre')
       ]);
-
-      return {
-        proveedores: proveedores.data || [],
-        sucursales:  sucursales.data  || [],
-        unidades:    unidades.data    || [],
-        categorias:  categorias.data  || [],
-        error: proveedores.error || sucursales.error || unidades.error || categorias.error
-      };
-    } catch (err) {
-      return { error: err };
-    }
+      return { proveedores: proveedores.data || [], sucursales: sucursales.data || [], unidades: unidades.data || [], categorias: categorias.data || [], error: proveedores.error || sucursales.error || unidades.error || categorias.error };
+    } catch (err) { return { error: err }; }
   }
 };
