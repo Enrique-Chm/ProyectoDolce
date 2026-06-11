@@ -83,7 +83,7 @@ export default function Historial({ onVerDetalle }) {
             
             {/* Bloque DESDE */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label className={styles.labelTop} style={{ fontSize: '0.55rem', textAlign: 'center', opacity: 0.7 }}>DESDE</label>
+              <label className={styles.labelTop} style={{ fontSize: '0.55rem', letterSpacing: '1px', opacity: 0.8 }}>DESDE</label>
               <input
                 type="date"
                 value={fechas.inicio}
@@ -106,7 +106,7 @@ export default function Historial({ onVerDetalle }) {
 
             {/* Bloque HASTA */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label className={styles.labelTop} style={{ fontSize: '0.55rem', textAlign: 'center', opacity: 0.7 }}>HASTA</label>
+              <label className={styles.labelTop} style={{ fontSize: '0.55rem', letterSpacing: '1px', opacity: 0.8 }}>HASTA</label>
               <input
                 type="date"
                 value={fechas.fin}
