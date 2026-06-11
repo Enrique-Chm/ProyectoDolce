@@ -585,5 +585,32 @@ export const ConfiguracionService = {
     } catch (err) {
       return { data: null, error: { message: 'Error al exportar asignaciones.' } };
     }
+  },
+    // ==========================================
+  // 15. SOPORTE PARA IMPORTACIÓN INTELIGENTE
+  // ==========================================
+  /**
+   * Trae todos los catálogos necesarios para validar nombres en el cliente
+   * antes de realizar una importación masiva.
+   */
+  async getCatalogosParaValidacion() {
+    try {
+      const [proveedores, sucursales, unidades, categorias] = await Promise.all([
+        supabase.from('Cat_Proveedores').select('id, nombre'),
+        supabase.from('Cat_sucursales').select('id, nombre'),
+        supabase.from('Cat_UM').select('id, nombre, abreviatura'),
+        supabase.from('Cat_Categorias').select('id, nombre')
+      ]);
+
+      return {
+        proveedores: proveedores.data || [],
+        sucursales:  sucursales.data  || [],
+        unidades:    unidades.data    || [],
+        categorias:  categorias.data  || [],
+        error: proveedores.error || sucursales.error || unidades.error || categorias.error
+      };
+    } catch (err) {
+      return { error: err };
+    }
   }
 };
