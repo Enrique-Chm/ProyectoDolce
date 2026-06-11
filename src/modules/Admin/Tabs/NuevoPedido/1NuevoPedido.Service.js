@@ -1,6 +1,6 @@
 // src/modules/Admin/Tabs/NuevoPedido/1NuevoPedido.Service.js
 import { supabase } from '../../../../lib/supabaseClient';
-
+import { sanitizeString } from '../../../../lib/sanitize';
 export const NuevoPedidoService = {
   /**
    * 0. VALIDACIÓN: DÍAS PERMITIDOS DE PEDIDO POR SUCURSAL
@@ -158,7 +158,7 @@ export const NuevoPedidoService = {
 
         await supabase
           .from('BD_Ordenes_Compra')
-          .update({ notas: notasActualizadas })
+          .update({ notas: sanitizeString(notasActualizadas) })
           .eq('id', ordenExistente.id);
 
         ordenFinal.notas = notasActualizadas;
@@ -210,8 +210,7 @@ export const NuevoPedidoService = {
 
         // Construimos las notas con la firma del solicitante
         let notasIniciales = ordenCabecera.notas || '';
-        notasIniciales = `[Solicitantes]: ${nombreSolicitanteActual}\n${notasIniciales}`.trim();
-
+               notasIniciales = sanitizeString(`[Solicitantes]: ${nombreSolicitanteActual}\n${notasIniciales}`.trim());
         // Formateamos los productos como JSONB para la RPC
         const productosJsonb = listaProductos.map(item => ({
           producto_id: item.producto_id,

@@ -1,6 +1,6 @@
 // src/modules/Admin/Tabs/Productos/1Productos.Service.js
 import { supabase } from '../../../../lib/supabaseClient';
-
+import { sanitizeObject } from '../../../../lib/sanitize';
 export const ProductosService = {
   // ==========================================
   // LECTURA DE PRODUCTOS (CON RELACIONES)
@@ -89,7 +89,7 @@ export const ProductosService = {
       const rawData = { ...productoData };
       const esNuevo = !rawData.id || rawData.id === "" || rawData.id === "null";
 
-      const dataParaBD = {
+      const dataParaBD = sanitizeObject({
         nombre: rawData.nombre,
         marca: rawData.marca || null,
         presentacion: rawData.presentacion || null,
@@ -101,7 +101,7 @@ export const ProductosService = {
         activo: rawData.activo ?? true,
         sucursales_ids: Array.isArray(rawData.sucursales_ids) ? rawData.sucursales_ids : [],
         turno_uso: rawData.turno_uso || 'Ambos'
-      };
+      });
 
       let query;
       if (esNuevo) {

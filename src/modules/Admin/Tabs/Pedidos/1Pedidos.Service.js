@@ -1,6 +1,6 @@
 // src/modules/Admin/Tabs/Pedidos/1Pedidos.Service.js
 import { supabase } from '../../../../lib/supabaseClient';
-
+import { sanitizeString } from '../../../../lib/sanitize';
 // Registros por página para pedidos activos
 const LIMITE_PEDIDOS = 50;
 
@@ -295,7 +295,7 @@ export const PedidosService = {
   async actualizarNotasOrden(ordenId, notas) {
     const { data, error } = await supabase
       .from('BD_Ordenes_Compra')
-      .update({ notas })
+      .update({ notas: sanitizeString(notas) })
       .eq('id', ordenId)
       .select();
     return { data, error };

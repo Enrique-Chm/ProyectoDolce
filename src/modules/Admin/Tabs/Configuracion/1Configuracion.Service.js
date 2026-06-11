@@ -1,13 +1,11 @@
 // src/modules/Admin/Tabs/Configuracion/1Configuracion.Service.js
 import { supabase } from '../../../../lib/supabaseClient';
+import { sanitizeObject } from '../../../../lib/sanitize';
 
 export const ConfiguracionService = {
   // ==========================================
   // 1. SUCURSALES
   // ==========================================
-  /**
-   * CORRECCIÓN P1: select('*') → columnas explícitas
-   */
   async getSucursales() {
     const { data, error } = await supabase
       .from('Cat_sucursales')
@@ -26,7 +24,7 @@ export const ConfiguracionService = {
   },
 
   async guardarSucursal(sucursalData) {
-    const dataLimpia = { ...sucursalData };
+    const dataLimpia = sanitizeObject({ ...sucursalData });
     if (!dataLimpia.id || dataLimpia.id === "" || String(dataLimpia.id) === "null") {
       delete dataLimpia.id;
     }
@@ -41,9 +39,6 @@ export const ConfiguracionService = {
   // ==========================================
   // 2. PROVEEDORES
   // ==========================================
-  /**
-   * CORRECCIÓN P1: select('*') → columnas explícitas
-   */
   async getProveedores() {
     const { data, error } = await supabase
       .from('Cat_Proveedores')
@@ -61,7 +56,7 @@ export const ConfiguracionService = {
   },
 
   async guardarProveedor(proveedorData) {
-    const dataLimpia = { ...proveedorData };
+    const dataLimpia = sanitizeObject({ ...proveedorData });
     if (!dataLimpia.id || dataLimpia.id === "" || String(dataLimpia.id) === "null") {
       delete dataLimpia.id;
     }
@@ -76,9 +71,6 @@ export const ConfiguracionService = {
   // ==========================================
   // 3. ROLES (Sistema de permisos)
   // ==========================================
-  /**
-   * CORRECCIÓN P1: select('*') → columnas explícitas
-   */
   async getRoles() {
     const { data, error } = await supabase
       .from('Cat_Roles')
@@ -95,7 +87,7 @@ export const ConfiguracionService = {
   },
 
   async guardarRol(rolData) {
-    const dataLimpia = { ...rolData };
+    const dataLimpia = sanitizeObject({ ...rolData }, ['permisos']);
     if (!dataLimpia.id || dataLimpia.id === "" || String(dataLimpia.id) === "null") {
       delete dataLimpia.id;
     }
@@ -110,11 +102,6 @@ export const ConfiguracionService = {
   // ==========================================
   // 4. TRABAJADORES (Recursos Humanos)
   // ==========================================
-  /**
-   * CORRECCIÓN P1:
-   * - select('*') → columnas explícitas SIN la columna password
-   *   (nunca debe viajar al cliente aunque esté hasheada)
-   */
   async getTrabajadores() {
     const { data, error } = await supabase
       .from('Cat_Trabajadores')
@@ -142,18 +129,14 @@ export const ConfiguracionService = {
     return { data: dataProcesada, error };
   },
 
-  /**
-   * CORRECCIÓN P1: Reemplaza el upsert directo por la RPC 'guardar_trabajador'.
-   * - La contraseña ahora se hashea con bcrypt en el servidor (pgcrypto).
-   * - Nuevo trabajador: siempre hashea el password.
-   * - Trabajador existente: solo actualiza password si se proporcionó uno nuevo.
-   * - La RPC nunca retorna la columna password al cliente.
-   */
   async guardarTrabajador(trabajadorData) {
+    // Sanitizamos excluyendo 'password' — se hashea en el servidor tal cual llega
+    const sanitizado = sanitizeObject(trabajadorData, ['password']);
+
     const {
       id, usuario, nombre_completo, puesto, password,
       rol_id, fecha_ingreso, estatus, sucursales_ids, turno
-    } = trabajadorData;
+    } = sanitizado;
 
     const esNuevo = !id || id === "" || String(id) === "null";
 
@@ -176,9 +159,6 @@ export const ConfiguracionService = {
   // ==========================================
   // 5. CATÁLOGOS TÉCNICOS
   // ==========================================
-  /**
-   * CORRECCIÓN P1: select('*') → columnas explícitas
-   */
   async getUnidadesMedida() {
     const { data, error } = await supabase
       .from('Cat_UM')
@@ -194,9 +174,6 @@ export const ConfiguracionService = {
     return { data, error };
   },
 
-  /**
-   * CORRECCIÓN P1: select('*') → columnas explícitas
-   */
   async getCategorias() {
     const { data, error } = await supabase
       .from('Cat_Categorias')
@@ -213,7 +190,7 @@ export const ConfiguracionService = {
   },
 
   async guardarCategoria(categoriaData) {
-    const dataLimpia = { ...categoriaData };
+    const dataLimpia = sanitizeObject({ ...categoriaData });
     if (!dataLimpia.id || dataLimpia.id === "" || String(dataLimpia.id) === "null") {
       delete dataLimpia.id;
     }
@@ -225,12 +202,6 @@ export const ConfiguracionService = {
     return { data, error };
   },
 
-  /**
-   * CORRECCIÓN P1:
-   * - Bug de estatus en Cat_Categorias: su default es 'activo' (minúscula),
-   *   no 'Activo'. Se usa neq('estatus', 'Inactivo') para capturar ambos
-   *   casos ('activo' y 'Activo') sin depender de la capitalización exacta.
-   */
   async getCatalogosParaSelectores() {
     const [unidades, sucursales, proveedores, roles, categorias] = await Promise.all([
       supabase.from('Cat_UM')
@@ -247,7 +218,7 @@ export const ConfiguracionService = {
         .eq('estatus', 'Activo'),
       supabase.from('Cat_Categorias')
         .select('id, nombre')
-        .neq('estatus', 'Inactivo') // CORRECCIÓN: captura 'activo' y 'Activo'
+        .neq('estatus', 'Inactivo')
     ]);
 
     return {
@@ -260,19 +231,10 @@ export const ConfiguracionService = {
              roles.error    || categorias.error
     };
   },
+
   // ==========================================
   // 6. ACCIÓN GENÉRICA DE ESTATUS (Toggle) — VALIDADO EN SERVIDOR
   // ==========================================
-  /**
-   * Cambia el estatus de un registro usando la RPC 'toggle_estatus_seguro'.
-   * VALIDACIÓN SERVER-SIDE: La RPC valida dependencias antes de desactivar:
-   * - Proveedores: no desactiva si tiene productos activos
-   * - Sucursales: no desactiva si tiene pedidos pendientes
-   * - Categorías: no desactiva si tiene productos activos
-   * - Roles: no desactiva si tiene trabajadores activos
-   * - Trabajadores: no desactiva si tiene pedidos pendientes
-   * Al activar, siempre se permite sin restricción.
-   */
   async toggleEstatusGenerico(tabla, id, estatusActual) {
     const { data: resultado, error } = await supabase.rpc('toggle_estatus_seguro', {
       p_tabla:          tabla,
@@ -282,21 +244,16 @@ export const ConfiguracionService = {
 
     if (error) return { data: null, error };
 
-    // La RPC retorna { error: bool, mensaje: string, nuevo_estatus?: string }
     if (resultado?.error) {
       return { data: null, error: { message: resultado.mensaje } };
     }
 
     return { data: resultado, error: null };
-  },  // ==========================================
+  },
+
+  // ==========================================
   // 7. IMPORTACIÓN MASIVA (PRODUCTOS OPERATIVOS)
   // ==========================================
-  /**
-   * Importa productos desde CSV.
-   * ACTUALIZACIÓN: Ahora soporta upsert — si el row tiene 'id', actualiza
-   * el registro existente; si no tiene, crea uno nuevo.
-   * Esto permite el flujo: exportar → modificar → re-importar.
-   */
   async importarProductosMasivo(productosExcel) {
     if (!Array.isArray(productosExcel) || productosExcel.length === 0) {
       return { data: null, error: { message: "No hay productos para importar." } };
@@ -355,13 +312,11 @@ export const ConfiguracionService = {
           activo:         row.activo === 'false' ? false : true
         };
 
-        // Si el row trae id, lo incluimos para que upsert haga UPDATE
         if (row.id && String(row.id).trim()) obj.id = String(row.id).trim();
 
         return obj;
       }).filter(p => p.nombre);
 
-      // CAMBIO: upsert en lugar de insert — actualiza si id existe, crea si no
       const { data, error } = await supabase
         .from('BD_Productos')
         .upsert(productosListos, { onConflict: 'id' })
@@ -372,13 +327,10 @@ export const ConfiguracionService = {
       return { data: null, error: { message: "Fallo en la pre-carga de catálogos." } };
     }
   },
-    // ==========================================
+
+  // ==========================================
   // 8. IMPORTACIÓN MASIVA (PROVEEDORES)
   // ==========================================
-  /**
-   * Importa proveedores desde CSV con soporte upsert.
-   * Si el row tiene 'id', actualiza; si no, crea nuevo.
-   */
   async importarProveedoresMasivo(rows) {
     if (!Array.isArray(rows) || rows.length === 0) {
       return { data: null, error: { message: "No hay proveedores para importar." } };
@@ -456,10 +408,6 @@ export const ConfiguracionService = {
   // ==========================================
   // 11. EXPORTACIÓN DE PRODUCTOS (CON NOMBRES RESUELTOS)
   // ==========================================
-  /**
-   * Exporta productos con las FK resueltas a nombres legibles para CSV.
-   * Usado por ImportadorMasivo para el flujo exportar → modificar → re-importar.
-   */
   async exportarProductos() {
     try {
       const [productos, proveedores, sucursales, unidades, categorias] = await Promise.all([
@@ -474,7 +422,6 @@ export const ConfiguracionService = {
 
       if (productos.error) return { data: null, error: productos.error };
 
-      // Mapas UUID → nombre legible
       const mapProv = (proveedores.data || []).reduce((acc, p) => ({ ...acc, [p.id]: p.nombre }), {});
       const mapSucs = (sucursales.data || []).reduce((acc, s) => ({ ...acc, [s.id]: s.nombre }), {});
       const mapUms  = (unidades.data   || []).reduce((acc, u) => ({ ...acc, [u.id]: u.abreviatura }), {});
@@ -499,14 +446,10 @@ export const ConfiguracionService = {
       return { data: null, error: { message: 'Error al exportar productos.' } };
     }
   },
-    // ==========================================
+
+  // ==========================================
   // 12. CALENDARIO SUCURSAL × PROVEEDOR
   // ==========================================
-
-  /**
-   * Obtiene todas las asignaciones de días para una sucursal específica.
-   * Incluye el nombre del proveedor para la UI.
-   */
   async getAsignacionesPorSucursal(sucursalId) {
     const { data, error } = await supabase
       .from('Cat_Sucursal_Proveedor')
@@ -524,10 +467,6 @@ export const ConfiguracionService = {
     return { data, error };
   },
 
-  /**
-   * Crea o actualiza una asignación sucursal-proveedor.
-   * Usa upsert con conflicto en (sucursal_id, proveedor_id).
-   */
   async guardarAsignacion(asignacionData) {
     const dataLimpia = {
       sucursal_id:     asignacionData.sucursal_id,
@@ -536,7 +475,6 @@ export const ConfiguracionService = {
       estatus:         asignacionData.estatus || 'Activo'
     };
 
-    // Si trae id, lo incluimos para update directo
     if (asignacionData.id && String(asignacionData.id).trim()) {
       dataLimpia.id = asignacionData.id;
     }
@@ -557,10 +495,6 @@ export const ConfiguracionService = {
     return { data, error };
   },
 
-  /**
-   * Elimina una asignación — la sucursal vuelve al comportamiento
-   * por defecto para ese proveedor (dias_abierto del proveedor).
-   */
   async eliminarAsignacion(asignacionId) {
     const { data, error } = await supabase
       .from('Cat_Sucursal_Proveedor')
@@ -569,13 +503,10 @@ export const ConfiguracionService = {
       .select();
     return { data, error };
   },
-    // ==========================================
+
+  // ==========================================
   // 13. IMPORTACIÓN MASIVA (CALENDARIO SUCURSAL × PROVEEDOR)
   // ==========================================
-  /**
-   * Importa asignaciones de días desde CSV con soporte upsert.
-   * Resuelve nombres de sucursal y proveedor a sus UUIDs.
-   */
   async importarAsignacionesMasivo(rows) {
     if (!Array.isArray(rows) || rows.length === 0) {
       return { data: null, error: { message: "No hay asignaciones para importar." } };
@@ -610,7 +541,7 @@ export const ConfiguracionService = {
       }).filter(r => r.sucursal_id && r.proveedor_id && r.dias_permitidos.length > 0);
 
       if (registros.length === 0) {
-        return { data: null, error: { message: "No se pudieron resolver los nombres de sucursales/proveedores. Verifica que existan en el sistema." } };
+        return { data: null, error: { message: "No se pudieron resolver los nombres de sucursales/proveedores." } };
       }
 
       const { data, error } = await supabase
@@ -627,9 +558,6 @@ export const ConfiguracionService = {
   // ==========================================
   // 14. EXPORTACIÓN (CALENDARIO SUCURSAL × PROVEEDOR)
   // ==========================================
-  /**
-   * Exporta todas las asignaciones con nombres resueltos para CSV.
-   */
   async exportarAsignaciones() {
     try {
       const { data, error } = await supabase
@@ -658,5 +586,4 @@ export const ConfiguracionService = {
       return { data: null, error: { message: 'Error al exportar asignaciones.' } };
     }
   }
-  
 };
