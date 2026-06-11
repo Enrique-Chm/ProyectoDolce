@@ -88,11 +88,11 @@ export default function Trabajadores({ onVolver }) {
   };
 
   const procesarGuardado = async () => {
-    if (!formData.nombre_completo.trim()) return toast.error('El nombre es obligatorio');
-    if (!formData.usuario.trim())         return toast.error('El usuario es obligatorio');
-    if (!formData.id && !formData.password) return toast.error('La contraseña es obligatoria');
-    if (!formData.rol_id)                 return toast.error('Debes asignar un rol');
-    if (formData.sucursales_ids.length === 0) return toast.error('Selecciona al menos una sucursal');
+    if (!formData.nombre_completo.trim()) return toast.error('El nombre es obligatorio'),{ duration: 2000 };
+    if (!formData.usuario.trim())         return toast.error('El usuario es obligatorio'),{ duration: 2000 };
+    if (!formData.id && !formData.password) return toast.error('La contraseña es obligatoria'),{ duration: 2000 };
+    if (!formData.rol_id)                 return toast.error('Debes asignar un rol'),{ duration: 2000 };
+    if (formData.sucursales_ids.length === 0) return toast.error('Selecciona al menos una sucursal'),{ duration: 2000 } ;
 
     const exito = await guardarTrabajador(formData);
     if (exito) {

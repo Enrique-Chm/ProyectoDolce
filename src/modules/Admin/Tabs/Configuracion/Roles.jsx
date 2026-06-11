@@ -125,7 +125,7 @@ export default function Roles({ onVolver }) {
 
   const procesarGuardado = async () => {
     if (!formData.nombre || !formData.nombre.trim()) {
-      return toast.error('El nombre del rol es obligatorio');
+      return toast.error('El nombre del rol es obligatorio'),{ duration: 2000 };
     }
     const exito = await guardarRol(formData);
     if (exito) {

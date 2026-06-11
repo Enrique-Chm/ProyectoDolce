@@ -48,7 +48,7 @@ export default function Categorias({ onVolver }) {
 
   const procesarGuardado = async () => {
     if (!formData.nombre || !formData.nombre.trim()) {
-      return toast.error('El nombre de la categoría es obligatorio');
+      return toast.error('El nombre de la categoría es obligatorio'),{ duration: 2000 };
     }
     const exito = await guardarCategoria(formData);
     // CORRECCIÓN P1: Eliminada llamada redundante a cargarCategorias() —

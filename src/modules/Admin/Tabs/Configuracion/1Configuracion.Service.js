@@ -260,20 +260,35 @@ export const ConfiguracionService = {
              roles.error    || categorias.error
     };
   },
-
   // ==========================================
-  // 6. ACCIÓN GENÉRICA DE ESTATUS (Toggle)
+  // 6. ACCIÓN GENÉRICA DE ESTATUS (Toggle) — VALIDADO EN SERVIDOR
   // ==========================================
+  /**
+   * Cambia el estatus de un registro usando la RPC 'toggle_estatus_seguro'.
+   * VALIDACIÓN SERVER-SIDE: La RPC valida dependencias antes de desactivar:
+   * - Proveedores: no desactiva si tiene productos activos
+   * - Sucursales: no desactiva si tiene pedidos pendientes
+   * - Categorías: no desactiva si tiene productos activos
+   * - Roles: no desactiva si tiene trabajadores activos
+   * - Trabajadores: no desactiva si tiene pedidos pendientes
+   * Al activar, siempre se permite sin restricción.
+   */
   async toggleEstatusGenerico(tabla, id, estatusActual) {
-    const nuevoEstatus = (estatusActual.toLowerCase() === 'activo') ? 'Inactivo' : 'Activo';
-    const { data, error } = await supabase
-      .from(tabla)
-      .update({ estatus: nuevoEstatus })
-      .eq('id', id)
-      .select();
-    return { data, error };
-  },
-  // ==========================================
+    const { data: resultado, error } = await supabase.rpc('toggle_estatus_seguro', {
+      p_tabla:          tabla,
+      p_id:             id,
+      p_estatus_actual: estatusActual
+    });
+
+    if (error) return { data: null, error };
+
+    // La RPC retorna { error: bool, mensaje: string, nuevo_estatus?: string }
+    if (resultado?.error) {
+      return { data: null, error: { message: resultado.mensaje } };
+    }
+
+    return { data: resultado, error: null };
+  },  // ==========================================
   // 7. IMPORTACIÓN MASIVA (PRODUCTOS OPERATIVOS)
   // ==========================================
   /**

@@ -149,7 +149,7 @@ export const usePedidos = () => {
 
   const cambiarEstatusOrden = async (ordenId, nuevoEstatus) => {
     setLoading(true);
-    const { error } = await PedidosService.actualizarEstatusOrden(ordenId, nuevoEstatus);
+    const { error } = await PedidosService.actualizarEstatusOrden(ordenId, nuevoEstatus, usuario?.id);
     setLoading(false);
 
     if (error) {
@@ -176,7 +176,7 @@ export const usePedidos = () => {
    */
   const cancelarPedido = async (ordenId) => {
     setLoading(true);
-    const { error } = await PedidosService.cancelarOrden(ordenId);
+    const { error } = await PedidosService.cancelarOrden(ordenId, usuario?.id);
     setLoading(false);
 
     if (error) {

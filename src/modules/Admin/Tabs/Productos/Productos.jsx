@@ -193,11 +193,11 @@ export default function Productos({ onVolver }) {
   };
 
   const procesarGuardado = async () => {
-    if (!formData.nombre.trim()) return toast.error('El nombre es obligatorio');
-    if (!formData.categoria_id) return toast.error('La categoría es obligatoria');
-    if (!formData.um_id) return toast.error('La unidad de medida es obligatoria');
+    if (!formData.nombre.trim()) return toast.error('El nombre es obligatorio'),{ duration: 2000 };
+    if (!formData.categoria_id) return toast.error('La categoría es obligatoria'),{ duration: 2000 };
+    if (!formData.um_id) return toast.error('La unidad de medida es obligatoria'),{ duration: 2000 };
     if (formData.id && formData.producto_equivalente_id === formData.id) {
-      return toast.error('Un producto no puede ser su propio equivalente de Opción B');
+      return toast.error('Un producto no puede ser su propio equivalente de Opción B'),{ duration: 2000 };
     }
     const exito = await guardarProducto(formData);
     if (exito) setMostrandoFormulario(false);

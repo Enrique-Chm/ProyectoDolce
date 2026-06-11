@@ -59,7 +59,7 @@ export default function NuevoPedido({ onVolver }) {
     } else {
       setRevisadosLocales(prev => [...prev, prod.id]);
       toast.success(`${prod.nombre} revisado`, {
-        icon: '👁️',
+        icon: 'check_circle',
         style: {
           fontSize: '0.8rem',
           borderRadius: 'var(--radius-xl)',
@@ -403,18 +403,6 @@ export default function NuevoPedido({ onVolver }) {
                   </div>
                 ))}
               </div>
-            </div>
-
-            <div>
-              <label className={styles.labelTop}>NOTAS O INSTRUCCIONES</label>
-              <textarea
-                name="observaciones"
-                value={header.observaciones}
-                onChange={(e) => setHeader({ ...header, observaciones: e.target.value })}
-                className={styles.inputEditorial}
-                style={{ height: '80px', resize: 'none', paddingTop: '10px', fontSize: '0.85rem' }}
-                placeholder="Ej: Pedir todo para mañana antes de las 10 AM..."
-              />
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', paddingTop: '16px', borderTop: '2px dashed var(--border-ghost)' }}>

@@ -197,7 +197,7 @@ export default function ImportadorMasivo({ onVolver }) {
       }
 
       if (data.length === 0) {
-        toast('No hay registros que exportar', { icon: '📭' });
+        toast('No hay registros que exportar', { duration: 2000 });
         return;
       }
 
@@ -206,7 +206,7 @@ export default function ImportadorMasivo({ onVolver }) {
       toast.success(`Se exportaron ${data.length} registros de ${plantilla.titulo}`);
     } catch (err) {
       console.error('Error al exportar:', err);
-      toast.error('No se pudieron exportar los datos');
+      toast.error('No se pudieron exportar los datos', { duration: 2000 })  ;
     } finally {
       setLoading(false);
     }
@@ -246,14 +246,14 @@ export default function ImportadorMasivo({ onVolver }) {
         }
 
         if (res?.error) {
-          toast.error(`Error en la importación:\n${res.error.message || 'Error desconocido'}`, { duration: 6000 });
+          toast.error(`Error en la importación:\n${res.error.message || 'Error desconocido'}`, { duration: 2000 });
         } else {
           toast.success(`¡Se procesaron exitosamente ${res?.data?.length || 0} registros de ${plantilla.titulo}!`);
           e.target.value = '';
         }
       } catch (err) {
         console.error('Error al procesar CSV:', err);
-        toast.error(err.message || 'Error al leer el archivo. Asegúrate de que sea CSV válido.');
+        toast.error(err.message || 'Error al leer el archivo. Asegúrate de que sea CSV válido.'),{ duration: 2000 };
       } finally {
         setLoading(false);
       }

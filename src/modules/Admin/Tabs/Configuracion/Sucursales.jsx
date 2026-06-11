@@ -104,9 +104,9 @@ export default function Sucursales({ onVolver }) {
   };
 
   const procesarGuardado = async () => {
-    if (!formData.nombre.trim()) return toast.error('El nombre de la sucursal es obligatorio');
-    if (!formData.turnos_permitidos || formData.turnos_permitidos.length === 0) return toast.error('Debe seleccionar al menos un turno');
-    if (!formData.dias_pedido || formData.dias_pedido.length === 0) return toast.error('Debe seleccionar al menos un día permitido para pedir');
+    if (!formData.nombre.trim()) return toast.error('El nombre de la sucursal es obligatorio'),{ duration: 2000 };
+    if (!formData.turnos_permitidos || formData.turnos_permitidos.length === 0) return toast.error('Debe seleccionar al menos un turno'),{ duration: 2000 };
+    if (!formData.dias_pedido || formData.dias_pedido.length === 0) return toast.error('Debe seleccionar al menos un día permitido para pedir'),{ duration: 2000 };
     const exito = await guardarSucursal(formData);
     if (exito) {
       setMostrandoFormulario(false);

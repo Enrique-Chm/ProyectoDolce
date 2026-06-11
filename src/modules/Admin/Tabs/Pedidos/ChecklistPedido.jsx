@@ -68,29 +68,6 @@ export default function ChecklistPedido({ ordenId, onVolver }) {
     setConfirmarFinalizacion(false);
 
     // ── Estampar quién finalizó el surtido en las notas ──
-    try {
-      const nombreFinalizador = usuario?.nombre_completo || usuario?.usuario || 'Usuario';
-      const fechaHora         = new Date().toLocaleString('es-MX', {
-        day:    '2-digit',
-        month:  'short',
-        year:   'numeric',
-        hour:   '2-digit',
-        minute: '2-digit'
-      });
-
-      const notasActuales     = detalleOrdenActual.notas || '';
-      const firmaFinalizacion = `[Surtido por]: ${nombreFinalizador} — ${fechaHora}`;
-
-      // Solo agregamos si no se ha estampado antes (safety net contra doble clic)
-      const notasActualizadas = notasActuales.includes('[Surtido por]')
-        ? notasActuales
-        : `${notasActuales}\n${firmaFinalizacion}`.trim();
-
-      // Actualizamos las notas en BD vía service antes de cambiar el estatus
-      await PedidosService.actualizarNotasOrden(detalleOrdenActual.id, notasActualizadas);
-    } catch (err) {
-      console.error('Aviso: No se pudo estampar la firma de finalización:', err);
-    }
 
     const exito = await cambiarEstatusOrden(detalleOrdenActual.id, 'Completado');
     if (exito) onVolver();

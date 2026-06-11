@@ -34,11 +34,11 @@ export const PedidosService = {
         proveedor:Cat_Proveedores(nombre),
         solicitante:Cat_Trabajadores(nombre_completo),
         sucursal:Cat_sucursales(nombre)
-      `, { count: 'exact' })  // PAGINACIÓN: solicita el conteo total
+      `, { count: 'exact' })
       .in('estatus', ['Pendiente', 'En Proceso'])
       .order('prioridad', { ascending: false })
       .order('created_at', { ascending: false })
-      .range(desde, desde + LIMITE_PEDIDOS - 1);  // PAGINACIÓN: rango de registros
+      .range(desde, desde + LIMITE_PEDIDOS - 1);
 
     if (!tieneAccesoGlobal && sucursalesIds.length > 0) {
       query = query.in('sucursal_id', sucursalesIds);
@@ -141,13 +141,12 @@ export const PedidosService = {
    * Supabase/PostgREST no resuelve correctamente un join de BD_Productos → BD_Productos
    * cuando está anidado a 4 niveles de profundidad (Orden → Detalle → Producto → Equivalente).
    *
-   * Estrategia en 2 pasos:
+   * Estrategia en 3 pasos:
    *   PASO 1 — Query principal sin el join problemático (sí traemos producto_equivalente_id).
    *   PASO 2 — Query plana y directa a BD_Productos con los IDs equivalentes recolectados.
    *   PASO 3 — Fusión en memoria: inyectamos el objeto equivalente en cada detalle.
    */
   async getDetalleDeOrden(ordenId) {
-    // ── PASO 1: Query principal (sin join auto-referencial) ──────────────────
     const { data, error } = await supabase
       .from('BD_Ordenes_Compra')
       .select(`
@@ -186,7 +185,6 @@ export const PedidosService = {
 
     if (error) return { data, error };
 
-    // ── PASO 2: Recolectar IDs de productos equivalentes ────────────────────
     const idsEquivalentes = (data.detalles || [])
       .map(d => d.producto?.producto_equivalente_id)
       .filter(Boolean);
@@ -210,7 +208,6 @@ export const PedidosService = {
       return { data, error: null };
     }
 
-    // ── PASO 3: Construir mapa id → producto para fusión O(1) ───────────────
     const mapaEquivalentes = (productosEquivalentes || []).reduce((acc, prod) => {
       acc[prod.id] = prod;
       return acc;
@@ -245,32 +242,55 @@ export const PedidosService = {
     return { data, error };
   },
 
+  // ==========================================
+  // 5. CAMBIO DE ESTATUS — VALIDADO EN SERVIDOR
+  // ==========================================
+
   /**
-   * Cambia el estatus global de la orden.
+   * Cambia el estatus de una orden usando la RPC 'cambiar_estatus_orden'.
+   * VALIDACIÓN SERVER-SIDE: La RPC valida transiciones permitidas y estampa
+   * automáticamente quién finalizó o canceló el pedido en las notas.
+   *
+   * Transiciones permitidas:
+   *   Pendiente  → En Proceso, Completado, Cancelado
+   *   En Proceso → Completado, Cancelado
+   *   Completado → (ninguna — estado final)
+   *   Cancelado  → (ninguna — estado final)
+   *
+   * @param {string} ordenId       - UUID de la orden
+   * @param {string} nuevoEstatus  - Estatus destino
+   * @param {string} usuarioId     - UUID del usuario que hace el cambio (para firma)
    */
-  async actualizarEstatusOrden(ordenId, nuevoEstatus) {
-    const { data, error } = await supabase
-      .from('BD_Ordenes_Compra')
-      .update({ estatus: nuevoEstatus })
-      .eq('id', ordenId)
-      .select();
-    return { data, error };
+  async actualizarEstatusOrden(ordenId, nuevoEstatus, usuarioId = null) {
+    const { data: resultado, error } = await supabase.rpc('cambiar_estatus_orden', {
+      p_orden_id:      ordenId,
+      p_nuevo_estatus: nuevoEstatus,
+      p_usuario_id:    usuarioId
+    });
+
+    if (error) return { data: null, error };
+
+    // La RPC retorna { error: bool, mensaje: string, ... }
+    if (resultado?.error) {
+      return { data: null, error: { message: resultado.mensaje } };
+    }
+
+    return { data: resultado, error: null };
   },
 
   /**
-   * Mueve una orden a estatus Cancelado.
+   * Mueve una orden a estatus Cancelado — usa la misma RPC validada.
+   * @param {string} ordenId    - UUID de la orden
+   * @param {string} usuarioId  - UUID del usuario que cancela (para firma)
    */
-  async cancelarOrden(ordenId) {
-    const { data, error } = await supabase
-      .from('BD_Ordenes_Compra')
-      .update({ estatus: 'Cancelado' })
-      .eq('id', ordenId)
-      .select();
-    return { data, error };
+  async cancelarOrden(ordenId, usuarioId = null) {
+    return this.actualizarEstatusOrden(ordenId, 'Cancelado', usuarioId);
   },
-    /**
+
+  /**
    * Actualiza únicamente las notas de una orden sin modificar su estatus.
-   * Usado para estampar la firma de finalización antes del cambio de estatus.
+   * Este método NO pasa por la RPC porque solo modifica notas, no estatus.
+   * Se mantiene para casos donde se necesite actualizar notas sin cambiar estado.
    */
   async actualizarNotasOrden(ordenId, notas) {
     const { data, error } = await supabase

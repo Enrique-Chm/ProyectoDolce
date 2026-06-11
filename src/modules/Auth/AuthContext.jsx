@@ -42,8 +42,8 @@ export function AuthProvider({ children }) {
         // La sesión expiró mientras la app estaba abierta
         setUsuario(null);
         toast.error('Tu sesión ha expirado. Por favor, inicia sesión nuevamente.', {
-          duration: 6000,
-          icon: '⏰',
+          duration: 2000,
+       
           style: {
             borderRadius: '12px',
             fontSize: '0.875rem'
@@ -79,7 +79,7 @@ export function AuthProvider({ children }) {
    */
   const iniciarSesion = async (usuarioIdentidad, password) => {
     if (!usuarioIdentidad || !password) {
-      toast.error('Por favor, completa todos los campos');
+      toast.error('Por favor, completa todos los campos'),{ duration: 2000 };
       return false;
     }
 
@@ -98,7 +98,7 @@ export function AuthProvider({ children }) {
     setUsuario(data);
 
     toast.success(`¡Bienvenido, ${data.nombre_completo}!`, {
-      icon: '👋',
+      duration: 2000,
       style: {
         borderRadius: '12px',
         background: 'var(--color-surface-container-highest, #333)',

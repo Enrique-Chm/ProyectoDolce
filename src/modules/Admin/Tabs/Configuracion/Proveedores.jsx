@@ -73,7 +73,7 @@ export default function Proveedores({ onVolver }) {
   };
 
   const procesarGuardado = async () => {
-    if (!formData.nombre.trim()) return toast.error('El nombre es obligatorio');
+    if (!formData.nombre.trim()) return toast.error('El nombre es obligatorio'){ duration: 2000 };
 
     const datosParaEnviar = {
       ...formData,
