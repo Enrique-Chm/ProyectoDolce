@@ -67,80 +67,82 @@ export default function Historial({ onVerDetalle }) {
           Órdenes<br />Finalizadas
         </h1>
 
-        {/* --- FILTROS DE RANGO DE FECHAS --- */}
-                {/* --- FILTROS DE RANGO DE FECHAS (HORIZONTAL OPTIMIZADO) --- */}
+                {/* --- FILTROS DE RANGO DE FECHAS (DISEÑO SEGMENTADO) --- */}
         <div style={{
           marginBottom: '12px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '8px', 
-          padding: '12px 10px', // Reducimos padding lateral para ganar espacio
           backgroundColor: 'var(--color-surface-lowest)',
           borderRadius: 'var(--radius-xl)',
           border: '1px solid var(--border-ghost)',
-          boxShadow: 'var(--shadow-card)'
+          boxShadow: 'var(--shadow-card)',
+          padding: '12px 8px' // Padding lateral mínimo
         }}>
-          {/* Fila de Fechas */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              <label className={styles.labelTop} style={{ fontSize: '0.55rem', letterSpacing: '1px', opacity: 0.8 }}>
-                DESDE
-              </label>
+          {/* Fila segmentada de fechas */}
+          <div style={{ display: 'flex', width: '100%', marginBottom: '10px' }}>
+            
+            {/* Bloque DESDE */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label className={styles.labelTop} style={{ fontSize: '0.55rem', textAlign: 'center', opacity: 0.7 }}>DESDE</label>
               <input
                 type="date"
                 value={fechas.inicio}
                 onChange={(e) => setFechas({ ...fechas, inicio: e.target.value })}
                 className={styles.inputEditorial}
                 style={{ 
-                  width: '100%', 
-                  height: '40px', 
-                  padding: '0 4px', // Padding mínimo para ver más texto
-                  fontSize: '14px', // Un poco más pequeña para que quepa la fecha completa
-                  borderRadius: '6px',
-                  textAlign: 'center' 
+                  height: '42px', 
+                  fontSize: '13px', 
+                  padding: '0 2px',
+                  textAlign: 'center',
+                  borderRight: 'none', // Quitamos el borde derecho para unirlo al siguiente
+                  borderRadius: '10px 0 0 10px', // Redondeado solo a la izquierda
+                  backgroundColor: 'transparent'
                 }}
               />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              <label className={styles.labelTop} style={{ fontSize: '0.55rem', letterSpacing: '1px', opacity: 0.8 }}>
-                HASTA
-              </label>
+
+            {/* Divisor visual central muy fino */}
+            <div style={{ width: '1px', backgroundColor: 'var(--border-ghost)', marginTop: '22px', height: '24px', alignSelf: 'center' }} />
+
+            {/* Bloque HASTA */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label className={styles.labelTop} style={{ fontSize: '0.55rem', textAlign: 'center', opacity: 0.7 }}>HASTA</label>
               <input
                 type="date"
                 value={fechas.fin}
                 onChange={(e) => setFechas({ ...fechas, fin: e.target.value })}
                 className={styles.inputEditorial}
                 style={{ 
-                  width: '100%', 
-                  height: '40px', 
-                  padding: '0 4px', 
-                  fontSize: '14px', 
-                  borderRadius: '6px',
-                  textAlign: 'center' 
+                  height: '42px', 
+                  fontSize: '13px', 
+                  padding: '0 2px',
+                  textAlign: 'center',
+                  borderLeft: 'none', // Quitamos el borde izquierdo
+                  borderRadius: '0 10px 10px 0', // Redondeado solo a la derecha
+                  backgroundColor: 'transparent'
                 }}
               />
             </div>
           </div>
 
-          {/* Botón de Filtrar en la misma caja para ahorrar espacio vertical */}
+          {/* Botón de Filtrar */}
           <button
             onClick={manejarBusquedaHistorial}
             disabled={loading}
             className={`${styles.btnBase} ${styles.btnPrimary}`}
             style={{
-              height: '40px',
+              height: '42px',
               fontSize: '0.85rem',
-              borderRadius: '6px',
+              borderRadius: '10px',
               width: '100%',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '6px',
-              marginTop: '4px'
+              gap: '6px'
             }}
           >
             <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>search</span>
-            Filtrar
+            FILTRAR REGISTROS
           </button>
         </div>
         {/* BUSCADOR + CONTEO */}
