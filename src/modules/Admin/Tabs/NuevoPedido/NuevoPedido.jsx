@@ -59,7 +59,6 @@ export default function NuevoPedido({ onVolver }) {
     } else {
       setRevisadosLocales(prev => [...prev, prod.id]);
       toast.success(`${prod.nombre} revisado`, {
-        icon: 'check_circle',
         style: {
           fontSize: '0.8rem',
           borderRadius: 'var(--radius-xl)',
