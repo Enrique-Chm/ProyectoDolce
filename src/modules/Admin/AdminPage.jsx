@@ -50,13 +50,6 @@ export default function AdminPage() {
     }
   }, [esAdminReal, rolesSimulacion.length]);
 
-  // --- ESCUDO DE SEGURIDAD ---
-  // Cuando usuario es null (logout o sesión inexistente), mostramos Login.
-  // Al iniciar sesión, el Context actualiza 'usuario' y este componente
-  // re-renderiza automáticamente mostrando el panel — sin reload().
-  if (!usuario) {
-    return <Login />;
-  }
 
   // Extraemos los permisos para facilitar la lectura en el código
   const permisos = usuario.permisos || {};
