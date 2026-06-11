@@ -206,49 +206,43 @@ export default function NuevoPedido({ onVolver }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px', flexShrink: 0 }}>
 
             {/* Selector de turno operativo AM / PM */}
-            <div style={{ display: 'flex', gap: 'var(--space-sm)', padding: '4px', backgroundColor: 'var(--color-surface-low)', borderRadius: 'var(--radius-xl)' }}>
-              <button
-                type="button"
-                onClick={() => { setTurno('AM'); setCatActiva('Todas'); }}
-                disabled={usuario?.turno === 'PM'}
-                style={{
-                  flex: 1, height: '38px', borderRadius: 'var(--radius-lg)',
-                  fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  gap: '6px', border: 'none',
-                  backgroundColor: turno === 'AM' ? 'var(--color-primary)' : 'transparent',
-                  color: turno === 'AM' ? 'var(--color-surface-lowest)' : 'var(--text-main)',
-                  cursor: usuario?.turno === 'PM' ? 'not-allowed' : 'pointer',
-                  opacity: usuario?.turno === 'PM' ? 0.4 : 1,
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>
-                  {usuario?.turno === 'PM' ? 'lock' : 'light_mode'}
-                </span>
-                TURNO AM
-              </button>
-              <button
-                type="button"
-                onClick={() => { setTurno('PM'); setCatActiva('Todas'); }}
-                disabled={usuario?.turno === 'AM'}
-                style={{
-                  flex: 1, height: '38px', borderRadius: 'var(--radius-lg)',
-                  fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  gap: '6px', border: 'none',
-                  backgroundColor: turno === 'PM' ? 'var(--color-primary)' : 'transparent',
-                  color: turno === 'PM' ? 'var(--color-surface-lowest)' : 'var(--text-main)',
-                  cursor: usuario?.turno === 'AM' ? 'not-allowed' : 'pointer',
-                  opacity: usuario?.turno === 'AM' ? 0.4 : 1,
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>
-                  {usuario?.turno === 'AM' ? 'lock' : 'dark_mode'}
-                </span>
-                TURNO PM
-              </button>
-            </div>
-
+                       {/* Selector de turno operativo AM / PM — solo visible para trabajadores con turno "Ambos" */}
+            {usuario?.turno === 'Ambos' && (
+              <div style={{ display: 'flex', gap: 'var(--space-sm)', padding: '4px', backgroundColor: 'var(--color-surface-low)', borderRadius: 'var(--radius-xl)' }}>
+                <button
+                  type="button"
+                  onClick={() => { setTurno('AM'); setCatActiva('Todas'); }}
+                  style={{
+                    flex: 1, height: '38px', borderRadius: 'var(--radius-lg)',
+                    fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    gap: '6px', border: 'none',
+                    backgroundColor: turno === 'AM' ? 'var(--color-primary)' : 'transparent',
+                    color: turno === 'AM' ? 'var(--color-surface-lowest)' : 'var(--text-main)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>light_mode</span>
+                  TURNO AM
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setTurno('PM'); setCatActiva('Todas'); }}
+                  style={{
+                    flex: 1, height: '38px', borderRadius: 'var(--radius-lg)',
+                    fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    gap: '6px', border: 'none',
+                    backgroundColor: turno === 'PM' ? 'var(--color-primary)' : 'transparent',
+                    color: turno === 'PM' ? 'var(--color-surface-lowest)' : 'var(--text-main)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>dark_mode</span>
+                  TURNO PM
+                </button>
+              </div>
+            )}
             {/* Buscador */}
             <div style={{ position: 'relative' }}>
               <span className="material-symbols-outlined" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }}>search</span>
