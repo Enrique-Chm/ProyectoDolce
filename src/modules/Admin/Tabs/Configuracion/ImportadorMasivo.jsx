@@ -185,24 +185,35 @@ export default function ImportadorMasivo({ onVolver }) {
     });
   };
 
-  const ejecutarImportacionFinal = async () => {
+    const ejecutarImportacionFinal = async () => {
     setLoading(true);
     try {
-      const datosAEnviar = filasAnalizadas.filter(f => f.__valido);
-      if (datosAEnviar.length === 0) return toast.error('No hay registros válidos para subir');
+      // 1. Filtramos solo los registros que pasaron la validación
+      const validos = filasAnalizadas.filter(f => f.__valido);
+      if (validos.length === 0) return toast.error('No hay registros válidos para subir');
+
+      // 2. LIMPIEZA CRÍTICA: Eliminamos las etiquetas de control (__errores, __valido)
+      // para que Supabase no rechace el objeto por tener columnas inexistentes.
+      const datosListosParaBD = validos.map(fila => {
+        const { __errores, __valido, ...datosReales } = fila;
+        return datosReales;
+      });
 
       let res;
-      if (tipoImportacion === 'productos') res = await ConfiguracionService.importarProductosMasivo(datosAEnviar);
-      else if (tipoImportacion === 'proveedores') res = await ConfiguracionService.importarProveedoresMasivo(datosAEnviar);
-      else if (tipoImportacion === 'sucursales') res = await ConfiguracionService.importarSucursalesMasivo(datosAEnviar);
-      else if (tipoImportacion === 'categorias') res = await ConfiguracionService.importarCategoriasMasivo(datosAEnviar);
-      else if (tipoImportacion === 'calendario') res = await ConfiguracionService.importarAsignacionesMasivo(datosAEnviar);
+      // 3. Enviamos los datos LIMPIOS al servicio
+      if (tipoImportacion === 'productos') res = await ConfiguracionService.importarProductosMasivo(datosListosParaBD);
+      else if (tipoImportacion === 'proveedores') res = await ConfiguracionService.importarProveedoresMasivo(datosListosParaBD);
+      else if (tipoImportacion === 'sucursales') res = await ConfiguracionService.importarSucursalesMasivo(datosListosParaBD);
+      else if (tipoImportacion === 'categorias') res = await ConfiguracionService.importarCategoriasMasivo(datosListosParaBD);
+      else if (tipoImportacion === 'calendario') res = await ConfiguracionService.importarAsignacionesMasivo(datosListosParaBD);
 
       if (res.error) throw res.error;
+      
       toast.success(`¡Carga exitosa! ${res.data.length} registros procesados.`);
       onVolver();
     } catch (err) {
-      toast.error(err.message);
+      console.error("Error en carga final:", err);
+      toast.error(`Error al guardar: ${err.message || 'Error de base de datos'}`);
     } finally {
       setLoading(false);
     }
