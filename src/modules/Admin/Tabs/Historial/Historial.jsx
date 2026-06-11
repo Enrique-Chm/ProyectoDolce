@@ -68,19 +68,22 @@ export default function Historial({ onVerDetalle }) {
         </h1>
 
         {/* --- FILTROS DE RANGO DE FECHAS --- */}
+                {/* --- FILTROS DE RANGO DE FECHAS (HORIZONTAL OPTIMIZADO) --- */}
         <div style={{
           marginBottom: '12px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '10px',
-          padding: '12px',
+          gap: '8px', 
+          padding: '12px 10px', // Reducimos padding lateral para ganar espacio
           backgroundColor: 'var(--color-surface-lowest)',
           borderRadius: 'var(--radius-xl)',
-          border: '1px solid var(--border-ghost)'
+          border: '1px solid var(--border-ghost)',
+          boxShadow: 'var(--shadow-card)'
         }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-sm)' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label className={styles.labelTop} style={{ fontSize: '0.65rem', opacity: 0.8, margin: 0 }}>
+          {/* Fila de Fechas */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <label className={styles.labelTop} style={{ fontSize: '0.55rem', letterSpacing: '1px', opacity: 0.8 }}>
                 DESDE
               </label>
               <input
@@ -88,11 +91,18 @@ export default function Historial({ onVerDetalle }) {
                 value={fechas.inicio}
                 onChange={(e) => setFechas({ ...fechas, inicio: e.target.value })}
                 className={styles.inputEditorial}
-                style={{ width: '100%', height: '36px', padding: '0 8px', fontSize: '0.85rem', borderRadius: 'var(--radius-lg)' }}
+                style={{ 
+                  width: '100%', 
+                  height: '40px', 
+                  padding: '0 4px', // Padding mínimo para ver más texto
+                  fontSize: '14px', // Un poco más pequeña para que quepa la fecha completa
+                  borderRadius: '6px',
+                  textAlign: 'center' 
+                }}
               />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label className={styles.labelTop} style={{ fontSize: '0.65rem', opacity: 0.8, margin: 0 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <label className={styles.labelTop} style={{ fontSize: '0.55rem', letterSpacing: '1px', opacity: 0.8 }}>
                 HASTA
               </label>
               <input
@@ -100,26 +110,39 @@ export default function Historial({ onVerDetalle }) {
                 value={fechas.fin}
                 onChange={(e) => setFechas({ ...fechas, fin: e.target.value })}
                 className={styles.inputEditorial}
-                style={{ width: '100%', height: '36px', padding: '0 8px', fontSize: '0.85rem', borderRadius: 'var(--radius-lg)' }}
+                style={{ 
+                  width: '100%', 
+                  height: '40px', 
+                  padding: '0 4px', 
+                  fontSize: '14px', 
+                  borderRadius: '6px',
+                  textAlign: 'center' 
+                }}
               />
             </div>
           </div>
 
+          {/* Botón de Filtrar en la misma caja para ahorrar espacio vertical */}
           <button
             onClick={manejarBusquedaHistorial}
             disabled={loading}
             className={`${styles.btnBase} ${styles.btnPrimary}`}
             style={{
-              height: '36px', padding: '0', fontSize: '0.85rem',
-              borderRadius: 'var(--radius-lg)', width: '100%',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+              height: '40px',
+              fontSize: '0.85rem',
+              borderRadius: '6px',
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              marginTop: '4px'
             }}
           >
             <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>search</span>
-            Filtrar Registros
+            Filtrar
           </button>
         </div>
-
         {/* BUSCADOR + CONTEO */}
         {haFiltrado && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)', marginTop: '10px' }}>
