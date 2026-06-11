@@ -4,9 +4,17 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="description" content="Sistema de gestión de inventarios y requisiciones para restaurantes" />
+    <meta name="description" content="Sistema de gestión de inventarios para restaurantes" />
 
-    <!-- CSP como fallback para desarrollo local (Vercel usa vercel.json en producción) -->
+    <!-- 📱 PWA & iOS Optimization -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="KiKitchen" />
+    <link rel="apple-touch-icon" href="/vite.svg" />
+    <meta name="theme-color" content="#a23f27" />
+
+    <!-- CSP Fallback -->
     <meta http-equiv="Content-Security-Policy" 
       content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self';" 
     />
