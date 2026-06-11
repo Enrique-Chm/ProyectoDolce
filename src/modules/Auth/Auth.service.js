@@ -1,8 +1,8 @@
 // src/modules/Auth/Auth.service.js
 import { supabase } from '../../lib/supabaseClient';
 
-// Duración de la sesión: 8 horas en milisegundos.
-const SESSION_DURATION_MS = 8 * 60 * 60 * 1000;
+// Duración de la sesión: 4 horas en milisegundos.
+const SESSION_DURATION_MS = 4 * 60 * 60 * 1000;
 
 export const AuthService = {
   /**
