@@ -1,5 +1,5 @@
 // src/modules/Admin/Tabs/Pedidos/Pedidos.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styles from '../../../../assets/styles/EstilosGenerales.module.css';
 import { usePedidos } from './2usePedidos';
 import { useAuth } from '../../../Auth/useAuth';
@@ -24,6 +24,46 @@ export default function Pedidos({ onNuevoPedido, onVerLista }) {
   const esAdmin         = usuario?.permisos?.configuracion?.leer || false;
 
   const [ordenPendienteCancelar, setOrdenPendienteCancelar] = useState(null);
+
+  // ── LÓGICA DE PULL TO REFRESH (Gesto de deslizar hacia abajo) ──
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isPulling, setIsPulling] = useState(false);
+  const touchStartPos = useRef(0);
+  const pullThreshold = 70; // Píxeles necesarios para activar el refresh
+
+  const handleTouchStart = (e) => {
+    // Solo permitimos el tirón si el scroll está hasta arriba
+    if (window.scrollY === 0) {
+      touchStartPos.current = e.touches[0].clientY;
+      setIsPulling(true);
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isPulling) return;
+    const currentPos = e.touches[0].clientY;
+    const distance = currentPos - touchStartPos.current;
+
+    if (distance > 0) {
+      // Aplicamos resistencia física (dampening)
+      const dampedDistance = Math.min(distance * 0.4, pullThreshold + 20);
+      setPullDistance(dampedDistance);
+      
+      // Bloqueamos el scroll nativo si estamos tirando
+      if (distance > 10 && e.cancelable) {
+        e.preventDefault();
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (pullDistance >= pullThreshold) {
+      cargarOrdenesActivas(); // Sincronizar datos
+    }
+    setIsPulling(false);
+    setPullDistance(0);
+  };
+  // ──────────────────────────────────────────────────────────────
 
   useEffect(() => {
     cargarOrdenesActivas();
@@ -54,7 +94,34 @@ export default function Pedidos({ onNuevoPedido, onVerLista }) {
   };
 
   return (
-    <div className={styles.fadeIN} style={{ width: '100%', maxWidth: '100%', paddingBottom: '100px' }}>
+    <div 
+      className={styles.fadeIN} 
+      style={{ width: '100%', maxWidth: '100%', paddingBottom: '100px', position: 'relative' }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* 🔄 Indicador visual de Pull to Refresh */}
+      <div style={{
+        height: `${pullDistance}px`,
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transition: isPulling ? 'none' : 'height 0.3s ease',
+        color: pullDistance >= pullThreshold ? 'var(--color-primary)' : 'var(--text-light)',
+        opacity: pullDistance / pullThreshold
+      }}>
+        <span 
+          className="material-symbols-outlined" 
+          style={{ 
+            transform: `rotate(${pullDistance * 4}deg)`,
+            fontSize: '1.8rem' 
+          }}
+        >
+          {pullDistance >= pullThreshold ? 'release_alert' : 'sync'}
+        </span>
+      </div>
 
       {/* --- ENCABEZADO --- */}
       <header style={{ marginBottom: 'var(--space-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -67,10 +134,10 @@ export default function Pedidos({ onNuevoPedido, onVerLista }) {
           </h1>
         </div>
 
-        {/* Contador — ahora muestra total real de BD */}
+        {/* Contador — ahora muestra un spinner si está cargando */}
         <div style={{
-          backgroundColor: 'var(--color-primary)',
-          color: 'var(--color-surface-lowest)',
+          backgroundColor: loading ? 'var(--color-primary-fixed)' : 'var(--color-primary)',
+          color: loading ? 'var(--color-primary)' : 'var(--color-surface-lowest)',
           width: '44px',
           height: '44px',
           borderRadius: 'var(--radius-xl)',
@@ -78,14 +145,21 @@ export default function Pedidos({ onNuevoPedido, onVerLista }) {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          boxShadow: 'var(--shadow-card)'
+          boxShadow: 'var(--shadow-card)',
+          transition: 'all 0.3s ease'
         }}>
-          <span style={{ fontSize: '1.1rem', fontWeight: '800', lineHeight: '1' }}>
-            {totalActivas}
-          </span>
-          <span style={{ fontSize: '0.525rem', textTransform: 'uppercase', fontWeight: 'bold', opacity: 0.85 }}>
-            Total
-          </span>
+          {loading ? (
+            <span className="material-symbols-outlined" style={{ animation: 'spin 1.5s linear infinite', fontSize: '1.2rem' }}>sync</span>
+          ) : (
+            <>
+              <span style={{ fontSize: '1.1rem', fontWeight: '800', lineHeight: '1' }}>
+                {totalActivas}
+              </span>
+              <span style={{ fontSize: '0.525rem', textTransform: 'uppercase', fontWeight: 'bold', opacity: 0.85 }}>
+                Total
+              </span>
+            </>
+          )}
         </div>
       </header>
 
@@ -255,7 +329,7 @@ export default function Pedidos({ onNuevoPedido, onVerLista }) {
         })}
       </div>
 
-      {/* ── PAGINACIÓN: Botón "Cargar más" ── */}
+      {/* PAGINACIÓN: Botón "Cargar más" */}
       {hayMasActivas && !loading && (
         <button
           onClick={cargarMasActivas}
@@ -278,11 +352,11 @@ export default function Pedidos({ onNuevoPedido, onVerLista }) {
         </button>
       )}
 
-      {/* Indicador de carga al cargar más */}
-      {loading && ordenesActivas.length > 0 && (
+      {/* Indicador de carga al cargar más o sincronizar */}
+      {loading && ordenesActivas.length > 0 && !isPulling && (
         <div style={{ textAlign: 'center', padding: 'var(--space-md) 0' }}>
           <div className={styles.labelTop} style={{ animation: 'pulse 1.5s infinite', textAlign: 'center' }}>
-            Cargando más pedidos...
+            Sincronizando...
           </div>
         </div>
       )}

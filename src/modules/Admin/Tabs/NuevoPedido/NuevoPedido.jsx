@@ -1,5 +1,5 @@
 // src/modules/Admin/Tabs/NuevoPedido/NuevoPedido.jsx
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react'; // Agregamos useEffect
 import styles from '../../../../assets/styles/EstilosGenerales.module.css';
 import { useNuevoPedido } from './2useNuevoPedido';
 import { useAuth } from '../../../Auth/useAuth';
@@ -20,7 +20,7 @@ export default function NuevoPedido({ onVolver }) {
     procesarOrden,
     turno,
     setTurno,
-    restriccionDia  // NUEVO: estado de bloqueo por día de pedido
+    restriccionDia
   } = useNuevoPedido(onVolver);
 
   const [paso, setPaso] = useState(1);
@@ -30,6 +30,32 @@ export default function NuevoPedido({ onVolver }) {
   const [revisadosLocales, setRevisadosLocales] = useState([]);
 
   const { usuario } = useAuth();
+
+  // ── LÓGICA DE ESCUDO CONTRA DEDAZOS ──
+  const [intentandoSalir, setIntentandoSalir] = useState(false);
+  const hayDatos = carrito.length > 0;
+
+  // Bloquear recarga de página o cierre de pestaña accidental si hay productos en el carrito
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (hayDatos) {
+        e.preventDefault();
+        e.returnValue = ''; // Muestra el aviso nativo del navegador
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hayDatos]);
+
+  // Manejador seguro para el botón de cerrar/volver
+  const handleSafeVolver = () => {
+    if (hayDatos) {
+      setIntentandoSalir(true); // Mostrar modal personalizado
+    } else {
+      onVolver();
+    }
+  };
+  // ──────────────────────────────────────
 
   // Memorizamos las categorías basadas en los productos disponibles hoy
   const categorias = useMemo(() => {
@@ -59,6 +85,7 @@ export default function NuevoPedido({ onVolver }) {
     } else {
       setRevisadosLocales(prev => [...prev, prod.id]);
       toast.success(`${prod.nombre} revisado`, {
+        icon: '👁️',
         style: {
           fontSize: '0.8rem',
           borderRadius: 'var(--radius-xl)',
@@ -103,16 +130,31 @@ export default function NuevoPedido({ onVolver }) {
           </h1>
         </div>
         <button
-          onClick={paso === 2 ? () => setPaso(1) : onVolver}
+          onClick={paso === 2 ? () => setPaso(1) : handleSafeVolver}
           className={`${styles.btnBase} ${styles.btnSecondary}`}
-          style={{ height: '38px', paddingTop: 0, paddingBottom: 0, paddingLeft: '12px', paddingRight: '12px', fontSize: '0.8rem' }}
+          style={{ height: '38px', paddingLeft: '12px', paddingRight: '12px', fontSize: '0.8rem' }}
         >
           <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>
-            {paso === 2 ? 'close' : 'arrow_back'}
+            {paso === 2 ? 'arrow_back' : 'close'}
           </span>
-          {paso === 2 ? 'Cancelar' : 'Volver'}
+          {paso === 2 ? 'Regresar' : 'Cerrar'}
         </button>
       </header>
+
+      {/* ── PANEL DE CONFIRMACIÓN DE SALIDA (MODAL) ── */}
+      {intentandoSalir && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-md)', backdropFilter: 'blur(4px)' }}>
+          <div className={styles.card} style={{ maxWidth: '320px', width: '100%', textAlign: 'center', gap: '16px', padding: 'var(--space-md)', backgroundColor: 'var(--color-surface-lowest)' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '3rem', color: COLOR_DANGER }}>warning</span>
+            <h3 style={{ fontSize: '1.1rem', margin: 0 }}>¿Abandonar pedido?</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>Tienes <b>{carrito.length}</b> productos en el carrito. Si sales ahora, se perderán.</p>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+              <button onClick={() => setIntentandoSalir(false)} className={`${styles.btnBase} ${styles.btnSecondary}`} style={{ flex: 1 }}>Seguir aquí</button>
+              <button onClick={() => onVolver()} className={`${styles.btnBase} ${styles.btnDanger}`} style={{ flex: 1 }}>Sí, salir</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── PANTALLA DE BLOQUEO POR DÍA NO PERMITIDO ── */}
       {restriccionDia?.bloqueado ? (
@@ -151,7 +193,6 @@ export default function NuevoPedido({ onVolver }) {
               </p>
             </div>
 
-            {/* Chips con los días que SÍ tiene permitido */}
             {restriccionDia.diasPermitidos?.length > 0 && (
               <div style={{ width: '100%' }}>
                 <p style={{ fontSize: '0.7rem', color: 'var(--text-light)', marginBottom: 'var(--space-sm)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
@@ -204,8 +245,7 @@ export default function NuevoPedido({ onVolver }) {
           {/* Filtros y Buscador */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px', flexShrink: 0 }}>
 
-            {/* Selector de turno operativo AM / PM */}
-                       {/* Selector de turno operativo AM / PM — solo visible para trabajadores con turno "Ambos" */}
+            {/* Selector de turno operativo — solo visible para trabajadores "Ambos" */}
             {usuario?.turno === 'Ambos' && (
               <div style={{ display: 'flex', gap: 'var(--space-sm)', padding: '4px', backgroundColor: 'var(--color-surface-low)', borderRadius: 'var(--radius-xl)' }}>
                 <button
@@ -242,6 +282,7 @@ export default function NuevoPedido({ onVolver }) {
                 </button>
               </div>
             )}
+
             {/* Buscador */}
             <div style={{ position: 'relative' }}>
               <span className="material-symbols-outlined" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }}>search</span>
@@ -286,8 +327,7 @@ export default function NuevoPedido({ onVolver }) {
                     onClick={() => setRevisadosLocales([])}
                     style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontSize: '0.75rem', textDecoration: 'underline', cursor: 'pointer' }}
                   >
-                    Resetear lista
-                  </button>
+                    Resetear lista</button>
                 )}
               </div>
             ) : (
@@ -325,6 +365,7 @@ export default function NuevoPedido({ onVolver }) {
                       <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                         <input
                           type="number" min="0" placeholder="0"
+                          inputMode="decimal" // ✅ Optimización teclado iPhone
                           className={styles.inputEditorial}
                           style={{ width: '52px', height: '36px', textAlign: 'center', padding: 0, fontSize: '0.95rem', fontWeight: 'bold', border: '1px solid var(--border-ghost)' }}
                           value={qtyInput}
